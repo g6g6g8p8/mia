@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.3 · 11/10/2026 · Status: M1 implementado e validado localmente; imagem Docker ainda não executada neste ambiente.
+Versão 0.4 · 11/10/2026 · Status: M1 implementado e validado em contêiner sobre Ubuntu.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -177,10 +177,12 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - Nenhum código ou histórico do sistema de origem importado.
 - M1 implementado: onboarding, autenticação local, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite.
 - Testes automatizados do fluxo local, autenticação, origem, exportação, instalação vazia e reinício.
-- Dockerfile, Compose e documentação Ubuntu preparados; o ambiente de desenvolvimento usado nesta entrega não possui Docker, portanto a execução real da imagem em Ubuntu permanece como aceite pendente.
+- Dockerfile, Compose e documentação Ubuntu validados em um host piloto: imagem construída do zero, serviço saudável, acesso anônimo negado, onboarding, login, tarefas, Hoje, Busca e exportação exercitados.
+- Persistência confirmada após reiniciar o contêiner; os dados fictícios de validação foram removidos e a instância voltou ao estado inicial vazio.
+- O teste manteve o host em 68% de ocupação de disco. Detalhes reproduzíveis estão em `docs/VALIDATION.md`.
 - IA, conectores, restauração automática e o harness de execução continuam nos marcos seguintes.
-- Criação de repositório no GitHub não está disponível na conexão atual.
-- A execução continua com a validação Docker/Ubuntu do M1 e depois o M2.
+- O código está em um repositório GitHub novo e privado enquanto a licença aberta é definida.
+- A execução continua pelo M2: contexto, adaptadores de modelo, ferramentas, confirmação, orçamento e execuções duráveis.
 
 Este plano orienta o trabalho e não comprova funcionalidades, portabilidade, segurança ou economia já entregues.
 

@@ -8,7 +8,7 @@ Mia é um projeto de harness para IA pessoal: a estrutura que reúne memória, c
 O usuário instala o Mia em seu computador ou servidor Ubuntu e acessa pelo navegador. Escolhe os modelos e as integrações que quer usar; seus dados permanecem sob seu controle.
 
 ## Status
-O M1 já é um protótipo executável: onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite. IA, conectores, restauração automática e o harness de execução entram nos próximos marcos.
+O M1 já é um protótipo executável e foi validado em Docker sobre Ubuntu: onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite após reinício. IA, conectores, restauração automática e o harness de execução entram nos próximos marcos.
 
 A primeira versão será validada com poucos usuários piloto. O projeto será distribuído como código aberto; a licença específica será definida antes da publicação do código.
 
@@ -69,6 +69,7 @@ Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 - [Contrato do harness](docs/HARNESS.md)
 - [Ícone e identidade](docs/BRAND.md)
 - [Instalação no Ubuntu](docs/INSTALL-UBUNTU.md)
+- [Validação do M1](docs/VALIDATION.md)
 
 ## Desenvolvimento
 O histórico deste repositório começa em um commit novo. Não contém dados de usuários, conversas, vaults ou histórico de outros projetos.
