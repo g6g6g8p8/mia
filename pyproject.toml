@@ -1,0 +1,30 @@
+[project]
+name = "mia-personal-ai"
+version = "0.1.0"
+description = "Self-hosted personal AI harness"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["mia*"]
+
+[tool.setuptools.package-data]
+mia = ["static/**/*"]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "pytest==8.3.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+

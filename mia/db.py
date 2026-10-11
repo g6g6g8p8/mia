@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import os
+import sqlite3
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Iterator
+
+
+SCHEMA = """
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+
+CREATE TABLE IF NOT EXISTS owner (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    name TEXT NOT NULL,
+    email TEXT,
+    timezone TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    identity TEXT PRIMARY KEY,
+    failures INTEGER NOT NULL DEFAULT 0,
+    blocked_until TEXT
+);
+
+CREATE TABLE IF NOT EXISTS areas (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT 'slate',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(owner_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id) ON DELETE CASCADE,
+    area_id TEXT REFERENCES areas(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    due_date TEXT,
+    priority INTEGER NOT NULL DEFAULT 2 CHECK(priority BETWEEN 1 AND 3),
+    status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'done')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS tasks_owner_status_idx
+ON tasks(owner_id, status, due_date, priority);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER REFERENCES owner(id) ON DELETE SET NULL,
+    event TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id TEXT,
+    metadata_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+"""
+
+
+def data_dir() -> Path:
+    path = Path(os.environ.get("MIA_DATA_DIR", "./data")).resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def database_path() -> Path:
+    return data_dir() / "mia.db"
+
+
+def connect() -> sqlite3.Connection:
+    db = sqlite3.connect(database_path(), timeout=10, isolation_level=None)
+    db.row_factory = sqlite3.Row
+    db.execute("PRAGMA foreign_keys=ON")
+    db.execute("PRAGMA busy_timeout=10000")
+    return db
+
+
+def initialize() -> None:
+    with connect() as db:
+        db.executescript(SCHEMA)
+
+
+@contextmanager
+def transaction(immediate: bool = False) -> Iterator[sqlite3.Connection]:
+    db = connect()
+    try:
+        db.execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+

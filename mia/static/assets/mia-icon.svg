@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Mia</title>
+  <desc id="desc">Rosto de gatinha formado por caracteres ASCII</desc>
+  <rect width="512" height="512" rx="112" fill="#09090b"/>
+  <g fill="#f5f3ee" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="92" font-weight="700" text-anchor="middle">
+    <text x="256" y="190">/\_/\</text>
+    <text x="256" y="292">( o.o )</text>
+    <text x="256" y="394">&gt; ^ &lt;</text>
+  </g>
+</svg>
+

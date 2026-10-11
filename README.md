@@ -1,2 +1,77 @@
-# mia
-Self-hosted personal AI harness with context, tools and cost control
+# Mia
+![Ícone da Mia — gatinha em estilo ASCII](assets/mia-icon.svg)
+
+**IA pessoal com contexto, ferramentas e controle de custos.**
+
+Mia é um projeto de harness para IA pessoal: a estrutura que reúne memória, contexto, ferramentas e regras de execução para tornar modelos de IA úteis no dia a dia.
+
+O usuário instala o Mia em seu computador ou servidor Ubuntu e acessa pelo navegador. Escolhe os modelos e as integrações que quer usar; seus dados permanecem sob seu controle.
+
+## Status
+O M1 já é um protótipo executável: onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite. IA, conectores, restauração automática e o harness de execução entram nos próximos marcos.
+
+A primeira versão será validada com poucos usuários piloto. O projeto será distribuído como código aberto; a licença específica será definida antes da publicação do código.
+
+## O que o Mia deve oferecer
+- Onboarding para configurar objetivos, áreas, fontes e permissões.
+- Contexto recuperado conforme a tarefa, com indicação de origem.
+- Memória persistente, inspecionável, editável e exportável pelo usuário.
+- Conversas e execuções que podem ser retomadas após reinício.
+- Ferramentas com contratos, permissões e resultados verificáveis.
+- Propostas de ação revisadas antes de executar alterações.
+- Escolha de modelos locais ou externos, com credenciais próprias.
+- Limites de uso, estimativas e registros de custo.
+- Central de comando com Hoje, Áreas, Planejamento, Busca, Inteligência e Sistema.
+
+Exemplo de uso: preparar uma reunião a partir de documentos autorizados, apontar as fontes e sugerir próximos passos; o usuário revisa antes de registrar uma tarefa.
+
+## Como o custo será controlado
+A meta é custo baixo comprovado em tarefas reais:
+- Regras determinísticas para trabalho que não exige geração.
+- Busca seletiva para enviar apenas contexto relevante ao modelo.
+- Modelos locais ou econômicos quando adequados à tarefa.
+- Modelos mais caros somente com política explícita.
+- Limites de contexto, saída, duração, passos e tentativas.
+- Orçamento por execução e período.
+- Registro de tokens, modelo e uso; custo estimado separado do custo confirmado.
+- Pausa quando o orçamento ou o limite de execução for atingido.
+
+A primeira versão não promete valor mensal fixo. IA local também tem custo de hardware, energia e operação. APIs externas seguem as condições e preços do provedor escolhido.
+
+## Independência
+A instalação não deve exigir uma conta do projeto, um domínio central, um serviço proprietário de hospedagem ou um provedor específico de IA.
+
+O núcleo precisa funcionar sem IA e, após instalado, sem internet. Recursos de IA local exigem um motor e modelo compatíveis. Conectores e modelos externos precisam de rede e autorização do usuário.
+
+Assinatura de um aplicativo de chat não será tratada como crédito de API.
+
+## Dados e controle
+- Instalação vazia por padrão.
+- Importação explícita, separada do código do produto.
+- Conteúdo local em formatos abertos.
+- Credenciais fora do código, do navegador e do Git.
+- Histórico e índices restritos ao proprietário autorizado.
+- Backup e restauração testados em outra máquina.
+- Ações com evidência, proveniência e prevenção de duplicação.
+
+## Instalação
+O alvo inicial é Ubuntu em servidor ou computador pessoal. Veja [Instalação no Ubuntu](docs/INSTALL-UBUNTU.md).
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
+
+## Documentação
+- [Plano de produto e execução](docs/PLAN.md)
+- [Contrato do harness](docs/HARNESS.md)
+- [Ícone e identidade](docs/BRAND.md)
+- [Instalação no Ubuntu](docs/INSTALL-UBUNTU.md)
+
+## Desenvolvimento
+O histórico deste repositório começa em um commit novo. Não contém dados de usuários, conversas, vaults ou histórico de outros projetos.
+
+A evolução será validada por entregas completas: instalação → onboarding → contexto → resposta → proposta → confirmação → persistência → restauração.
+
