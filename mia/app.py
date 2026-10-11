@@ -21,6 +21,7 @@ from . import __version__
 from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
+from . import settings as installation_settings
 
 
 ROOT = Path(__file__).resolve().parent
@@ -475,6 +476,16 @@ def ai_config(owner: Owner) -> dict:
 @app.get("/api/ai/context")
 def ai_context(area_id: str, owner: Owner) -> list[dict]:
     return harness.context(owner, area_id)
+
+
+@app.put("/api/ai/config")
+def save_ai_config(payload: installation_settings.AISettings, owner: Owner) -> dict:
+    with transaction(immediate=True) as db:
+        if db.execute("SELECT 1 FROM runs WHERE state='running'").fetchone():
+            raise HTTPException(409, "Aguarde a execução antes de alterar a configuração")
+        installation_settings.save(payload)
+        audit(db, owner["id"], "ai.config.updated")
+    return harness.config()
 
 
 @app.get("/api/runs")

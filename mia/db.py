@@ -114,6 +114,10 @@ def connect() -> sqlite3.Connection:
 def initialize() -> None:
     with connect() as db:
         db.executescript(SCHEMA)
+        columns = {row[1] for row in db.execute("PRAGMA table_info(runs)")}
+        for name, declaration in {"reserved_micro": "INTEGER NOT NULL DEFAULT 0", "charged_micro": "INTEGER NOT NULL DEFAULT 0", "cost_status": "TEXT NOT NULL DEFAULT 'unknown'", "pricing_json": "TEXT"}.items():
+            if name not in columns:
+                db.execute(f"ALTER TABLE runs ADD COLUMN {name} {declaration}")
         db.execute("UPDATE runs SET state='failed', error='Execução interrompida. Não reenviada automaticamente.' WHERE state='running'")
 
 

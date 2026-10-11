@@ -152,3 +152,52 @@ def test_http_adapter_contract(monkeypatch):
     assert result['choices'][0]['message']['content']=='Teste'
     assert seen[0]['max_completion_tokens']==1000
     assert seen[0]['tools'][0]['function']['name']=='propose_task'
+
+
+def priced_config(browser, budget='0.04'):
+    return browser.put('/api/ai/config',json={'enabled':True,'endpoint':'https://provider.example.test/v1','model':'test-model','api_key':'secret-fixture','daily_budget_usd':budget,'input_usd_per_million':'1','output_usd_per_million':'2','daily_call_limit':20})
+
+
+def test_budget_reservation_reconciliation_and_failed_unknown_usage(ready,monkeypatch):
+    browser,area,path=ready
+    assert priced_config(browser).status_code==200
+    async def fake(*args):
+        result=reply(area)
+        result['usage']={'prompt_tokens':100,'completion_tokens':50,'total_tokens':150}
+        return result
+    monkeypatch.setattr(harness,'call_provider',fake)
+    run=browser.post('/api/runs',json=request(area)).json()
+    assert run['cost_status']=='estimated'
+    assert run['charged_micro']==200
+    assert run['reserved_micro']==34768
+    async def failed(*args): raise TimeoutError()
+    monkeypatch.setattr(harness,'call_provider',failed)
+    failed_run=browser.post('/api/runs',json=request(area)).json()
+    assert failed_run['state']=='failed'
+    assert failed_run['charged_micro']==34768
+    assert browser.post('/api/runs',json=request(area)).status_code==429
+    assert 'secret-fixture' not in browser.get('/api/ai/config').text
+    assert (path/'ai-settings.json').stat().st_mode & 0o777==0o600
+
+
+def test_budget_blocks_before_network_and_credentials_do_not_follow_destination(ready,monkeypatch):
+    browser,area,_=ready
+    assert priced_config(browser,'0.001').status_code==200
+    async def never(*args): raise AssertionError('Should not call')
+    monkeypatch.setattr(harness,'call_provider',never)
+    assert browser.post('/api/runs',json=request(area)).status_code==429
+    assert browser.get('/api/runs').json()==[]
+    assert browser.put('/api/ai/config',json={'enabled':True,'endpoint':'https://new.example/v1','model':'test'}).status_code==422
+
+
+def test_provider_overrun_blocks_following_calls(ready,monkeypatch):
+    browser,area,_=ready
+    priced_config(browser,'1')
+    async def fake(*args):
+        result=reply(area)
+        result['usage']={'prompt_tokens':40000,'completion_tokens':100,'total_tokens':40100}
+        return result
+    monkeypatch.setattr(harness,'call_provider',fake)
+    run=browser.post('/api/runs',json=request(area)).json()
+    assert run['state']=='failed' and run['cost_status']=='overrun'
+    assert browser.post('/api/runs',json=request(area)).status_code==409
