@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .db import connect, transaction
 from .security import iso
 from . import settings as installation, budget
+from . import knowledge
 
 
 class RunInput(BaseModel):
@@ -56,7 +57,7 @@ def config() -> dict:
     }
 
 
-def context(owner: dict, area_id: str) -> list[dict]:
+def context(owner: dict, area_id: str, query: str = '') -> list[dict]:
     with connect() as db:
         area = db.execute("SELECT id,name,description,updated_at FROM areas WHERE id=? AND owner_id=?", (area_id, owner["id"])).fetchone()
         if not area:
@@ -70,7 +71,7 @@ def context(owner: dict, area_id: str) -> list[dict]:
         item = dict(task)
         item["notes"] = item["notes"][:500]
         sources.append({"source": "task:" + task["id"], **item})
-    return sources
+    return sources + knowledge.retrieve(owner,area_id,query)
 
 
 def public_run(row) -> dict:
@@ -131,7 +132,7 @@ async def execute(payload: RunInput, owner: dict, task_type) -> dict:
     settings = config()
     settings["_key"] = installation.key()  # Snapshot before any configuration change.
     run_id, created = str(uuid.uuid4()), iso()
-    sources = context(owner, payload.area_id)
+    sources = context(owner, payload.area_id, payload.message)
     reserve = budget.price(settings, budget.MAX_INPUT_TOKENS, budget.MAX_OUTPUT_TOKENS)
     with transaction(immediate=True) as db:
         prior = db.execute("SELECT * FROM runs WHERE owner_id=? AND request_key=?", (owner["id"], str(payload.request_key))).fetchone()

@@ -7,7 +7,7 @@ Status: roteiro preparado. O proprietário realizou testes iniciais no celular e
 - Validar um provedor/modelo real com chave e teto de gasto autorizados.
 - Conferir resposta com fonte, pedido ambíguo, data relativa, proposta inválida, falha de rede e orçamento de uso.
 - Definir licença de uso e distribuição; repositório já público por decisão do proprietário.
-- Implementar importação básica e recuperação de fontes antes de avaliar a experiência completa com conhecimento próprio (`ONBOARDING.md`). O fluxo existente pode ser testado como base técnica.
+- Implementar importação básica e recuperação de fontes no M3 antes de avaliar a experiência completa com conhecimento próprio (`ONBOARDING.md`). O fluxo existente pode ser testado como base técnica.
 - Explicar limitações, tratamento de dados e que a versão não deve guardar informação crítica sem backup.
 
 ## Tarefas do piloto
@@ -20,7 +20,7 @@ Status: roteiro preparado. O proprietário realizou testes iniciais no celular e
 6. Solicitar uma tarefa, revisar a proposta, recusar uma e confirmar outra.
 7. Reiniciar a Mia e confirmar a permanência dos dados.
 
-Após entregar M2.1, acrescentar: importar um conjunto pequeno de notas próprias, revisar a seleção, encontrar uma informação, abrir a fonte, consultar esse material com modelo configurado e conferir uma referência. Registrar o tempo até o primeiro resultado útil, a necessidade de ajuda e se a pessoa entende o que foi enviado ao provedor.
+Após entregar a importação do M3, acrescentar: importar um conjunto pequeno de notas próprias, revisar a seleção, encontrar uma informação, abrir a fonte, consultar esse material com modelo configurado e conferir uma referência. Registrar o tempo até o primeiro resultado útil, a necessidade de ajuda e se a pessoa entende o que foi enviado ao provedor.
 
 ## Registrar, sem inventar métricas
 

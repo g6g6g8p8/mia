@@ -90,6 +90,56 @@ CREATE TABLE IF NOT EXISTS runs (
     updated_at TEXT NOT NULL,
     UNIQUE(owner_id, request_key)
 );
+
+CREATE TABLE IF NOT EXISTS onboarding (
+    owner_id INTEGER PRIMARY KEY REFERENCES owner(id),
+    goal TEXT NOT NULL DEFAULT '',
+    completed INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS imports (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id),
+    area_id TEXT NOT NULL REFERENCES areas(id),
+    name TEXT NOT NULL,
+    state TEXT NOT NULL,
+    report_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS import_items (
+    id TEXT PRIMARY KEY,
+    import_id TEXT NOT NULL REFERENCES imports(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    title TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    content TEXT NOT NULL,
+    hash TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS documents (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id),
+    area_id TEXT NOT NULL REFERENCES areas(id),
+    title TEXT NOT NULL,
+    path TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    content TEXT NOT NULL,
+    hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(owner_id,area_id,hash)
+);
+CREATE TABLE IF NOT EXISTS document_imports (
+    document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    import_id TEXT NOT NULL REFERENCES imports(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    PRIMARY KEY(document_id,import_id,path)
+);
+CREATE TABLE IF NOT EXISTS chunks (
+    document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    ordinal INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    searchable TEXT NOT NULL,
+    PRIMARY KEY(document_id,ordinal)
+);
 """
 
 
@@ -114,6 +164,9 @@ def connect() -> sqlite3.Connection:
 def initialize() -> None:
     with connect() as db:
         db.executescript(SCHEMA)
+        onboarding_columns = {row[1] for row in db.execute("PRAGMA table_info(onboarding)")}
+        if 'step' not in onboarding_columns:
+            db.execute("ALTER TABLE onboarding ADD COLUMN step INTEGER NOT NULL DEFAULT 0")
         columns = {row[1] for row in db.execute("PRAGMA table_info(runs)")}
         for name, declaration in {"reserved_micro": "INTEGER NOT NULL DEFAULT 0", "charged_micro": "INTEGER NOT NULL DEFAULT 0", "cost_status": "TEXT NOT NULL DEFAULT 'unknown'", "pricing_json": "TEXT"}.items():
             if name not in columns:

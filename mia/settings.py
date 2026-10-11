@@ -47,6 +47,8 @@ def load() -> dict:
 
 def save(payload: AISettings) -> None:
     prior = load()
+    if not prior:
+        prior = {'endpoint':os.environ.get('MIA_AI_BASE_URL','').rstrip('/'),'api_key':os.environ.get('MIA_AI_API_KEY','')}
     values = payload.model_dump(mode="json")
     if payload.api_key is None:
         # Never carry a secret to a newly selected destination.

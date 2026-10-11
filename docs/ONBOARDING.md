@@ -79,7 +79,7 @@ Excluir ou alterar uma fonte invalida seu índice e remove o conteúdo de novas 
 | 3 — Onboarding guiado | Fluxo retomável, objetivo declarado, configuração de modelo na interface, primeira consulta e Hoje | Pessoa chega ao primeiro resultado sem cadastrar todo o conteúdo manualmente |
 | 4 — Conversas e personalização | Adaptadores ChatGPT/Claude, papéis, seleção e sugestões revisáveis de áreas/perfil | Conversa selecionada é recuperável; mensagem da IA não vira fato; nenhuma tarefa surge sem aprovação |
 
-Fases 1 e 2 compõem a próxima entrega de implementação. A configuração gráfica do modelo deve tratar credenciais no servidor e depender do fechamento dos requisitos de orçamento do M2. Não adiar busca/importação sem IA por falta de chave paga.
+As fases pertencem ao M3, após o trabalho implementável do M2. A configuração gráfica do modelo deve tratar credenciais no servidor e usar os requisitos de orçamento do M2. Não adiar busca/importação sem IA por falta de chave paga; o aceite com modelo real continua separado.
 
 ## Testes relevantes
 

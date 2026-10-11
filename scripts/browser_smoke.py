@@ -14,6 +14,7 @@ with sync_playwright() as p:
     page.get_by_label('Senha local').fill('senha-teste-local-123')
     page.get_by_label('Primeira área',exact=True).fill('Projetos')
     page.get_by_role('button',name='Criar minha Mia').click()
+    page.get_by_role('button',name='Ir para Hoje').click()
     expect(page.get_by_role('heading',name='O que pede atenção')).to_be_visible()
     page.get_by_role('button',name='+ Tarefa').click()
     page.get_by_label('Título',exact=True).fill('Verificar fluxo no navegador')

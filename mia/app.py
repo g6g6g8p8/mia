@@ -15,6 +15,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from . import __version__
@@ -22,6 +24,7 @@ from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
+from . import knowledge
 
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +40,24 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Mia", version=__version__, lifespan=lifespan)
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_validation(request: Request, error: RequestValidationError):
+    return JSONResponse({'detail':[{'loc':item['loc'],'msg':item['msg']} for item in error.errors()]},status_code=422)
+
+
+@app.middleware("http")
+async def limit_upload(request: Request, call_next):
+    if request.url.path == '/api/imports' and request.method == 'POST':
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > 12_000_000:
+                from fastapi.responses import JSONResponse
+                return JSONResponse({'detail':'Upload excede o limite de 8 MB (12 MB codificado)'},status_code=413)
+        request._body = bytes(body)
+    return await call_next(request)
 
 
 class SetupInput(BaseModel):
@@ -439,7 +460,8 @@ def search(q: str, owner: Owner) -> dict:
             """,
             (owner["id"], pattern, pattern),
         ).fetchall()
-    return {"query": query, "results": [dict(row) for row in [*tasks, *areas]]}
+    documents=[{'id':r['id'],'title':r['title'],'notes':r['content'],'type':'document','area_name':None,'due_date':None} for r in knowledge.retrieve(owner,None,query,10)]
+    return {"query": query, "results": [dict(row) for row in [*tasks, *areas]]+documents}
 
 
 @app.get("/api/export")
@@ -447,6 +469,8 @@ def export_data(owner: Owner) -> StreamingResponse:
     with connect() as db:
         areas = [dict(row) for row in db.execute("SELECT * FROM areas WHERE owner_id = ? ORDER BY name", (owner["id"],))]
         tasks = [dict(row) for row in db.execute("SELECT * FROM tasks WHERE owner_id = ? ORDER BY created_at", (owner["id"],))]
+        documents = [dict(row) for row in db.execute("SELECT * FROM documents WHERE owner_id=?",(owner['id'],))]
+        profile = db.execute("SELECT goal,completed FROM onboarding WHERE owner_id=?",(owner['id'],)).fetchone()
     payload = {
         "format": "mia-export",
         "version": 1,
@@ -455,6 +479,8 @@ def export_data(owner: Owner) -> StreamingResponse:
         "areas": areas,
         "tasks": tasks,
         "runs": harness.list_runs(owner, all_runs=True),
+        "documents": documents,
+        "onboarding": dict(profile) if profile else None,
     }
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -468,14 +494,72 @@ def export_data(owner: Owner) -> StreamingResponse:
     )
 
 
+class OnboardingInput(BaseModel):
+    goal: str = Field(default='',max_length=1000)
+    completed: bool = False
+    step: int = Field(default=0,ge=0,le=3)
+
+
+@app.get('/api/onboarding')
+def get_onboarding(owner: Owner) -> dict:
+    with connect() as db:
+        row=db.execute('SELECT goal,completed,step FROM onboarding WHERE owner_id=?',(owner['id'],)).fetchone()
+    return dict(row) if row else {'goal':'','completed':False,'step':0}
+
+
+@app.put('/api/onboarding')
+def save_onboarding(payload: OnboardingInput, owner: Owner) -> dict:
+    with transaction() as db:
+        db.execute('INSERT INTO onboarding(owner_id,goal,completed,updated_at,step) VALUES(?,?,?,?,?) ON CONFLICT(owner_id) DO UPDATE SET goal=excluded.goal,completed=excluded.completed,updated_at=excluded.updated_at,step=excluded.step',(owner['id'],payload.goal.strip(),int(payload.completed),iso(),payload.step))
+    return get_onboarding(owner)
+
+
+@app.post('/api/imports',status_code=201)
+def prepare_import(payload: knowledge.ImportInput,owner: Owner) -> dict:
+    return knowledge.prepare(payload,owner)
+
+
+@app.get('/api/imports')
+def imports(owner: Owner) -> list[dict]:
+    with connect() as db:
+        ids=[row[0] for row in db.execute('SELECT id FROM imports WHERE owner_id=? ORDER BY created_at DESC',(owner['id'],))]
+    return [knowledge.get_batch(batch,owner) for batch in ids]
+
+
+@app.get('/api/imports/{batch}')
+def get_import(batch: str,owner: Owner) -> dict:
+    return knowledge.get_batch(batch,owner)
+
+
+@app.post('/api/imports/{batch}/confirm')
+def confirm_import(batch: str,payload: knowledge.Selection,owner: Owner) -> dict:
+    return knowledge.commit(batch,payload,owner,audit)
+
+
+@app.delete('/api/imports/{batch}')
+def remove_import(batch: str,owner: Owner) -> dict:
+    return knowledge.remove(batch,owner,audit)
+
+
+@app.get('/api/documents')
+def documents(owner: Owner) -> list[dict]:
+    with connect() as db:
+        return [dict(row) for row in db.execute('SELECT id,title,path,kind,area_id,created_at FROM documents WHERE owner_id=? ORDER BY created_at DESC',(owner['id'],))]
+
+
+@app.get('/api/documents/{doc}')
+def get_document(doc: str,owner: Owner) -> dict:
+    return knowledge.document(doc,owner)
+
+
 @app.get("/api/ai/config")
 def ai_config(owner: Owner) -> dict:
     return harness.config()
 
 
 @app.get("/api/ai/context")
-def ai_context(area_id: str, owner: Owner) -> list[dict]:
-    return harness.context(owner, area_id)
+def ai_context(area_id: str, owner: Owner, q: str = '') -> list[dict]:
+    return harness.context(owner, area_id, q)
 
 
 @app.put("/api/ai/config")
