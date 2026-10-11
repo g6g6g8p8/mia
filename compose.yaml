@@ -7,6 +7,11 @@ services:
     environment:
       MIA_DATA_DIR: /data
       MIA_COOKIE_SECURE: "${MIA_COOKIE_SECURE:-false}"
+      MIA_AI_ENABLED: "${MIA_AI_ENABLED:-false}"
+      MIA_AI_BASE_URL: "${MIA_AI_BASE_URL:-}"
+      MIA_AI_MODEL: "${MIA_AI_MODEL:-}"
+      MIA_AI_API_KEY: "${MIA_AI_API_KEY:-}"
+      MIA_AI_DAILY_CALL_LIMIT: "${MIA_AI_DAILY_CALL_LIMIT:-20}"
     volumes:
       - mia-data:/data
     healthcheck:

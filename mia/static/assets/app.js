@@ -30,7 +30,10 @@ async function api(path, options) {
   }
   const isJson = (response.headers.get("content-type") || "").includes("json");
   const data = isJson ? await response.json() : null;
-  if (!response.ok) throw new Error((data && data.detail) || "Não foi possível concluir");
+  if (!response.ok) {
+    const detail = data && data.detail;
+    throw new Error(Array.isArray(detail) ? detail.map(item=>item.msg).join('; ') : detail || "Não foi possível concluir");
+  }
   return data;
 }
 
@@ -124,7 +127,7 @@ function renderShell() {
     '<div class="shell"><aside class="sidebar"><div class="brand">' +
     '<img src="/assets/mia-icon.svg" alt=""><div><div class="brand-name">Mia</div><div class="brand-tag">central de comando</div></div></div>' +
     '<nav class="nav" aria-label="Principal"><button data-view="today">Hoje</button><button data-view="areas">Áreas</button>' +
-    '<button data-view="search">Busca</button><button data-view="system">Sistema</button></nav>' +
+    '<button data-view="search">Busca</button><button data-view="intelligence">Inteligência</button><button data-view="system">Sistema</button></nav>' +
     '<div class="sidebar-foot"><span class="subtle">' + esc(state.owner.name) + '</span><button class="btn ghost" id="logout">Sair</button></div>' +
     '</aside><main class="content" id="content"></main></div>' + dialogs();
   document.querySelectorAll("[data-view]").forEach(function (button) {
@@ -151,6 +154,7 @@ function navigate(view) {
   if (view === "areas") renderAreas();
   if (view === "search") renderSearch();
   if (view === "system") renderSystem();
+  if (view === "intelligence") renderIntelligence().catch(errorMessage);
 }
 
 function pageHead(kicker, title, action) {
@@ -158,7 +162,7 @@ function pageHead(kicker, title, action) {
 }
 
 function taskCard(task) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = state.today.date;
   const overdue = task.due_date && task.due_date < today;
   return '<article class="task"><button class="check" data-done="' + esc(task.id) + '" aria-label="Concluir tarefa">✓</button>' +
     '<div><div class="task-title">' + esc(task.title) + '</div><div class="task-meta">' +
@@ -220,11 +224,17 @@ function renderSearch() {
   let timer;
   document.querySelector("#search-input").addEventListener("input", function (event) {
     window.clearTimeout(timer);
+    const input = event.target;
+    if (input.value.trim().length < 2) {
+      document.querySelector('#results').innerHTML='<div class="empty">Digite pelo menos dois caracteres.</div>';
+      return;
+    }
     timer = window.setTimeout(async function () {
-      const query = event.target.value.trim();
+      const query = input.value.trim();
       if (query.length < 2) return;
       try {
         const data = await api("/api/search?q=" + encodeURIComponent(query));
+        if (state.view !== 'search' || input.value.trim() !== query || !input.isConnected) return;
         document.querySelector("#results").innerHTML = data.results.length ? data.results.map(function (result) {
           return '<article class="result"><span class="badge">' + esc(result.type === "task" ? "tarefa" : "área") + '</span>' +
             '<h3 style="margin-top:10px">' + esc(result.title) + '</h3><p class="subtle">' + esc(result.notes || "") + '</p>' +
@@ -240,10 +250,52 @@ function renderSystem() {
     pageHead("CONTROLE LOCAL", "Sistema") +
     '<section class="grid grid-2"><article class="card"><p class="kicker">IDENTIDADE</p><h2>' + esc(state.owner.name) + '</h2>' +
     '<p class="subtle">' + esc(state.owner.email || "Sem e-mail") + " · " + esc(state.owner.timezone) + '</p></article>' +
-    '<article class="card"><p class="kicker">INTELIGÊNCIA</p><h2>Modo sem IA</h2><p class="subtle">Hoje usa regras locais. Nenhum modelo ou provedor está conectado.</p></article>' +
+    '<article class="card"><p class="kicker">INTELIGÊNCIA</p><h2>IA opcional</h2><p class="subtle">Hoje usa regras locais. Consulte Inteligência para ver o provedor configurado nesta instalação.</p></article>' +
     '<article class="card"><p class="kicker">DADOS</p><h2>Exportação aberta</h2><p class="subtle">Baixe suas áreas e tarefas em JSON dentro de um ZIP.</p>' +
     '<a class="btn" style="display:inline-block;margin-top:14px;text-decoration:none" href="/api/export">Exportar dados</a></article>' +
-    '<article class="card"><p class="kicker">STATUS</p><h2>M1 local</h2><p class="subtle">Acesso, áreas, tarefas, Hoje, Busca e persistência SQLite.</p></article></section>';
+    '<article class="card"><p class="kicker">STATUS</p><h2>Protótipo M2</h2><p class="subtle">Contexto por área e tarefas propostas com confirmação. Sem conectores externos ou conversa contínua ainda.</p></article></section>';
+}
+
+async function renderIntelligence() {
+  const [settings, runs] = await Promise.all([api("/api/ai/config"), api("/api/runs")]);
+  if (state.view !== "intelligence") return;
+  const labels = {running:"Em andamento",awaiting_confirmation:"Aguardando confirmação",completed:"Concluída",failed:"Falhou",rejected:"Recusada"};
+  document.querySelector("#content").innerHTML = pageHead("CONTEXTO E AÇÃO", "Inteligência") +
+    '<section class="card"><p class="lede">' + (settings.enabled ? esc(settings.model) + ' · ' + esc(settings.endpoint) : 'IA desativada. Configure o provedor, o modelo e a chave no .env desta instalação.') + '</p>' +
+    '<p class="subtle">Uma chamada por pedido; até ' + settings.daily_call_limit + ' chamadas/dia (UTC), 1.000 tokens de saída e 45 segundos. Preço não configurado: custo monetário desconhecido. Defina também um limite no provedor.</p>' +
+    '<form class="form" id="run-form"><label>Área autorizada<select name="area_id">' + state.areas.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('') + '</select></label>' +
+    '<button type="button" class="btn" id="preview-context">Ver contexto que será enviado</button><pre id="context-preview" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>' +
+    '<label>Seu pedido<textarea name="message" required minlength="2" maxlength="4000" placeholder="O que merece atenção nesta área? Ou: proponha uma tarefa para amanhã."></textarea></label>' +
+    '<label><input type="checkbox" name="consent" required style="width:auto"> Autorizo enviar este pedido e o contexto da área ao provedor mostrado acima.</label>' +
+    '<p class="subtle">Até 12 tarefas recentes da área, com notas limitadas a 500 caracteres. Não envia outras áreas, e-mail ou senhas. Cada pedido é independente, sem histórico de conversa automático.</p>' +
+    '<button class="btn primary" type="submit" '+(!settings.enabled?'disabled':'')+'>Enviar pedido</button></form></section>' +
+    '<section class="section"><h2>Execuções recentes</h2>' + runs.map(r=>{
+      const p=r.proposal;
+      return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>'+esc(r.request.message)+'</h3>' +
+        '<p style="white-space:pre-wrap">'+esc(r.answer||r.error||'Aguardando resposta. Atualize esta aba em alguns instantes.')+'</p>' +
+        (p?'<div class="card"><h3>Proposta: '+esc(p.title)+'</h3><p>'+esc(p.notes)+'</p><p>Data: '+esc(p.due_date||'sem data')+' · Prioridade: '+p.priority+'</p>'+
+        (r.state==='awaiting_confirmation'?'<button class="btn primary" data-decision="approve" data-run="'+esc(r.id)+'">Confirmar e criar tarefa</button> <button class="btn" data-decision="reject" data-run="'+esc(r.id)+'">Recusar</button>':'')+'</div>':'') +
+        '<details><summary>Contexto enviado · '+r.sources.length+' fontes (não é verificação automática da resposta)</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(r.sources,null,2))+'</pre></details>' +
+        '<p class="subtle">Tokens informados pelo provedor: '+esc(r.usage?.total_tokens??'não informado')+' · Custo: desconhecido</p></article>';
+    }).join('')+'</section>';
+  const form=document.querySelector('#run-form');
+  document.querySelector('#preview-context').onclick=async()=>{
+    try { const data=await api('/api/ai/context?area_id='+encodeURIComponent(form.elements.area_id.value));
+      const preview=document.querySelector('#context-preview'); if(preview) preview.textContent=JSON.stringify(data,null,2);
+    } catch(error){errorMessage(error);}
+  };
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const button=form.querySelector('[type=submit]'); button.disabled=true; button.textContent='Processando…';
+    const values={message:form.elements.message.value,area_id:form.elements.area_id.value,consent:form.elements.consent.checked,request_key:crypto.randomUUID()};
+    try { await api('/api/runs',{method:'POST',body:JSON.stringify(values)}); await renderIntelligence(); }
+    catch(error){errorMessage(error); button.disabled=false; button.textContent='Enviar pedido';}
+  };
+  document.querySelectorAll('[data-decision]').forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try { await api('/api/runs/'+button.dataset.run+'/'+button.dataset.decision,{method:'POST',body:'{}'}); await refresh(); await renderIntelligence(); }
+    catch(error){errorMessage(error);button.disabled=false;}
+  });
 }
 
 function openTaskDialog() {
@@ -254,13 +306,14 @@ function openTaskDialog() {
 
 async function submitTask(event) {
   event.preventDefault();
-  const values = Object.fromEntries(new FormData(event.currentTarget));
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form));
   values.priority = Number(values.priority);
   if (!values.area_id) values.area_id = null;
   if (!values.due_date) values.due_date = null;
   try {
     await api("/api/tasks", { method: "POST", body: JSON.stringify(values) });
-    event.currentTarget.reset();
+    form.reset();
     document.querySelector("#task-dialog").close();
     await refresh();
     navigate("today");
@@ -270,9 +323,10 @@ async function submitTask(event) {
 
 async function submitArea(event) {
   event.preventDefault();
+  const form = event.currentTarget;
   try {
-    await api("/api/areas", { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
-    event.currentTarget.reset();
+    await api("/api/areas", { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+    form.reset();
     document.querySelector("#area-dialog").close();
     await refresh();
     renderShell();

@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.4 · 11/10/2026 · Status: M1 implementado e validado em contêiner sobre Ubuntu.
+Versão 0.5 · 11/10/2026 · Status: M1 validado tecnicamente em Ubuntu e macOS; M2 inicial testado com provedor simulado, ainda sem aceite com modelo real ou usuários.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -182,7 +182,11 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - O teste manteve o host em 68% de ocupação de disco. Detalhes reproduzíveis estão em `docs/VALIDATION.md`.
 - IA, conectores, restauração automática e o harness de execução continuam nos marcos seguintes.
 - O código está em um repositório GitHub novo e privado enquanto a licença aberta é definida.
-- A execução continua pelo M2: contexto, adaptadores de modelo, ferramentas, confirmação, orçamento e execuções duráveis.
+- M1 revisado no navegador em macOS independente: corrigidos formulários após envio, persistência do bloqueio de login, saída no celular, data no fuso do proprietário e resultados obsoletos na busca.
+- M2 inicial implementado: contexto por área, adaptador opcional Chat Completions, proposta de tarefa, confirmação/recusa, histórico, cota de chamadas e idempotência transacional.
+- 17 testes automatizados e dois fluxos reais de navegador aprovados. O fluxo de IA usa provedor simulado local, sem chamada paga.
+- Faltam ao aceite M2: modelo real, avaliação da qualidade/citações, orçamento monetário e demais requisitos do contrato-alvo. Pedidos ainda são independentes, sem conversa contínua.
+- Próxima decisão necessária: provedor/modelo de teste e teto de gasto autorizado. Depois, piloto com 2 a 3 pessoas conforme `PILOT.md`.
 
 Este plano orienta o trabalho e não comprova funcionalidades, portabilidade, segurança ou economia já entregues.
 

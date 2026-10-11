@@ -71,6 +71,25 @@ CREATE TABLE IF NOT EXISTS audit_events (
     metadata_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS runs (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id),
+    request_key TEXT NOT NULL,
+    request_json TEXT NOT NULL,
+    state TEXT NOT NULL,
+    model TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    sources_json TEXT NOT NULL,
+    answer TEXT,
+    proposal_json TEXT,
+    usage_json TEXT,
+    task_id TEXT REFERENCES tasks(id),
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(owner_id, request_key)
+);
 """
 
 
@@ -95,6 +114,7 @@ def connect() -> sqlite3.Connection:
 def initialize() -> None:
     with connect() as db:
         db.executescript(SCHEMA)
+        db.execute("UPDATE runs SET state='failed', error='Execução interrompida. Não reenviada automaticamente.' WHERE state='running'")
 
 
 @contextmanager

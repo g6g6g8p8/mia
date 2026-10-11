@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 from . import __version__
 from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
+from . import harness
 
 
 ROOT = Path(__file__).resolve().parent
@@ -75,7 +76,10 @@ class AreaInput(BaseModel):
     @field_validator("name")
     @classmethod
     def clean_name(cls, value: str) -> str:
-        return " ".join(value.split())
+        value = " ".join(value.split())
+        if len(value) < 2:
+            raise ValueError("Use pelo menos dois caracteres")
+        return value
 
 
 class TaskInput(BaseModel):
@@ -88,7 +92,10 @@ class TaskInput(BaseModel):
     @field_validator("title")
     @classmethod
     def clean_title(cls, value: str) -> str:
-        return " ".join(value.split())
+        value = " ".join(value.split())
+        if len(value) < 2:
+            raise ValueError("Use pelo menos dois caracteres")
+        return value
 
 
 class TaskPatch(BaseModel):
@@ -173,7 +180,8 @@ def status() -> dict:
 
 
 @app.post("/api/setup", status_code=201)
-def setup(payload: SetupInput, response: Response) -> dict:
+def setup(payload: SetupInput, request: Request, response: Response) -> dict:
+    require_same_origin(request)
     owner_created = iso()
     area_id = str(uuid.uuid4())
     token, token_hash, expires_at = new_session()
@@ -212,7 +220,7 @@ def login(payload: LoginInput, request: Request, response: Response) -> dict:
             raise HTTPException(429, "Muitas tentativas. Tente novamente mais tarde.")
         owner = db.execute("SELECT id, password_hash FROM owner WHERE id = 1").fetchone()
         if not owner or not verify_password(payload.password, owner["password_hash"]):
-            failures = (attempt["failures"] if attempt else 0) + 1
+            failures = (attempt["failures"] if attempt and not attempt["blocked_until"] else 0) + 1
             blocked_until = iso(current + timedelta(minutes=15)) if failures >= 5 else None
             db.execute(
                 """
@@ -221,6 +229,7 @@ def login(payload: LoginInput, request: Request, response: Response) -> dict:
                 """,
                 (identity, failures, blocked_until),
             )
+            db.commit()  # Keep the failed attempt when the error exits the transaction.
             raise HTTPException(401, "Senha incorreta")
         db.execute("DELETE FROM login_attempts WHERE identity = ?", (identity,))
         token, token_hash, expires_at = new_session()
@@ -444,6 +453,7 @@ def export_data(owner: Owner) -> StreamingResponse:
         "owner": {"name": owner["name"], "email": owner["email"], "timezone": owner["timezone"]},
         "areas": areas,
         "tasks": tasks,
+        "runs": harness.list_runs(owner, all_runs=True),
     }
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -455,6 +465,36 @@ def export_data(owner: Owner) -> StreamingResponse:
         media_type="application/zip",
         headers={"Content-Disposition": 'attachment; filename="mia-export.zip"'},
     )
+
+
+@app.get("/api/ai/config")
+def ai_config(owner: Owner) -> dict:
+    return harness.config()
+
+
+@app.get("/api/ai/context")
+def ai_context(area_id: str, owner: Owner) -> list[dict]:
+    return harness.context(owner, area_id)
+
+
+@app.get("/api/runs")
+def runs(owner: Owner) -> list[dict]:
+    return harness.list_runs(owner)
+
+
+@app.post("/api/runs")
+async def start_run(payload: harness.RunInput, owner: Owner) -> dict:
+    return await harness.execute(payload, owner, TaskInput)
+
+
+@app.post("/api/runs/{run_id}/approve")
+def approve_run(run_id: str, owner: Owner) -> dict:
+    return harness.decide(run_id, owner, True, audit)
+
+
+@app.post("/api/runs/{run_id}/reject")
+def reject_run(run_id: str, owner: Owner) -> dict:
+    return harness.decide(run_id, owner, False, audit)
 
 
 @app.get("/")

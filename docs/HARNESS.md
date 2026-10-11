@@ -1,5 +1,5 @@
 # Contrato do harness
-Status: especificação inicial; ainda não implementado.
+Status: contrato-alvo. M2 inicial implementa um subconjunto: contexto por área, uma chamada, proposta de tarefa, confirmação/recusa, idempotência, persistência e cota de chamadas. Consulte `AI.md` para os limites reais. Orçamento monetário, recuperação documental e retomada de geração continuam pendentes.
 
 ## Entrada de uma execução
 - Identidade autenticada e área autorizada.

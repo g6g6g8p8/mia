@@ -8,7 +8,9 @@ Mia é um projeto de harness para IA pessoal: a estrutura que reúne memória, c
 O usuário instala o Mia em seu computador ou servidor Ubuntu e acessa pelo navegador. Escolhe os modelos e as integrações que quer usar; seus dados permanecem sob seu controle.
 
 ## Status
-O M1 já é um protótipo executável e foi validado em Docker sobre Ubuntu: onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite após reinício. IA, conectores, restauração automática e o harness de execução entram nos próximos marcos.
+O M1 é um protótipo executável, validado em Docker sobre Ubuntu e em instalação Python independente no macOS, com fluxo de navegador automatizado. Inclui onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite.
+
+O **M2 inicial** acrescenta pedidos independentes com contexto de uma área, adaptador opcional de API compatível com Chat Completions, proposta de tarefa, confirmação/recusa, histórico de execuções e limites de uso. A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou custo com um modelo real**. Conversa contínua, orçamento monetário, conectores e restauração automática continuam pendentes.
 
 A primeira versão será validada com poucos usuários piloto. O projeto será distribuído como código aberto; a licença específica será definida antes da publicação do código.
 
@@ -70,6 +72,9 @@ Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 - [Ícone e identidade](docs/BRAND.md)
 - [Instalação no Ubuntu](docs/INSTALL-UBUNTU.md)
 - [Validação do M1](docs/VALIDATION.md)
+- [Configurar IA e limites do M2](docs/AI.md)
+- [Instalação nativa no Mac ou Linux](docs/INSTALL-NATIVE.md)
+- [Roteiro do piloto com usuários](docs/PILOT.md)
 
 ## Desenvolvimento
 O histórico deste repositório começa em um commit novo. Não contém dados de usuários, conversas, vaults ou histórico de outros projetos.

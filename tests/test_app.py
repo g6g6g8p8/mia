@@ -122,3 +122,19 @@ def test_database_has_no_default_or_fixture_content(client):
         assert db.execute("SELECT COUNT(*) FROM areas").fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 0
 
+
+def test_failed_login_limit_is_persisted(client):
+    browser, _ = client
+    browser.post("/api/setup", json=setup_payload())
+    for _ in range(5):
+        assert browser.post("/api/login", json={"password": "wrong"}).status_code == 401
+    assert browser.post("/api/login", json={"password": "senha-forte-123"}).status_code == 429
+
+
+def test_setup_origin_and_blank_fields(client):
+    browser, _ = client
+    assert browser.post("/api/setup", json=setup_payload(), headers={"Origin":"https://wrong.example"}).status_code == 403
+    browser.post("/api/setup", json=setup_payload())
+    assert browser.post("/api/tasks", json={"title":"   "}).status_code == 422
+    assert browser.post("/api/areas", json={"name":"   "}).status_code == 422
+
