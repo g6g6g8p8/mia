@@ -151,6 +151,8 @@ def prepare(payload,owner):
         raise HTTPException(422,str(error)[:200]) from error
     batch,created=str(uuid.uuid4()),iso()
     with transaction(immediate=True) as db:
+        if db.execute("SELECT count(*) FROM imports WHERE owner_id=? AND state='review'",(owner['id'],)).fetchone()[0]>=3:
+            raise HTTPException(409,'Revise ou cancele as importações pendentes primeiro')
         db.execute('INSERT INTO imports VALUES(?,?,?,?,?,?,?)',(batch,owner['id'],payload.area_id,payload.filename,'review',json.dumps(report),created))
         for c in candidates:
             db.execute('INSERT INTO import_items VALUES(?,?,?,?,?,?,?)',(c['id'],batch,c['path'],c['title'],c['kind'],c['content'],c['hash']))

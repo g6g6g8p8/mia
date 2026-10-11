@@ -201,3 +201,15 @@ def test_provider_overrun_blocks_following_calls(ready,monkeypatch):
     run=browser.post('/api/runs',json=request(area)).json()
     assert run['state']=='failed' and run['cost_status']=='overrun'
     assert browser.post('/api/runs',json=request(area)).status_code==409
+
+
+def test_provider_destination_and_key_are_read_as_one_snapshot(monkeypatch):
+    from mia import settings
+    calls=[]
+    def changing():
+        calls.append(1)
+        return {'endpoint':'https://one.example/v1','model':'test','api_key':'one-key','enabled':True} if len(calls)==1 else {'endpoint':'https://two.example/v1','model':'test','api_key':'two-key','enabled':True}
+    monkeypatch.setattr(settings,'load',changing)
+    value=harness.config(include_secret=True)
+    assert value['endpoint']=='https://one.example/v1' and value['_key']=='one-key'
+    assert len(calls)==1

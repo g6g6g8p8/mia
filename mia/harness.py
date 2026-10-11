@@ -28,7 +28,7 @@ class RunInput(BaseModel):
     consent: bool = False
 
 
-def config() -> dict:
+def config(include_secret: bool = False) -> dict:
     saved = installation.load()
     endpoint = saved.get("endpoint", os.environ.get("MIA_AI_BASE_URL", "")).rstrip("/")
     parsed = urlsplit(endpoint)
@@ -36,13 +36,13 @@ def config() -> dict:
     valid = bool(parsed.hostname) and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment
     valid = valid and (parsed.scheme == "https" or (local and parsed.scheme == "http"))
     model = saved.get("model", os.environ.get("MIA_AI_MODEL", ""))
-    key = installation.key()
+    key = saved.get('api_key','') if saved else os.environ.get('MIA_AI_API_KEY','')
     enabled = saved.get("enabled", os.environ.get("MIA_AI_ENABLED", "false").lower() == "true")
     try:
         daily_limit = max(1, min(1000, int(saved.get("daily_call_limit", os.environ.get("MIA_AI_DAILY_CALL_LIMIT", "20")))))
     except ValueError:
         daily_limit, enabled = 20, False
-    return {
+    result = {
         "enabled": enabled and bool(valid and model and (key or local)),
         "endpoint": endpoint if valid else "",
         "model": model,
@@ -55,6 +55,9 @@ def config() -> dict:
         "input_usd_per_million": saved.get("input_usd_per_million"),
         "output_usd_per_million": saved.get("output_usd_per_million"),
     }
+    if include_secret:
+        result['_key'] = key
+    return result
 
 
 def context(owner: dict, area_id: str, query: str = '') -> list[dict]:
@@ -107,7 +110,7 @@ def list_runs(owner: dict, all_runs: bool = False) -> list[dict]:
 
 async def call_provider(settings: dict, messages: list, schema: dict) -> dict:
     headers = {"Content-Type": "application/json"}
-    key = settings.get("_key", installation.key())
+    key = settings['_key'] if '_key' in settings else installation.key()
     if key:
         headers["Authorization"] = "Bearer " + key
     body = {"model": settings["model"], "messages": messages,
@@ -129,8 +132,7 @@ async def execute(payload: RunInput, owner: dict, task_type) -> dict:
     if not payload.consent:
         raise HTTPException(422, "Autorize o envio da mensagem e do contexto ao provedor escolhido")
     request_json = json.dumps(payload.model_dump(mode="json", exclude={"request_key"}), sort_keys=True)
-    settings = config()
-    settings["_key"] = installation.key()  # Snapshot before any configuration change.
+    settings = config(include_secret=True)  # Destination, prices and key from one atomic snapshot.
     run_id, created = str(uuid.uuid4()), iso()
     sources = context(owner, payload.area_id, payload.message)
     reserve = budget.price(settings, budget.MAX_INPUT_TOKENS, budget.MAX_OUTPUT_TOKENS)
