@@ -57,7 +57,7 @@ Não foram validados qualidade com modelo real, custo monetário, benchmark de e
 
 ## Terceira rodada — M2, M3 e recuperação
 
-Versão `0.2.0a1`, 11/10/2026: 30 testes aprovados em Linux e macOS. Incluem reserva/reconciliação, uso desconhecido, excesso, proteção de chave e validação, ZIP malicioso, entrada parcialmente inválida, deduplicação, exclusão compartilhada, escopo por área, papéis de conversa e onboarding persistido.
+Versão `0.2.0a1`, 11/10/2026: 31 testes aprovados em Linux e macOS. Incluem reserva/reconciliação, uso desconhecido, excesso, leitura atômica de destino/chave, validação sem segredo, ZIP malicioso, entrada parcialmente inválida, deduplicação, exclusão compartilhada, escopo por área, papéis de conversa e onboarding persistido.
 
 Chromium a 390 × 844 px: cadastro → objetivo → upload → prévia → seleção → confirmação → reload → salvar IA desativada → busca → fonte original → excluir lote. Sem erro JavaScript ou transbordamento horizontal. Fluxo separado de proposta/confirmar/recusar passou com adaptador HTTP e provedor simulado.
 

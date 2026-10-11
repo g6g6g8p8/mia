@@ -194,7 +194,7 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - Execução manteve os marcos originais. M2 ampliado com preços configuráveis, reserva estimada, reconciliação de uso, reserva conservada quando uso é desconhecido e bloqueio por excesso.
 - M3 inicial: onboarding retomável, objetivo, upload/colagem, revisão, seleção, deduplicação, lotes, busca textual, fontes no contexto e configuração gráfica. Adaptadores de conversas são experimentais.
 - M4 parcial: snapshot consistente, integridade, restauração em destino vazio e sessões invalidadas. Backup sintético Linux restaurado no Mac.
-- 30 testes passaram no Linux e Mac; onboarding/importação/busca mobile e proposta/confirmar/recusar passaram no navegador. Dados reais do proprietário permanecem em sua instalação.
+- 31 testes passaram no Linux e Mac; onboarding/importação/busca mobile e proposta/confirmar/recusar passaram no navegador. Dados reais do proprietário permanecem em sua instalação.
 - Pendências: modelo real/cobrança, amostras reais autorizadas de exports, escolha de versão em conflitos, personalização inferida, conversa contínua, múltiplos usuários/workers, atualização e backups automáticos e M5 externo.
 - Validação com modelo real continua exigindo provedor/modelo e teto de gasto autorizados; isso não bloqueia importação e busca local. Piloto externo será revisado para usar fontes reais selecionadas conforme `PILOT.md`.
 
