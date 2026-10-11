@@ -60,7 +60,9 @@ Limites iniciais de tamanho total, número de arquivos, profundidade, expansão 
 
 Estados atuais: revisão e concluído, com relatório de erros/exclusões por entrada. Parsing é síncrono e limitado; erro antes da preparação não cria lote. Confirmação é transacional. Reinício não duplica documentos; cancelamento/exclusão remove o staging. Jobs em segundo plano ficam para evolução posterior.
 
-Conteúdo idêntico na mesma área é deduplicado, preservando proveniência de lotes. Exclusão não remove documento compartilhado por outro lote. Mesmo caminho com conteúdo diferente mantém documentos separados, sem sobrescrever; revisão visual de conflitos e escolha de versão preferida ficam pendentes.
+Conteúdo idêntico na mesma área é deduplicado, preservando proveniência de lotes e o estado ativo/pausado da fonte existente. Exclusão não remove documento compartilhado por outro lote. A revisão mostra conteúdo já importado e notas com o mesmo caminho e conteúdo diferente, permitindo abrir o original para comparar. Não detecta versões de conversas por posição na exportação, pois essa posição não é um identificador estável.
+
+Versões diferentes permanecem separadas. Na lista de fontes, o usuário pode pausar versões antigas e reativá-las depois. Pausa preserva conteúdo, índice, proveniência e exportação, mas exclui a fonte de busca e de novos contextos. Nenhuma versão é selecionada automaticamente; ambas ficam ativas até a escolha do usuário. Execuções anteriores preservam o contexto registrado. A detecção usa caminhos da mesma área, não interpreta equivalência semântica nem acompanha renomeações.
 
 ## Uso do conhecimento no harness
 

@@ -164,6 +164,9 @@ def connect() -> sqlite3.Connection:
 def initialize() -> None:
     with connect() as db:
         db.executescript(SCHEMA)
+        document_columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
+        if 'active' not in document_columns:
+            db.execute("ALTER TABLE documents ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
         onboarding_columns = {row[1] for row in db.execute("PRAGMA table_info(onboarding)")}
         if 'step' not in onboarding_columns:
             db.execute("ALTER TABLE onboarding ADD COLUMN step INTEGER NOT NULL DEFAULT 0")

@@ -34,6 +34,11 @@ class Selection(BaseModel):
     item_ids: list[str] = Field(min_length=1,max_length=500)
 
 
+class SourceState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    active: bool
+
+
 def normalized(text):
     return ''.join(c for c in unicodedata.normalize('NFKD',text.casefold()) if not unicodedata.combining(c))
 
@@ -165,6 +170,14 @@ def get_batch(batch,owner):
         if not row: raise HTTPException(404,'Importação não encontrada')
         result=dict(row); result.pop('owner_id'); result['report']=json.loads(result.pop('report_json'))
         result['items']=[dict(i) for i in db.execute('SELECT id,path,title,kind,substr(content,1,600) AS preview,length(content) AS characters FROM import_items WHERE import_id=?',(batch,))]
+        for item in result['items']:
+            digest=db.execute('SELECT hash FROM import_items WHERE id=?',(item['id'],)).fetchone()[0]
+            item['duplicates']=[dict(r) for r in db.execute('SELECT id,title,active FROM documents WHERE owner_id=? AND area_id=? AND hash=?',(owner['id'],row['area_id'],digest))]
+            # Paths of conversation entries use ordinal positions, not stable IDs.
+            # Detect version conflicts only for individual notes with stable paths.
+            item['conflicts']=[]
+            if item['kind'] in ('markdown','text'):
+                item['conflicts']=[dict(r) for r in db.execute('SELECT DISTINCT d.id,d.title,d.active FROM documents d JOIN document_imports p ON p.document_id=d.id WHERE d.owner_id=? AND d.area_id=? AND p.path=? AND d.hash!=?',(owner['id'],row['area_id'],item['path'],digest))]
     return result
 
 
@@ -185,7 +198,7 @@ def commit(batch,selection,owner,audit):
                 doc=existing['id']; duplicates+=1
             else:
                 doc=str(uuid.uuid4()); imported+=1
-                db.execute('INSERT INTO documents VALUES(?,?,?,?,?,?,?,?,?)',(doc,owner['id'],row['area_id'],item['title'],item['path'],item['kind'],item['content'],item['hash'],iso()))
+                db.execute('INSERT INTO documents(id,owner_id,area_id,title,path,kind,content,hash,created_at) VALUES(?,?,?,?,?,?,?,?,?)',(doc,owner['id'],row['area_id'],item['title'],item['path'],item['kind'],item['content'],item['hash'],iso()))
                 for n,start in enumerate(range(0,len(item['content']),1000)):
                     chunk=item['content'][start:start+1200]
                     db.execute('INSERT INTO chunks VALUES(?,?,?,?)',(doc,n,chunk,normalized(chunk)))
@@ -216,7 +229,7 @@ def retrieve(owner,area_id,query,limit=3):
     terms=[t for t in terms if t not in {'que','para','uma','como','qual','quais','the','and','com','essa','area','esta'}] or terms
     conditions=['c.searchable LIKE ?' for _ in terms]
     values=['%'+t+'%' for t in terms]
-    scope='d.owner_id=?'; scope_values=[owner['id']]
+    scope='d.owner_id=? AND d.active=1'; scope_values=[owner['id']]
     if area_id: scope+=' AND d.area_id=?'; scope_values.append(area_id)
     sql=f"SELECT d.id,d.title,d.path,d.kind,d.area_id,d.created_at,c.ordinal,c.content FROM chunks c JOIN documents d ON d.id=c.document_id WHERE {scope} AND ({' OR '.join(conditions)}) ORDER BY ({' + '.join(conditions)}) DESC,d.id,c.ordinal LIMIT ?"
     with connect() as db:
@@ -230,3 +243,11 @@ def document(doc,owner):
         result=dict(row); result.pop('owner_id')
         result['origins']=[dict(r) for r in db.execute('SELECT import_id,path FROM document_imports WHERE document_id=?',(doc,))]
     return result
+
+
+def set_source_state(doc,payload,owner,audit):
+    with transaction(immediate=True) as db:
+        result=db.execute('UPDATE documents SET active=? WHERE id=? AND owner_id=?',(int(payload.active),doc,owner['id']))
+        if result.rowcount!=1: raise HTTPException(404,'Fonte não encontrada')
+        audit(db,owner['id'],'source.activated' if payload.active else 'source.paused','document',doc)
+    return document(doc,owner)

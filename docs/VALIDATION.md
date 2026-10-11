@@ -64,3 +64,9 @@ Chromium a 390 × 844 px: cadastro → objetivo → upload → prévia → sele�
 Snapshot sintético com proprietário, tarefa e fonte foi criado no Linux, transferido e restaurado no Mac. Login, tarefa e fonte conferidos; sessões invalidadas. Sem exportação real de usuário ou chamada paga.
 
 Não fecha aceite de qualidade de IA, cobrança real ou compatibilidade ampla dos exports. Sem benchmark de economia ou piloto externo concluído.
+
+## Quarta rodada — revisão de versões e pausa de fontes
+
+Versão `0.2.0a2`, 11/10/2026: 33 testes passaram em Linux e macOS. Cobrem notas de mesmo caminho/conteúdo diferente na mesma área, duplicatas com estado pausado preservado, pausa fora da busca e de novos contextos, reativação, exportação, persistência após reinício e migração de banco existente com fontes ativas por padrão. Autenticação e origem inválida bloqueiam alteração de estado.
+
+Chromium a 390 × 844 px percorreu o onboarding anterior e acrescentou reimportação alterada → aviso de conflito → abrir original → cancelar lote → pausar → verificar busca vazia → reload → reativar → verificar busca → excluir. Sem erros JavaScript. Dados sintéticos; nenhuma chamada paga ou coleta de histórico de usuário. A seleção de versão é manual e não resolve equivalência semântica ou renomeações.

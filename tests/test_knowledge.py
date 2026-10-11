@@ -124,3 +124,48 @@ def test_onboarding_persisted_goal_and_safe_settings_errors(ready):
     bad=browser.put('/api/ai/config',json={'endpoint':'http://public.example','api_key':'secret-fixture'})
     assert bad.status_code==422
     assert 'secret-fixture' not in bad.text
+
+
+def test_conflicting_notes_pause_resume_and_preserve_history(ready):
+    browser,area,_=ready
+    original=upload(browser,area,b'# Original\nPrazo novembro','projeto.md').json()
+    confirm(browser,original)
+    old=browser.get('/api/documents').json()[0]['id']
+    revised=upload(browser,area,b'# Revisado\nPrazo dezembro','projeto.md').json()
+    assert revised['items'][0]['conflicts']==[{'id':old,'title':'Original','active':1}]
+    assert revised['items'][0]['duplicates']==[]
+    confirm(browser,revised)
+    assert len(browser.get('/api/documents').json())==2
+    assert browser.put('/api/documents/'+old+'/state',json={'active':False}).status_code==200
+    assert not browser.get('/api/search',params={'q':'novembro'}).json()['results']
+    assert not any(s['source']=='doc:'+old for s in browser.get('/api/ai/context',params={'area_id':area,'q':'novembro'}).json())
+    assert browser.get('/api/search',params={'q':'dezembro'}).json()['results']
+    assert 'novembro' in browser.get('/api/documents/'+old).json()['content']
+    duplicate=upload(browser,area,b'# Original\nPrazo novembro','copia.md').json()
+    assert duplicate['items'][0]['duplicates'][0]['active']==0
+    confirm(browser,duplicate)
+    assert browser.get('/api/documents/'+old).json()['active']==0
+    with TestClient(browser.app) as restarted:
+        restarted.post('/api/login',json={'password':'senha-forte-123'})
+        assert restarted.get('/api/documents/'+old).json()['active']==0
+        assert restarted.put('/api/documents/'+old+'/state',json={'active':True}).status_code==200
+        assert restarted.get('/api/search',params={'q':'novembro'}).json()['results']
+    with zipfile.ZipFile(io.BytesIO(browser.get('/api/export').content)) as archive:
+        assert len(json.loads(archive.read('mia-export.json'))['documents'])==2
+    other=browser.post('/api/areas',json={'name':'Outra'}).json()['id']
+    separate=upload(browser,other,b'# Outra\nOutro prazo','projeto.md').json()
+    assert not separate['items'][0]['conflicts']
+    assert browser.put('/api/documents/'+old+'/state',json={'active':False},headers={'Origin':'https://wrong.example'}).status_code==403
+    assert TestClient(browser.app).put('/api/documents/'+old+'/state',json={'active':False}).status_code==401
+    assert browser.put('/api/documents/missing/state',json={'active':False}).status_code==404
+
+
+def test_source_state_migrates_existing_database(ready):
+    browser,area,_=ready
+    batch=upload(browser,area,b'# Nota\nPreservar').json()
+    confirm(browser,batch)
+    from mia.db import connect, initialize
+    with connect() as db:
+        db.execute('ALTER TABLE documents DROP COLUMN active')
+    initialize()
+    assert browser.get('/api/documents').json()[0]['active']==1

@@ -544,7 +544,12 @@ def remove_import(batch: str,owner: Owner) -> dict:
 @app.get('/api/documents')
 def documents(owner: Owner) -> list[dict]:
     with connect() as db:
-        return [dict(row) for row in db.execute('SELECT id,title,path,kind,area_id,created_at FROM documents WHERE owner_id=? ORDER BY created_at DESC',(owner['id'],))]
+        return [dict(row) for row in db.execute('SELECT id,title,path,kind,area_id,created_at,active FROM documents WHERE owner_id=? ORDER BY created_at DESC',(owner['id'],))]
+
+
+@app.put('/api/documents/{doc}/state')
+def set_document_state(doc: str,payload: knowledge.SourceState,owner: Owner) -> dict:
+    return knowledge.set_source_state(doc,payload,owner,audit)
 
 
 @app.get('/api/documents/{doc}')

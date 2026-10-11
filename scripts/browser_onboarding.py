@@ -55,11 +55,28 @@ with tempfile.TemporaryDirectory(prefix='mia-onboarding-fixture-') as data:
             assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Mobile overflow'
             page.get_by_role('button',name='Áreas',exact=True).click()
             page.get_by_role('button',name='Fontes',exact=True).click()
+            page.get_by_label('Escolher arquivo').set_input_files({'name':'plano.md','mimeType':'text/markdown','buffer':b'# Plano revisado\n\nO lancamento sera em dezembro.'})
+            page.get_by_role('button',name='Preparar importação').click()
+            expect(page.get_by_text('Mesmo caminho, conteúdo diferente.',exact=False)).to_be_visible()
+            page.get_by_role('button',name='Comparar com Plano de teste',exact=True).click()
+            expect(page.locator('#source-dialog')).to_contain_text('novembro')
+            page.get_by_role('button',name='Fechar fonte').click()
             page.on('dialog',lambda dialog:dialog.accept())
+            page.get_by_role('button',name='Cancelar lote',exact=True).click()
+            expect(page.get_by_role('button',name='Cancelar lote',exact=True)).to_have_count(0)
+            page.get_by_role('button',name='Pausar fonte',exact=True).click()
+            expect(page.get_by_role('heading',name='Fontes disponíveis (0)')).to_be_visible()
+            assert not page.request.get(url+'/api/search?q=novembro').json()['results']
+            page.reload()
+            page.get_by_role('button',name='Áreas',exact=True).click()
+            page.get_by_role('button',name='Fontes',exact=True).click()
+            page.get_by_role('button',name='Reativar fonte',exact=True).click()
+            expect(page.get_by_role('heading',name='Fontes disponíveis (1)')).to_be_visible()
+            assert page.request.get(url+'/api/search?q=novembro').json()['results']
             page.get_by_role('button',name='Excluir lote e suas fontes').click()
             expect(page.get_by_role('heading',name='Fontes disponíveis (0)')).to_be_visible()
             assert not errors,errors
             browser.close()
-            print('M3 browser passed: mobile onboarding, persisted goal/step, import preview, selection, local search, original source, AI disabled config, deletion.')
+            print('M3 browser passed: mobile onboarding, persisted goal/step, import preview, conflicts/comparison, pause/resume, selection, local search, original source, AI disabled config, deletion.')
     finally:
         server.terminate();server.wait(timeout=10)

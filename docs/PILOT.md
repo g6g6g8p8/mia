@@ -7,7 +7,7 @@ Status: roteiro preparado. O proprietário realizou testes iniciais no celular e
 - Validar um provedor/modelo real com chave e teto de gasto autorizados.
 - Conferir resposta com fonte, pedido ambíguo, data relativa, proposta inválida, falha de rede e orçamento de uso.
 - Definir licença de uso e distribuição; repositório já público por decisão do proprietário.
-- Implementar importação básica e recuperação de fontes no M3 antes de avaliar a experiência completa com conhecimento próprio (`ONBOARDING.md`). O fluxo existente pode ser testado como base técnica.
+- Importação básica e recuperação de fontes do M3 disponíveis (`ONBOARDING.md`). Cada participante escolhe dados próprios na instalação sob seu controle. A validação não depende de histórico do desenvolvedor.
 - Explicar limitações, tratamento de dados e que a versão não deve guardar informação crítica sem backup.
 
 ## Tarefas do piloto
@@ -20,7 +20,9 @@ Status: roteiro preparado. O proprietário realizou testes iniciais no celular e
 6. Solicitar uma tarefa, revisar a proposta, recusar uma e confirmar outra.
 7. Reiniciar a Mia e confirmar a permanência dos dados.
 
-Após entregar a importação do M3, acrescentar: importar um conjunto pequeno de notas próprias, revisar a seleção, encontrar uma informação, abrir a fonte, consultar esse material com modelo configurado e conferir uma referência. Registrar o tempo até o primeiro resultado útil, a necessidade de ajuda e se a pessoa entende o que foi enviado ao provedor.
+Acrescentar ao fluxo: importar um conjunto pequeno de notas próprias, revisar a seleção, encontrar uma informação, abrir a fonte, consultar esse material com modelo configurado e conferir uma referência. Reimportar uma nota alterada, comparar o original e pausar uma versão; confirmar que ela sai da busca sem ser apagada. Registrar o tempo até o primeiro resultado útil, a necessidade de ajuda e se a pessoa entende o que foi enviado ao provedor.
+
+Para exportações experimentais ChatGPT/Claude, cada participante pode validar o próprio arquivo localmente e informar formato, contagens, erros e resultado. Não pedir upload de históricos completos para o repositório ou para o desenvolvedor. Um relato de problema deve usar reprodução sintética ou trecho explicitamente autorizado e minimizado. Marcar compatibilidade como não validada até existir teste real; isso não bloqueia o piloto de notas e busca sem IA.
 
 ## Registrar, sem inventar métricas
 
