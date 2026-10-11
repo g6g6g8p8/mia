@@ -12,7 +12,9 @@ O M1 é um protótipo executável, validado em Docker sobre Ubuntu e em instala�
 
 O **M2** acrescenta pedidos independentes com contexto de uma área, adaptador opcional Chat Completions, propostas confirmadas, histórico e orçamento estimado com reserva. O **M3 inicial** oferece onboarding retomável, objetivo declarado, importação local com revisão, busca de fontes e configuração de IA pela interface. Markdown, texto e ZIP são suportados; adaptadores de conversas ChatGPT/Claude são experimentais e reconhecem formatos específicos.
 
-A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, personalização inferida, conectores, atualização/backup automáticos e benchmark de economia continuam pendentes.
+A organização assistida do M3 recebe até seis fontes escolhidas, propõe até quatro novas áreas e permite editar, selecionar, recusar ou confirmar. Confirmar cria as áreas e distribui as fontes autorizadas, com registro da proposta original e da escolha aplicada. Nomes e descrições das áreas podem ser editados depois.
+
+A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, inferência de perfil/objetivos pessoais, conectores, atualização/backup automáticos e benchmark de economia continuam pendentes.
 
 A primeira versão será validada com poucos usuários piloto. O repositório é público por decisão do proprietário; a licença específica de uso e distribuição ainda está pendente.
 

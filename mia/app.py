@@ -24,7 +24,7 @@ from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
-from . import knowledge
+from . import knowledge, organization
 
 
 ROOT = Path(__file__).resolve().parent
@@ -315,6 +315,19 @@ def create_area(payload: AreaInput, owner: Owner) -> dict:
         return dict(db.execute("SELECT * FROM areas WHERE id = ?", (area_id,)).fetchone())
 
 
+@app.put('/api/areas/{area_id}')
+def update_area(area_id: str, payload: AreaInput, owner: Owner) -> dict:
+    with transaction(immediate=True) as db:
+        if not db.execute('SELECT 1 FROM areas WHERE id=? AND owner_id=?',(area_id,owner['id'])).fetchone():
+            raise HTTPException(404, 'Área não encontrada')
+        names = db.execute('SELECT name FROM areas WHERE owner_id=? AND id!=?',(owner['id'],area_id))
+        if any(knowledge.normalized(row[0])==knowledge.normalized(payload.name) for row in names):
+            raise HTTPException(409, 'Já existe uma área com esse nome')
+        db.execute('UPDATE areas SET name=?,description=?,color=?,updated_at=? WHERE id=? AND owner_id=?',(payload.name,payload.description.strip(),payload.color,iso(),area_id,owner['id']))
+        audit(db,owner['id'],'area.updated','area',area_id)
+        return dict(db.execute('SELECT * FROM areas WHERE id=?',(area_id,)).fetchone())
+
+
 @app.get("/api/tasks")
 def list_tasks(owner: Owner, status: Literal["open", "done", "all"] = "open", area_id: str | None = None) -> list[dict]:
     filters, values = ["tasks.owner_id = ?"], [owner["id"]]
@@ -580,6 +593,17 @@ def save_ai_config(payload: installation_settings.AISettings, owner: Owner) -> d
 @app.get("/api/runs")
 def runs(owner: Owner) -> list[dict]:
     return harness.list_runs(owner)
+
+
+@app.post('/api/organization/preview')
+def organization_preview(payload: organization.SourceSelection, owner: Owner) -> list[dict]:
+    return organization.preview(payload,owner)
+
+
+@app.post('/api/runs/{run_id}/organization/approve')
+def approve_organization(run_id: str, payload: organization.OrganizationPlan, owner: Owner) -> dict:
+    organization.approve(run_id,payload,owner,audit)
+    return harness.get_run(run_id,owner)
 
 
 @app.post("/api/runs")

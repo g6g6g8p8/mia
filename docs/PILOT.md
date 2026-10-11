@@ -26,4 +26,6 @@ Para exportações experimentais ChatGPT/Claude, cada participante pode validar 
 
 ## Registrar, sem inventar métricas
 
+No ensaio de organização, selecionar poucas fontes próprias, conferir a prévia, gerar sugestões, editar um nome/descrição, recusar ou confirmar parte da proposta e verificar o destino das fontes. Reabrir a proposta após reload e editar a área já criada. Registrar se os trechos iniciais bastaram para sugestões úteis; não atribuir ao teste simulado qualidade de um modelo real.
+
 Tempo por tarefa, pontos de ajuda, erros, entendimento de confirmação e custos, qualidade da resposta, configuração usada e decisão de continuar ou não. Não coletar chaves, conteúdos pessoais ou telemetria sem consentimento. Usar os achados para corrigir o produto antes de divulgar promessas de economia.

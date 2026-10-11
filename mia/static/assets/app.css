@@ -40,6 +40,8 @@ h2 { margin: 0; font-size: 25px; } h3 { margin: 0; font-size: 17px; }
 .btn { border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: 10px; padding: 10px 14px; }
 .btn:hover { border-color: #555560; } .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 750; } .btn.ghost { background: transparent; }
 .form { display: grid; gap: 16px; } label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; }
+fieldset { min-width: 0; display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+fieldset label, #organization-form label { overflow-wrap: anywhere; }
 input, textarea, select { width: 100%; background: #0c0c0f; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 12px 13px; outline: none; }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(216,255,98,.08); }
 textarea { min-height: 100px; resize: vertical; }

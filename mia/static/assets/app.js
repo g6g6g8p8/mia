@@ -160,6 +160,7 @@ function navigate(view) {
   if (view === "onboarding") renderGuide().catch(errorMessage);
   if (view === "knowledge") renderKnowledge().catch(errorMessage);
   if (view === "ai-settings") renderAISettings().catch(errorMessage);
+  if (view === "organization") renderOrganization().catch(errorMessage);
 }
 
 function pageHead(kicker, title, action) {
@@ -192,8 +193,21 @@ function bindTaskActions() {
 function areaCard(area) {
   return '<article class="card area"><h3><span class="dot ' + esc(area.color) + '"></span>' + esc(area.name) + '</h3>' +
     '<p class="subtle">' + esc(area.description || "Sem descrição") + '</p><div class="area-count">' +
-    area.open_tasks + " tarefa" + (area.open_tasks == 1 ? "" : "s") + " aberta" + (area.open_tasks == 1 ? "" : "s") + '</div></article>';
+    area.open_tasks + " tarefa" + (area.open_tasks == 1 ? "" : "s") + " aberta" + (area.open_tasks == 1 ? "" : "s") + '</div><button class="btn" data-edit-area="'+esc(area.id)+'">Editar área</button></article>';
 }
+
+function openAreaEditor(id){
+  const area=state.areas.find(a=>a.id===id);
+  const dialog=document.querySelector('#area-dialog'),form=dialog.querySelector('form');
+  form.reset();form.dataset.areaId=id||'';
+  dialog.querySelector('h2').textContent=area?'Editar área':'Criar área';
+  dialog.querySelector('.kicker').textContent=area?'SEU CONTEXTO':'NOVO CONTEXTO';
+  form.querySelector('[type=submit]').textContent=area?'Salvar área':'Criar área';
+  if(area)for(const key of ['name','description','color'])form.elements[key].value=area[key];
+  dialog.showModal();
+}
+
+function bindAreaActions(){document.querySelectorAll('[data-edit-area]').forEach(button=>button.onclick=()=>openAreaEditor(button.dataset.editArea));}
 
 function renderToday() {
   const data = state.today;
@@ -210,6 +224,7 @@ function renderToday() {
     data.areas.map(areaCard).join("") + '</div></section>';
   document.querySelector("[data-open-task]").addEventListener("click", openTaskDialog);
   bindTaskActions();
+  bindAreaActions();
 }
 
 function renderAreas() {
@@ -218,9 +233,10 @@ function renderAreas() {
     '<p class="lede">Cada área delimita um contexto. A instalação começou vazia e mostra somente o que você criou.</p>' +
     '<section class="section grid grid-3">' + state.areas.map(areaCard).join("") + '</section>';
   document.querySelector("[data-open-area]").addEventListener("click", function () {
-    document.querySelector("#area-dialog").showModal();
+    openAreaEditor();
   });
   document.querySelector('#open-knowledge').onclick=()=>navigate('knowledge');
+  bindAreaActions();
 }
 
 function renderSearch() {
@@ -281,6 +297,7 @@ async function renderIntelligence() {
     '<p class="subtle">Até 12 tarefas e 3 trechos de fontes da área encontrados pelo seu pedido. Não envia outras áreas, e-mail ou senhas. Pedidos independentes.</p>' +
     '<button class="btn primary" type="submit" '+(!settings.enabled?'disabled':'')+'>Enviar pedido</button></form></section>' +
     '<section class="section"><h2>Execuções recentes</h2>' + runs.map(r=>{
+      if(r.request.purpose==='organization')return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>Organização de fontes</h3><p>'+esc(r.error||r.answer||'Proposta de áreas com fontes selecionadas.')+'</p><button class="btn" data-open-organization>Revisar organização</button></article>';
       const p=r.proposal;
       return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>'+esc(r.request.message)+'</h3>' +
         '<p style="white-space:pre-wrap">'+esc(r.answer||r.error||'Aguardando resposta. Atualize esta aba em alguns instantes.')+'</p>' +
@@ -310,6 +327,7 @@ async function renderIntelligence() {
     catch(error){errorMessage(error);button.disabled=false;}
   });
   bindDocuments();
+  document.querySelectorAll('[data-open-organization]').forEach(button=>button.onclick=()=>navigate('organization'));
 }
 
 function bindDocuments(){
@@ -340,13 +358,15 @@ async function renderGuide(){
   if(step===2){body.innerHTML='<p class="lede">Use seu provedor e chave ou continue sem IA. Salvar a configuração não faz uma chamada.</p><div id="ai-panel"></div>';await aiPanel(document.querySelector('#ai-panel'));}
   if(step===3){const docs=(await api('/api/documents')).filter(d=>d.active);body.innerHTML='<p class="lede">'+docs.length+' fontes disponíveis. Seu objetivo: '+esc(state.onboarding.goal||'ainda não informado')+'.</p><p>Use a busca para encontrar uma informação nas suas fontes. Com IA configurada, faça uma pergunta em Inteligência e confira as referências.</p><button class="btn" id="first-search">Buscar nas minhas fontes</button> <button class="btn" id="first-ai">Fazer uma pergunta</button>';body.querySelector('#first-search').onclick=async()=>{await saveGuide(3,true);navigate('search');};body.querySelector('#first-ai').onclick=async()=>{await saveGuide(3,true);navigate('intelligence');};}
   if(state.view!=='onboarding'||!body.isConnected)return;
+  if(step===3){const organize=document.createElement('button');organize.className='btn';organize.textContent='Organizar minhas fontes';organize.onclick=async()=>{await saveGuide(3);navigate('organization');};body.append(organize);}
   document.querySelector('#guide-back').onclick=async()=>{await saveGuide(Math.max(0,step-1));await renderGuide();};
   document.querySelector('#guide-next').onclick=async()=>{try{if(step===0)state.onboarding.goal=document.querySelector('#guide-goal').value;await saveGuide(Math.min(3,step+1),step===3);if(step===3)navigate('today');else await renderGuide();}catch(error){errorMessage(error);}};
   document.querySelector('#guide-skip').onclick=async()=>{if(step===0)state.onboarding.goal=document.querySelector('#guide-goal').value;await saveGuide(step,true);navigate('today');};
 }
 
 async function renderKnowledge(){
-  document.querySelector('#content').innerHTML=pageHead('FONTES LOCAIS','Seu conhecimento')+'<section class="card" id="knowledge-panel"></section>';
+  document.querySelector('#content').innerHTML=pageHead('FONTES LOCAIS','Seu conhecimento','<button class="btn" id="organize-sources">Organizar minhas fontes</button>')+'<section class="card" id="knowledge-panel"></section>';
+  document.querySelector('#organize-sources').onclick=()=>navigate('organization');
   await knowledgePanel(document.querySelector('#knowledge-panel'));
 }
 
@@ -376,6 +396,47 @@ async function knowledgePanel(panel){
 async function renderAISettings(){
   document.querySelector('#content').innerHTML=pageHead('MODELO E ORÇAMENTO','Configurar IA')+'<section class="card" id="ai-panel"></section>';
   await aiPanel(document.querySelector('#ai-panel'));
+}
+
+async function renderOrganization(selectedArea){
+  const [settings,docs,allRuns]=await Promise.all([api('/api/ai/config'),api('/api/documents'),api('/api/runs')]);
+  if(state.view!=='organization')return;
+  const areaId=selectedArea||state.areas[0]?.id;
+  const available=docs.filter(d=>d.active&&d.area_id===areaId);
+  const runs=allRuns.filter(r=>r.request.purpose==='organization');
+  const labels={running:'Em andamento',awaiting_confirmation:'Aguardando revisão',completed:'Concluída',failed:'Falhou',rejected:'Recusada'};
+  document.querySelector('#content').innerHTML=pageHead('PERSONALIZAR SUA MIA','Organizar minhas fontes')+
+    '<section class="card"><p class="lede">Escolha até seis fontes da mesma área. A Mia sugere novas áreas e descrições; você edita e decide o que aplicar.</p><p class="subtle">'+(settings.enabled?esc(settings.model)+' · '+esc(settings.endpoint):'Configure sua IA em Sistema para gerar sugestões.')+' Até '+settings.daily_call_limit+' chamadas/dia (UTC). '+(settings.daily_budget_usd?'Orçamento estimado: US$ '+esc(settings.daily_budget_usd)+'/dia.':'Custo desconhecido; nenhum orçamento monetário configurado.')+'</p>'+
+    '<form class="form" id="organization-form"><label>Área das fontes<select name="area_id">'+state.areas.map(a=>'<option value="'+esc(a.id)+'" '+(a.id===areaId?'selected':'')+'>'+esc(a.name)+'</option>').join('')+'</select></label>'+
+    (available.length?available.map(d=>'<label><span><input type="checkbox" name="source" value="'+esc(d.id)+'" style="width:auto"> '+esc(d.title)+' · '+esc(d.path)+'</span></label>').join(''):'<p>Nenhuma fonte ativa nesta área. Importe notas em Fontes para começar.</p>')+
+    '<label>Como gostaria de organizar? (opcional)<textarea name="message" maxlength="4000" placeholder="Ex.: separar trabalho e estudos."></textarea></label><button class="btn" type="button" id="organization-preview">Ver trechos que serão enviados</button><pre id="organization-context" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>'+
+    '<p class="subtle">Somente o início das fontes selecionadas: até 1.800 bytes de texto por fonte. A proposta pode ser incompleta. Conversas antigas não comprovam prioridades atuais. Gerar usa uma chamada com os mesmos limites de Inteligência.</p>'+
+    '<label><span><input type="checkbox" name="consent" required style="width:auto"> Autorizo enviar os trechos selecionados e meu pedido ao provedor acima.</span></label><button type="submit" class="btn primary" '+(!settings.enabled||!available.length?'disabled':'')+'>Gerar sugestões de áreas</button></form></section>'+
+    '<section class="section"><h2>Suas propostas de organização</h2><p class="subtle">Confirmar cria novas áreas e move as fontes selecionadas para elas, preservando conteúdo e origem. Fontes desmarcadas ficam onde estão. Tarefas e objetivo pessoal não são alterados. Edições são salvas ao confirmar.</p><p class="subtle">Descrições aprovadas passam a ser contexto das áreas, mesmo se as fontes forem pausadas ou excluídas depois. Você pode alterá-las em Áreas → Editar área.</p>'+runs.map(r=>{
+      const p=r.proposal;
+      return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><p style="white-space:pre-wrap">'+esc(r.answer||r.error||'Atualize em alguns instantes.')+'</p>'+
+        (p&&r.state==='awaiting_confirmation'?'<form class="form" data-organization-run="'+esc(r.id)+'">'+p.areas.map((a,i)=>'<fieldset data-group="'+i+'"><legend><label><span><input type="checkbox" name="include" style="width:auto"> Aplicar esta área</span></label></legend><label>Nome da área sugerida<input name="area_name" value="'+esc(a.name)+'" minlength="2" maxlength="80" required></label><label>Descrição sugerida<textarea name="description" maxlength="500">'+esc(a.description)+'</textarea></label>'+a.document_ids.map(id=>'<label><span><input type="checkbox" name="document" value="'+esc(id)+'" checked style="width:auto"> '+esc(r.sources.find(s=>s.id===id)?.title||id)+'</span></label><button type="button" class="btn" data-document="'+esc(id)+'">Conferir fonte</button>').join('')+'</fieldset>').join('')+'<button class="btn primary" type="submit">Confirmar organização selecionada</button><button class="btn" type="button" data-reject-organization="'+esc(r.id)+'">Recusar organização</button></form>':'')+
+        (r.organization_result?'<p>Áreas criadas: '+r.organization_result.created_areas.map(a=>esc(a.name)).join(', ')+'.</p>':'')+
+        '<details><summary>Trechos usados nesta proposta</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(r.sources,null,2))+'</pre></details><p class="subtle">'+(r.estimated_cost_usd!==null?'Custo estimado US$ '+r.estimated_cost_usd:r.cost_status==='unknown'?'Custo desconhecido':r.cost_status==='overrun'?'Uso excedeu limites; novas chamadas bloqueadas':'Custo não confirmado; reserva US$ '+r.reserved_usd)+'</p></article>';
+    }).join('')+'</section>';
+  const form=document.querySelector('#organization-form');
+  form.elements.area_id.onchange=()=>renderOrganization(form.elements.area_id.value).catch(errorMessage);
+  const selection=()=>({area_id:form.elements.area_id.value,document_ids:[...form.querySelectorAll('[name=source]:checked')].map(input=>input.value)});
+  form.querySelector('#organization-preview').onclick=async()=>{try{const data=await api('/api/organization/preview',{method:'POST',body:JSON.stringify(selection())});if(form.isConnected)form.querySelector('#organization-context').textContent=JSON.stringify(data,null,2);}catch(error){errorMessage(error);}};
+  let requestKey=crypto.randomUUID(),previousRequest='';
+  form.onsubmit=async event=>{
+    event.preventDefault();const button=form.querySelector('[type=submit]');button.disabled=true;
+    const values={...selection(),purpose:'organization',message:form.elements.message.value.trim()||'Sugira áreas para organizar as fontes selecionadas.',consent:form.elements.consent.checked};
+    const fingerprint=JSON.stringify(values);if(previousRequest&&previousRequest!==fingerprint)requestKey=crypto.randomUUID();previousRequest=fingerprint;
+    try{await api('/api/runs',{method:'POST',body:JSON.stringify({...values,request_key:requestKey})});await renderOrganization(areaId);}catch(error){errorMessage(error);button.disabled=false;}
+  };
+  document.querySelectorAll('[data-organization-run]').forEach(form=>form.onsubmit=async event=>{
+    event.preventDefault();const button=form.querySelector('[type=submit]');button.disabled=true;
+    const areas=[...form.querySelectorAll('[data-group]')].filter(group=>group.querySelector('[name=include]').checked).map(group=>({name:group.querySelector('[name=area_name]').value,description:group.querySelector('[name=description]').value,document_ids:[...group.querySelectorAll('[name=document]:checked')].map(input=>input.value)}));
+    try{if(!areas.length)throw new Error('Selecione pelo menos uma área para aplicar');await api('/api/runs/'+form.dataset.organizationRun+'/organization/approve',{method:'POST',body:JSON.stringify({areas})});await refresh();await renderOrganization(areaId);}catch(error){errorMessage(error);button.disabled=false;}
+  });
+  document.querySelectorAll('[data-reject-organization]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api('/api/runs/'+button.dataset.rejectOrganization+'/reject',{method:'POST',body:'{}'});await renderOrganization(areaId);}catch(error){errorMessage(error);button.disabled=false;}});
+  bindDocuments();
 }
 
 async function aiPanel(panel){
@@ -411,13 +472,14 @@ async function submitArea(event) {
   event.preventDefault();
   const form = event.currentTarget;
   try {
-    await api("/api/areas", { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+    const editing=Boolean(form.dataset.areaId);
+    await api('/api/areas'+(editing?'/'+form.dataset.areaId:''), { method: editing?'PUT':'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
     form.reset();
     document.querySelector("#area-dialog").close();
     await refresh();
     renderShell();
     navigate("areas");
-    showToast("Área criada");
+    showToast(editing?'Área atualizada':'Área criada');
   } catch (error) { errorMessage(error); }
 }
 

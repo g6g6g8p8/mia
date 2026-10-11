@@ -70,3 +70,11 @@ Não fecha aceite de qualidade de IA, cobrança real ou compatibilidade ampla do
 Versão `0.2.0a2`, 11/10/2026: 33 testes passaram em Linux e macOS. Cobrem notas de mesmo caminho/conteúdo diferente na mesma área, duplicatas com estado pausado preservado, pausa fora da busca e de novos contextos, reativação, exportação, persistência após reinício e migração de banco existente com fontes ativas por padrão. Autenticação e origem inválida bloqueiam alteração de estado.
 
 Chromium a 390 × 844 px percorreu o onboarding anterior e acrescentou reimportação alterada → aviso de conflito → abrir original → cancelar lote → pausar → verificar busca vazia → reload → reativar → verificar busca → excluir. Sem erros JavaScript. Dados sintéticos; nenhuma chamada paga ou coleta de histórico de usuário. A seleção de versão é manual e não resolve equivalência semântica ou renomeações.
+
+## Quinta rodada — organização assistida
+
+Versão `0.2.0a3`, 11/10/2026: 40 testes aprovados. Novos casos cobrem prévia limitada, fontes fora da seleção/área, saída com IDs inventados, orçamento compartilhado, seleção parcial, nomes existentes, confirmação concorrente/idempotente, recusa, exportação e bloqueio de propostas com fontes pausadas, excluídas ou movidas. Nenhuma área é criada antes da confirmação. Um replay do pedido após aplicação retorna a mesma execução mesmo que as fontes tenham mudado de área.
+
+No Chromium mobile, o adaptador HTTP real falou com um provedor simulado local: importação → seleção → prévia → consentimento → sugestão → reload → edição do nome → conferir original → confirmar → verificar área/destino das fontes → editar descrição da área → conferir novo contexto. Nenhuma tarefa adicional foi criada. Fluxo anterior de onboarding/importação e tarefa/recusa também passou. Sem erros JavaScript ou transbordamento horizontal na tela de revisão a 390 px.
+
+Isso valida o contrato e a revisão humana, não qualidade semântica, cobrança real ou adequação das sugestões a usuários reais. A geração usa somente o início das fontes escolhidas e não implementa perfil pessoal inferido.

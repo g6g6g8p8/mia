@@ -1,6 +1,6 @@
 # Onboarding com conhecimento próprio
 
-Status: M3 inicial implementado em 11/10/2026. Objetivo declarado, fluxo retomável, importação revisável, fontes, busca, contexto com trechos e configuração gráfica de IA disponíveis. Sugestões automáticas de perfil/áreas/projetos, sincronização contínua e compatibilidade ampla de exportações continuam planejadas.
+Status: M3 ampliado em 11/10/2026. Objetivo declarado, fluxo retomável, importação revisável, fontes, busca, contexto com trechos, configuração gráfica de IA e organização assistida em áreas disponíveis. Inferência de perfil/objetivos/projetos, sincronização contínua e compatibilidade ampla de exportações continuam planejadas.
 
 ## Problema e resultado esperado
 
@@ -43,7 +43,9 @@ Não exigir login em plataformas de origem para importar. Não instalar dependê
 - Perfil, objetivos, projetos e tarefas sugeridos: propostas separadas do conteúdo original, com fontes e confirmação antes de ativar.
 - Conteúdo histórico pode estar desatualizado. A pessoa confirma prioridades atuais; a Mia apresenta conflitos ou lacunas em vez de mesclar como verdade.
 
-Uma nota pode existir sem gerar tarefa. Importar uma conversa não executa ações discutidas nela. A organização sugerida por IA será opcional, com consentimento e limites de uso explícitos; a base da importação funciona sem IA e sem internet após instalar.
+Uma nota pode existir sem gerar tarefa. Importar uma conversa não executa ações discutidas nela. A organização sugerida por IA é opcional, com consentimento e limites de uso explícitos; a base da importação funciona sem IA e sem internet após instalar.
+
+Na última etapa do onboarding e em Fontes, **Organizar minhas fontes** permite selecionar até seis fontes ativas de uma área, ver os trechos enviados e solicitar até quatro áreas sugeridas. A pessoa edita nome/descrição, escolhe áreas e documentos e confirma. Só então áreas são criadas e documentos movidos; os demais permanecem no lugar. Não mescla áreas existentes, não cria tarefas e não altera o objetivo declarado. Detalhes de escopo, custo, confirmação e histórico em `AI.md`. Descrições aprovadas são editáveis depois em Áreas e permanecem mesmo se a fonte original for pausada ou excluída.
 
 ## Contrato mínimo da importação
 

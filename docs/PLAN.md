@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.9 · 11/10/2026 · Status: M2 ampliado, M3 inicial com revisão de versões e pausa de fontes, backup/restauração do M4 testado. Aceites com modelo real e usuários externos permanecem pendentes.
+Versão 0.10 · 11/10/2026 · Status: M2 ampliado, M3 com revisão de versões, pausa de fontes e organização assistida em áreas; backup/restauração do M4 testado. Aceites com modelo real e usuários externos permanecem pendentes.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -196,7 +196,8 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - M4 parcial: snapshot consistente, integridade, restauração em destino vazio e sessões invalidadas. Backup sintético Linux restaurado no Mac.
 - 31 testes passaram no Linux e Mac; onboarding/importação/busca mobile e proposta/confirmar/recusar passaram no navegador. Dados reais do proprietário permanecem em sua instalação.
 - M3 ampliado: revisão informa duplicatas e notas com mesmo caminho/conteúdo diferente; usuário compara fontes e pausa/reativa versões. Fontes pausadas permanecem exportáveis e ficam fora de novas consultas. Não há escolha automática de versão.
-- Pendências: modelo real/cobrança, amostras reais autorizadas de exports dos usuários de teste, personalização inferida, conversa contínua, múltiplos usuários/workers, atualização e backups automáticos e M5 externo.
+- M3 organização assistida: até seis fontes explícitas, prévia limitada, chamada com orçamento compartilhado, até quatro áreas sugeridas, edição/seleção/recusa, confirmação transacional e revalidação de fontes. Cria áreas e move fontes somente após aprovação, preservando proposta original e escolha aplicada. Áreas podem ser editadas depois.
+- Pendências: modelo real/cobrança, amostras reais autorizadas de exports dos usuários de teste, inferência de perfil e objetivos pessoais, conversa contínua, múltiplos usuários/workers, atualização e backups automáticos e M5 externo.
 - Validação com modelo real continua exigindo provedor/modelo e teto de gasto autorizados; isso não bloqueia importação e busca local. Piloto externo será revisado para usar fontes reais selecionadas conforme `PILOT.md`.
 
 Este plano orienta o trabalho e não comprova funcionalidades, portabilidade, segurança ou economia já entregues.

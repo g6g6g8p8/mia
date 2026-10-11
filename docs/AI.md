@@ -33,7 +33,7 @@ Contexto: área, até 12 tarefas com notas limitadas e até três trechos de fon
 - Reserva transacional da chamada; no máximo uma chamada em andamento por proprietário.
 - Falhas e chamadas interrompidas também consomem a cota: podem ter sido cobradas.
 - Identificador idempotente por pedido; aprovação repetida não duplica a tarefa.
-- Só `propose_task` é aceito. Não há acesso a shell, arquivos externos ou conectores.
+- Cada pedido habilita uma ferramenta: `propose_task` em Inteligência ou `propose_organization` em Organizar fontes. A resposta não pode trocar de ferramenta. Não há acesso a shell, arquivos externos ou conectores.
 - A proposta fica no banco e pode ser decidida depois. Ao reiniciar, chamadas em andamento viram falha explícita e não são reenviadas.
 - Use apenas um processo/worker da aplicação nesta versão.
 
@@ -45,4 +45,14 @@ Com contagens completas de entrada/saída, reconcilia o custo estimado pelos pre
 
 Não há confirmação da fatura, custos adicionais de ferramentas, atualização automática de preços, seleção automática de modelo ou benchmark de economia. Configure também limite financeiro no provedor.
 
-Não há conversa contínua, memória aprendida, edição da proposta, tarefas autônomas ou retomada de geração interrompida. Backup/restauração são por comando. Testes simulados validam contratos, não a inteligência de um modelo.
+Não há conversa contínua, memória aprendida, edição da proposta de tarefa, tarefas autônomas ou retomada de geração interrompida. Propostas de organização podem ser editadas antes da confirmação. Backup/restauração são por comando. Testes simulados validam contratos, não a inteligência de um modelo.
+
+## Organização assistida — M3
+
+Em **Áreas → Fontes → Organizar minhas fontes**, escolha até seis fontes ativas da mesma área, veja a prévia e autorize a geração. O envio contém apenas os primeiros 1.800 bytes UTF-8 de cada fonte escolhida, metadados dessas fontes e o pedido. A API não envia tarefas, fontes não selecionadas ou o histórico completo. Trechos truncados são identificados; a proposta pode ser incompleta.
+
+Uma chamada compartilha cota, reserva e reconciliação com Inteligência. A ferramenta propõe até quatro novas áreas, cada uma com nome, descrição e IDs de documentos selecionados. Campos extras, IDs externos e distribuição duplicada são rejeitados pelo servidor. Falhas não criam áreas nem movem fontes.
+
+Na revisão, selecione as áreas desejadas, edite nomes/descrições e desmarque documentos que devem permanecer no lugar. Confirmar cria novas áreas e move apenas os documentos escolhidos, mantendo conteúdo, IDs e proveniência da importação. Nomes já existentes exigem edição: esta versão não mescla áreas. Fontes pausadas, excluídas ou movidas desde a geração bloqueiam a confirmação correspondente. Confirmação repetida com o mesmo conteúdo é idempotente; uma seleção diferente após aplicação recebe conflito.
+
+Descrições aprovadas passam a ser contexto próprio das áreas. Pausar ou excluir a fonte original não apaga essas descrições; revise-as em **Áreas → Editar área**. Proposta original, trechos enviados e seleção aplicada ficam no histórico/exportação. Não são inferidos perfil pessoal, novos objetivos, prazos ou tarefas nesta função.
