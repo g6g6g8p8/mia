@@ -75,6 +75,7 @@ Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 - [Configurar IA e limites do M2](docs/AI.md)
 - [Instalação nativa no Mac ou Linux](docs/INSTALL-NATIVE.md)
 - [Roteiro do piloto com usuários](docs/PILOT.md)
+- [Onboarding e importação de conhecimento — próxima entrega](docs/ONBOARDING.md)
 
 ## Desenvolvimento
 O histórico deste repositório começa em um commit novo. Não contém dados de usuários, conversas, vaults ou histórico de outros projetos.

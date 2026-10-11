@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.5 · 11/10/2026 · Status: M1 validado tecnicamente em Ubuntu e macOS; M2 inicial testado com provedor simulado, ainda sem aceite com modelo real ou usuários.
+Versão 0.6 · 11/10/2026 · Status: M1 validado tecnicamente; M2 inicial com provedor simulado. Primeiro teste do proprietário revelou lacuna de onboarding/contexto; próxima entrega será importação básica integrada à busca e ao harness.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -87,6 +87,8 @@ Decisões técnicas finais dependem de testes de concorrência, restauração e 
 Nenhuma biblioteca será escolhida por exigir uma plataforma comercial como caminho obrigatório.
 
 ## 6. Onboarding
+O fluxo abaixo é planejado. A implementação atual cobre acesso e primeira área; importação, perfil guiado e configuração gráfica de IA ainda não existem. O plano detalhado está em [ONBOARDING.md](ONBOARDING.md).
+
 1. Criar acesso local e configurar idioma e fuso.
 2. Informar objetivos e tipos de trabalho.
 3. Criar áreas e prioridades.
@@ -98,6 +100,8 @@ Nenhuma biblioteca será escolhida por exigir uma plataforma comercial como cami
 O fluxo funciona sem geração por IA. Pode ser retomado e editado.
 Não criar objetivos, contatos, números ou tarefas fictícias.
 Não bloquear o primeiro uso por falta de um conector externo.
+
+Após o primeiro teste do proprietário, importação básica foi antecipada para a próxima entrega: Markdown/texto/ZIP com prévia, seleção, relatório e fontes recuperáveis. A importação se conecta ao contexto do M2; o M3 completa o fluxo guiado e adiciona adaptadores de conversas e personalização revisável. Não confundir instalação vazia com experiência sem contexto: o usuário traz o próprio conhecimento durante o onboarding.
 
 ## 7. Baixo custo como requisito verificável
 Estratégias:
@@ -143,7 +147,8 @@ Navegação proposta: Hoje, Áreas, Planejamento, Inteligência e Sistema; Busca
 | M0 — Fundação limpa | Repositório novo, README, plano, contratos e revisão de extração | Um histórico independente sem conteúdo privado; capacidades planejadas claramente identificadas |
 | M1 — Núcleo instalável | Web, API, acesso local, conteúdo, tarefa, busca e persistência | Ubuntu limpo funciona sem conta externa; reinício preserva dados |
 | M2 — Harness mínimo | Contexto, adaptador de modelo, ferramentas, propostas, confirmação, uso e limites | Consulta com fontes e ação confirmada sem duplicação, respeitando orçamento |
-| M3 — Personalização | Onboarding, áreas, configurações e importação explícita | Usuário novo conclui fluxo sozinho; instalação vazia não depende do sistema de origem |
+| M2.1 — Fontes importadas (próxima entrega) | Importação Markdown/texto/ZIP, revisão, proveniência, busca local e contexto com trechos | Importar → revisar → buscar → abrir fonte; reimportação não duplica; conteúdo alimenta consulta autorizada |
+| M3 — Onboarding e personalização | Fluxo retomável, objetivo, configuração gráfica, primeira consulta, exportações de conversas e sugestões revisáveis | Usuário chega ao primeiro resultado com conhecimento próprio, sem cadastro manual extensivo |
 | M4 — Operação confiável | Retomada, isolamento, atualização, recuperação e backup | Execução interrompida retoma sem repetir efeitos; restauração em segunda máquina |
 | M5 — Pilotos e release | Testes reais, benchmark de custo, licença, documentação e pacote | Usuários instalam e operam sem intervenção do fundador; alegações sustentadas por resultados |
 
@@ -180,13 +185,15 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - Dockerfile, Compose e documentação Ubuntu validados em um host piloto: imagem construída do zero, serviço saudável, acesso anônimo negado, onboarding, login, tarefas, Hoje, Busca e exportação exercitados.
 - Persistência confirmada após reiniciar o contêiner; os dados fictícios de validação foram removidos e a instância voltou ao estado inicial vazio.
 - O teste manteve o host em 68% de ocupação de disco. Detalhes reproduzíveis estão em `docs/VALIDATION.md`.
-- IA, conectores, restauração automática e o harness de execução continuam nos marcos seguintes.
-- O código está em um repositório GitHub novo e privado enquanto a licença aberta é definida.
+- Conectores, restauração automática e expansão do harness continuam nos marcos seguintes.
+- O proprietário tornou o repositório público; a licença aberta específica permanece pendente.
 - M1 revisado no navegador em macOS independente: corrigidos formulários após envio, persistência do bloqueio de login, saída no celular, data no fuso do proprietário e resultados obsoletos na busca.
 - M2 inicial implementado: contexto por área, adaptador opcional Chat Completions, proposta de tarefa, confirmação/recusa, histórico, cota de chamadas e idempotência transacional.
 - 17 testes automatizados e dois fluxos reais de navegador aprovados. O fluxo de IA usa provedor simulado local, sem chamada paga.
 - Faltam ao aceite M2: modelo real, avaliação da qualidade/citações, orçamento monetário e demais requisitos do contrato-alvo. Pedidos ainda são independentes, sem conversa contínua.
-- Próxima decisão necessária: provedor/modelo de teste e teto de gasto autorizado. Depois, piloto com 2 a 3 pessoas conforme `PILOT.md`.
+- O proprietário fez os primeiros testes pela interface no celular e apontou que o onboarding precisa trazer conhecimento próprio para produzir valor inicial. Não há ainda piloto concluído com usuários externos.
+- Próxima implementação: M2.1, fases 1 e 2 de `ONBOARDING.md`. Em seguida, M3 completa o onboarding guiado e os adaptadores ChatGPT/Claude.
+- Validação com modelo real continua exigindo provedor/modelo e teto de gasto autorizados; isso não bloqueia importação e busca local. Piloto externo será revisado para usar fontes reais selecionadas conforme `PILOT.md`.
 
 Este plano orienta o trabalho e não comprova funcionalidades, portabilidade, segurança ou economia já entregues.
 
