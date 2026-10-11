@@ -1,10 +1,10 @@
 # Onboarding com conhecimento próprio
 
-Status: plano de implementação aprovado para avanço; funcionalidades abaixo ainda não implementadas. Direção registrada em 11/10/2026 após o primeiro teste do proprietário.
+Status: M3 inicial implementado em 11/10/2026. Objetivo declarado, fluxo retomável, importação revisável, fontes, busca, contexto com trechos e configuração gráfica de IA disponíveis. Sugestões automáticas de perfil/áreas/projetos, sincronização contínua e compatibilidade ampla de exportações continuam planejadas.
 
 ## Problema e resultado esperado
 
-O onboarding atual cria proprietário e primeira área. A pessoa entra em uma central vazia, precisa cadastrar contexto manualmente e ainda não consegue usar suas notas ou conversas. Isso limita a avaliação da proposta de IA pessoal.
+O onboarding anterior criava proprietário e primeira área. A lacuna de conhecimento próprio motivou o fluxo atual.
 
 Resultado esperado: a pessoa traz um conjunto de conhecimento próprio, entende o que foi aceito e conclui uma primeira consulta com fontes ou uma ação confirmada. A instalação continua vazia por padrão; o preenchimento ocorre por importação explícita ou pelas respostas da própria pessoa.
 
@@ -31,7 +31,7 @@ Todas as etapas podem ser retomadas; o onboarding também pode ser reaberto para
 | C — Claude | Arquivo exportado pelo próprio usuário | Adaptador com formatos reconhecidos, prévia e seleção de conversas |
 | D — Outros | Novos formatos/exportações e documentos | Priorizar conforme pilotos; formatos desconhecidos têm erro claro e alternativa de texto |
 
-Compatibilidade com exportações específicas deve ser verificada em documentação oficial e amostras autorizadas antes de implementar os adaptadores. Não assumir um formato universal ou prometer importação de todas as plataformas. Testes usam dados sintéticos; dados reais não entram no repositório.
+Adaptadores experimentais reconhecem listas JSON com `mapping`/`current_node` (ChatGPT) ou `chat_messages` (Claude). A árvore é percorrida apenas pelo ramo atual; usuário e assistente mantêm papel e data disponível no texto. Arquivos de conta e conversas sem estrutura reconhecível recebem erro explícito. Páginas oficiais de exportação foram consultadas, mas não estabelecem um esquema estável; compatibilidade exige amostras reais autorizadas. Testes usam dados sintéticos, sem prometer importação universal.
 
 Não exigir login em plataformas de origem para importar. Não instalar dependências de sincronização ou enviar o arquivo inteiro a uma API de IA automaticamente. A primeira entrega importa uma cópia, sem sincronização contínua com o vault original. PDF, OCR, anexos, links externos e interpretação de plugins do Obsidian ficam para depois.
 
@@ -58,15 +58,15 @@ Uma nota pode existir sem gerar tarefa. Importar uma conversa não executa açõ
 
 Limites iniciais de tamanho total, número de arquivos, profundidade, expansão do ZIP e tempo devem ser definidos e exibidos antes do upload. Rejeitar caminhos absolutos, travessia de diretórios, links simbólicos e arquivos fora do escopo. Conteúdo não autorizado não chega à busca nem ao contexto.
 
-Estados persistidos: recebido, preparando, aguardando revisão, importando, concluído, parcial, falhou, cancelado. Reinício não duplica documentos. Cancelamento ou exclusão do material pendente remove o staging. Lotes concluídos continuam rastreáveis.
+Estados atuais: revisão e concluído, com relatório de erros/exclusões por entrada. Parsing é síncrono e limitado; erro antes da preparação não cria lote. Confirmação é transacional. Reinício não duplica documentos; cancelamento/exclusão remove o staging. Jobs em segundo plano ficam para evolução posterior.
 
-Duplicação por conteúdo idêntico não cria novo documento ativo silenciosamente. Mesmo caminho com conteúdo diferente vira conflito para revisão; não sobrescrever a versão anterior sem decisão. Hash igual com metadados diferentes preserva a proveniência do lote quando necessário.
+Conteúdo idêntico na mesma área é deduplicado, preservando proveniência de lotes. Exclusão não remove documento compartilhado por outro lote. Mesmo caminho com conteúdo diferente mantém documentos separados, sem sobrescrever; revisão visual de conflitos e escolha de versão preferida ficam pendentes.
 
 ## Uso do conhecimento no harness
 
 Apenas armazenar arquivos não conclui a entrega. Busca e Inteligência precisam recuperar trechos autorizados relacionados à pergunta, dentro da área escolhida e de um limite de contexto. A primeira versão usa busca textual local, sem exigir embeddings ou serviço externo.
 
-Antes do envio ao modelo, mostrar os trechos e seu destino. Na resposta, referências permitem abrir o trecho original. Diferenciar fontes consultadas de fontes citadas; detectar referência inexistente e indicar resposta sem sustentação. Uma conclusão da IA continua sendo interpretação, mesmo quando há fontes válidas.
+A prévia considera a área e o pedido. Busca e histórico permitem abrir a fonte; o servidor identifica referências válidas/inexistentes e a interface informa as inexistentes. Isso verifica IDs, não a sustentação de cada frase. A consulta atual usa até três trechos de 1.200 caracteres por correspondência textual normalizada, sem embeddings. Qualidade das citações com modelo real permanece pendente.
 
 Excluir ou alterar uma fonte invalida seu índice e remove o conteúdo de novas consultas. Execuções antigas mantêm seu registro como histórico, claramente datado; a interface deve explicar essa diferença.
 
@@ -80,6 +80,8 @@ Excluir ou alterar uma fonte invalida seu índice e remove o conteúdo de novas 
 | 4 — Conversas e personalização | Adaptadores ChatGPT/Claude, papéis, seleção e sugestões revisáveis de áreas/perfil | Conversa selecionada é recuperável; mensagem da IA não vira fato; nenhuma tarefa surge sem aprovação |
 
 As fases pertencem ao M3, após o trabalho implementável do M2. A configuração gráfica do modelo deve tratar credenciais no servidor e usar os requisitos de orçamento do M2. Não adiar busca/importação sem IA por falta de chave paga; o aceite com modelo real continua separado.
+
+Limites atuais: upload 8 MB (12 MB em JSON codificado), ZIP expandido 20 MB, até 300 entradas e 500 documentos, até 200.000 caracteres por documento e três lotes em revisão. Sem extração do ZIP no sistema. Há colagem de texto; documentos só ficam ativos após seleção explícita. PDF, mídia e anexos são ignorados e informados no relatório.
 
 ## Testes relevantes
 

@@ -287,7 +287,7 @@ async function renderIntelligence() {
         (p?'<div class="card"><h3>Proposta: '+esc(p.title)+'</h3><p>'+esc(p.notes)+'</p><p>Data: '+esc(p.due_date||'sem data')+' · Prioridade: '+p.priority+'</p>'+
         (r.state==='awaiting_confirmation'?'<button class="btn primary" data-decision="approve" data-run="'+esc(r.id)+'">Confirmar e criar tarefa</button> <button class="btn" data-decision="reject" data-run="'+esc(r.id)+'">Recusar</button>':'')+'</div>':'') +
         '<details><summary>Contexto enviado · '+r.sources.length+' fontes (não é verificação automática da resposta)</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(r.sources,null,2))+'</pre></details>' +
-        '<p class="subtle">Tokens: '+esc(r.usage?.total_tokens??'não informado')+' · '+(r.estimated_cost_usd!==null?'Custo estimado US$ '+r.estimated_cost_usd:'Custo não confirmado; reserva US$ '+r.reserved_usd)+'</p>'+
+        '<p class="subtle">Tokens: '+esc(r.usage?.total_tokens??'não informado')+' · '+(r.estimated_cost_usd!==null?'Custo estimado US$ '+r.estimated_cost_usd:r.cost_status==='unknown'?'Custo desconhecido':r.cost_status==='overrun'?'Uso excedeu os limites; novas chamadas bloqueadas':'Custo não confirmado; reserva US$ '+r.reserved_usd)+'</p>'+
         (r.invalid_citations.length?'<p class="subtle">Referências não reconhecidas: '+esc(r.invalid_citations.join(', '))+'</p>':'')+
         r.sources.filter(s=>s.source.startsWith('doc:')).map(s=>'<button class="btn" data-document="'+esc(s.id)+'">Abrir '+esc(s.title)+'</button>').join('')+'</article>';
     }).join('')+'</section>';

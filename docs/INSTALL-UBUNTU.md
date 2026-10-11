@@ -32,9 +32,9 @@ O volume `mia-data` permanece quando os containers são recriados. Não execute 
 
 ## Backup do volume
 
-A interface oferece uma exportação JSON das áreas e tarefas. A restauração automática dessa exportação ainda não está implementada.
+A interface exporta JSON de áreas, tarefas, fontes, objetivo e execuções. Restauração desse ZIP ainda não existe; há snapshot consistente SQLite e restauração por comando em [BACKUP.md](BACKUP.md).
 
-Para uma cópia operacional completa do piloto, pare o serviço e copie o conteúdo do volume `mia-data` com uma ferramenta apropriada ao seu ambiente. Valide a restauração em outra máquina antes de considerar o backup confiável.
+Chaves e configuração de IA precisam ser recriadas após restaurar. Snapshot sintético foi restaurado entre Linux e Mac. Agendamento e rotação permanecem pendentes.
 
 ## Acesso remoto
 

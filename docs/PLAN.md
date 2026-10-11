@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.7 · 11/10/2026 · Status: M1 validado tecnicamente; M2 em evolução. Primeiro teste do proprietário revelou lacuna de onboarding/contexto; execução mantém a sequência original M2 → M3.
+Versão 0.8 · 11/10/2026 · Status: M2 ampliado, M3 inicial implementado e backup/restauração do M4 testado. Aceites com modelo real e usuários externos permanecem pendentes.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -87,7 +87,7 @@ Decisões técnicas finais dependem de testes de concorrência, restauração e 
 Nenhuma biblioteca será escolhida por exigir uma plataforma comercial como caminho obrigatório.
 
 ## 6. Onboarding
-O fluxo abaixo é planejado. A implementação atual cobre acesso e primeira área; importação, perfil guiado e configuração gráfica de IA ainda não existem. O plano detalhado está em [ONBOARDING.md](ONBOARDING.md).
+Implementado: acesso, objetivo declarado, importação revisável, configuração gráfica de IA e caminho à primeira consulta/Hoje. Fluxo retomável. Sugestões inferidas de perfil continuam planejadas. Detalhes em [ONBOARDING.md](ONBOARDING.md).
 
 1. Criar acesso local e configurar idioma e fuso.
 2. Informar objetivos e tipos de trabalho.
@@ -191,7 +191,11 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - 17 testes automatizados e dois fluxos reais de navegador aprovados. O fluxo de IA usa provedor simulado local, sem chamada paga.
 - Faltam ao aceite M2: modelo real, avaliação da qualidade/citações, orçamento monetário e demais requisitos do contrato-alvo. Pedidos ainda são independentes, sem conversa contínua.
 - O proprietário fez os primeiros testes pela interface no celular e apontou que o onboarding precisa trazer conhecimento próprio para produzir valor inicial. Não há ainda piloto concluído com usuários externos.
-- Execução mantém os marcos originais: implementar os limites restantes do M2; em seguida avançar nas fases do M3 detalhadas em `ONBOARDING.md`, sem novo marco intermediário.
+- Execução manteve os marcos originais. M2 ampliado com preços configuráveis, reserva estimada, reconciliação de uso, reserva conservada quando uso é desconhecido e bloqueio por excesso.
+- M3 inicial: onboarding retomável, objetivo, upload/colagem, revisão, seleção, deduplicação, lotes, busca textual, fontes no contexto e configuração gráfica. Adaptadores de conversas são experimentais.
+- M4 parcial: snapshot consistente, integridade, restauração em destino vazio e sessões invalidadas. Backup sintético Linux restaurado no Mac.
+- 30 testes passaram no Linux e Mac; onboarding/importação/busca mobile e proposta/confirmar/recusar passaram no navegador. Dados reais do proprietário permanecem em sua instalação.
+- Pendências: modelo real/cobrança, amostras reais autorizadas de exports, escolha de versão em conflitos, personalização inferida, conversa contínua, múltiplos usuários/workers, atualização e backups automáticos e M5 externo.
 - Validação com modelo real continua exigindo provedor/modelo e teto de gasto autorizados; isso não bloqueia importação e busca local. Piloto externo será revisado para usar fontes reais selecionadas conforme `PILOT.md`.
 
 Este plano orienta o trabalho e não comprova funcionalidades, portabilidade, segurança ou economia já entregues.

@@ -54,3 +54,13 @@ Em 11/10/2026, clone novo em macOS ARM64, Python 3.12.13, ambiente virtual e dad
 - Correções motivadas por evidência: formulário perdia referência após `await`, tentativa de login sofria rollback, logout escondido no mobile, comparação de data UTC e busca com resposta atrasada.
 
 Não foram validados qualidade com modelo real, custo monetário, benchmark de economia, restauração em segunda máquina ou experiência sem ajuda com usuários. A instalação independente não equivale a teste de restauração. Há um aviso de depreciação não bloqueante no TestClient/AnyIO.
+
+## Terceira rodada — M2, M3 e recuperação
+
+Versão `0.2.0a1`, 11/10/2026: 30 testes aprovados em Linux e macOS. Incluem reserva/reconciliação, uso desconhecido, excesso, proteção de chave e validação, ZIP malicioso, entrada parcialmente inválida, deduplicação, exclusão compartilhada, escopo por área, papéis de conversa e onboarding persistido.
+
+Chromium a 390 × 844 px: cadastro → objetivo → upload → prévia → seleção → confirmação → reload → salvar IA desativada → busca → fonte original → excluir lote. Sem erro JavaScript ou transbordamento horizontal. Fluxo separado de proposta/confirmar/recusar passou com adaptador HTTP e provedor simulado.
+
+Snapshot sintético com proprietário, tarefa e fonte foi criado no Linux, transferido e restaurado no Mac. Login, tarefa e fonte conferidos; sessões invalidadas. Sem exportação real de usuário ou chamada paga.
+
+Não fecha aceite de qualidade de IA, cobrança real ou compatibilidade ampla dos exports. Sem benchmark de economia ou piloto externo concluído.

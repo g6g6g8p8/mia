@@ -10,9 +10,11 @@ O usuário instala o Mia em seu computador ou servidor Ubuntu e acessa pelo nave
 ## Status
 O M1 é um protótipo executável, validado em Docker sobre Ubuntu e em instalação Python independente no macOS, com fluxo de navegador automatizado. Inclui onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite.
 
-O **M2 inicial** acrescenta pedidos independentes com contexto de uma área, adaptador opcional de API compatível com Chat Completions, proposta de tarefa, confirmação/recusa, histórico de execuções e limites de uso. A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou custo com um modelo real**. Conversa contínua, orçamento monetário, conectores e restauração automática continuam pendentes.
+O **M2** acrescenta pedidos independentes com contexto de uma área, adaptador opcional Chat Completions, propostas confirmadas, histórico e orçamento estimado com reserva. O **M3 inicial** oferece onboarding retomável, objetivo declarado, importação local com revisão, busca de fontes e configuração de IA pela interface. Markdown, texto e ZIP são suportados; adaptadores de conversas ChatGPT/Claude são experimentais e reconhecem formatos específicos.
 
-A primeira versão será validada com poucos usuários piloto. O projeto será distribuído como código aberto; a licença específica será definida antes da publicação do código.
+A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, personalização inferida, conectores, atualização/backup automáticos e benchmark de economia continuam pendentes.
+
+A primeira versão será validada com poucos usuários piloto. O repositório é público por decisão do proprietário; a licença específica de uso e distribuição ainda está pendente.
 
 ## O que o Mia deve oferecer
 - Onboarding para configurar objetivos, áreas, fontes e permissões.
@@ -75,7 +77,8 @@ Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 - [Configurar IA e limites do M2](docs/AI.md)
 - [Instalação nativa no Mac ou Linux](docs/INSTALL-NATIVE.md)
 - [Roteiro do piloto com usuários](docs/PILOT.md)
-- [Onboarding e importação de conhecimento — próxima entrega](docs/ONBOARDING.md)
+- [Onboarding e importação de conhecimento](docs/ONBOARDING.md)
+- [Backup e restauração](docs/BACKUP.md)
 
 ## Desenvolvimento
 O histórico deste repositório começa em um commit novo. Não contém dados de usuários, conversas, vaults ou histórico de outros projetos.

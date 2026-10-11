@@ -4,9 +4,11 @@ A instalação funciona sem IA. Nenhuma chave, conta do projeto, gateway ou máq
 
 ## Configuração pelo proprietário
 
-No `.env` local, configure `MIA_AI_BASE_URL`, `MIA_AI_MODEL`, `MIA_AI_API_KEY`, `MIA_AI_DAILY_CALL_LIMIT` e então `MIA_AI_ENABLED=true`. O endereço base deve terminar no prefixo da API, normalmente `/v1`, sem `/chat/completions`. Reinicie o serviço após alterar a configuração. Nenhuma conexão é feita só por abrir a interface.
+Use **Sistema → Configurar IA** ou a etapa de IA no onboarding. Informe endereço base (prefixo como `/v1`, sem `/chat/completions`), modelo, chave e limite diário. Salvar não faz chamada. A configuração gráfica prevalece sobre o ambiente e é salva em `MIA_DATA_DIR/ai-settings.json`, permissão `0600`. Sem criptografia implementada pelo aplicativo; o administrador da máquina pode ler esse arquivo.
 
-O servidor usa HTTPS; HTTP só é permitido para loopback e `host.docker.internal`. Não reutilize credenciais de outros sistemas automaticamente. Use uma chave própria e limite de gasto no provedor. Não compartilhe `.env`, saída de `docker compose config` ou diagnóstico de ambiente. A chave fica em variável de ambiente do processo, não no navegador, histórico de execuções ou exportação. Administradores da máquina ainda podem acessá-la.
+O `.env` continua como configuração inicial alternativa. A chave nunca é retornada pela API ou incluída no histórico/exportação. Campo vazio mantém a chave apenas no mesmo destino; mudança de destino exige outra chave. Não alterar configuração durante uma geração.
+
+O destino usa HTTPS; HTTP só é permitido para loopback e `host.docker.internal`. Use chave própria e limite no provedor. Não compartilhe `.env`, `ai-settings.json` ou diagnóstico de ambiente.
 
 O adaptador exige Chat Completions com ferramentas e `max_completion_tokens`. Referência de protocolo: [Create chat completion](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create). A compatibilidade deve ser testada por provedor/modelo; não há promessa de que todas as APIs aceitem os mesmos parâmetros. Sem fallback ou nova tentativa automática.
 
@@ -20,7 +22,7 @@ IA local é opcional e avançada. Um servidor local compatível pode ser usado, 
 4. Revise a resposta e as fontes que foram enviadas.
 5. Se houver proposta de tarefa, confirme ou recuse.
 
-Contexto: metadados da área e até 12 tarefas recentes, com até 500 caracteres de notas por tarefa. Não é busca semântica nem recuperação de documentos externos. Outras áreas, e-mail, senha e histórico de conversa não são enviados. As fontes exibidas são evidência do contexto enviado, não certificação da veracidade da resposta. O modelo recebe a data no fuso do proprietário.
+Contexto: área, até 12 tarefas com notas limitadas e até três trechos de fontes importadas encontrados pelo pedido. Sem busca semântica ou conector externo. Outras áreas, e-mail, senha e histórico completo não são enviados. Referências inexistentes são indicadas; isso não certifica a interpretação. O modelo recebe a data no fuso do proprietário.
 
 ## Limites implementados
 
@@ -37,6 +39,10 @@ Contexto: metadados da área e até 12 tarefas recentes, com até 500 caracteres
 
 ## O que ainda não está pronto
 
-O custo monetário aparece como **desconhecido**, nunca zero. Contagem de tokens, quando presente, é a informada pelo provedor. Não há precificação, reserva em dinheiro, medição de economia, limite financeiro na Mia ou seleção automática de modelo. O limite de chamadas não substitui um limite financeiro no provedor.
+Sem preços configurados, custo é **desconhecido**, nunca assumido zero. Com preços informados em US$/milhão de tokens, a Mia reserva um envelope estimado de 32.768 tokens de entrada e 1.000 de saída antes da chamada, transacionalmente. Contexto serializado acima de 24.000 bytes é interrompido. O envelope é uma hipótese conservadora, não contagem exata nem garantia de cobrança.
 
-Configuração ainda via `.env`, sem assistente gráfico de credenciais. Não há conversa contínua, memória aprendida, edição da proposta, restauração automática, tarefas autônomas ou retomada de uma geração interrompida. Testes com respostas simuladas validam contratos, não a inteligência de um modelo.
+Com contagens completas de entrada/saída, reconcilia o custo estimado pelos preços congelados na execução e libera a diferença. Falhas ou uso incompleto conservam a reserva. Uso acima do envelope bloqueia chamadas da instalação para revisão administrativa. Chamadas anteriores do dia com custo desconhecido impedem novas chamadas sob orçamento calculável. Dia UTC.
+
+Não há confirmação da fatura, custos adicionais de ferramentas, atualização automática de preços, seleção automática de modelo ou benchmark de economia. Configure também limite financeiro no provedor.
+
+Não há conversa contínua, memória aprendida, edição da proposta, tarefas autônomas ou retomada de geração interrompida. Backup/restauração são por comando. Testes simulados validam contratos, não a inteligência de um modelo.
