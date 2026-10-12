@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix='mia-browser-fixture-') as data_dir:
                 break
             except OSError: time.sleep(.1)
         with sync_playwright() as p:
-            browser=p.chromium.launch(headless=True)
+            browser=p.chromium.launch(headless=True, executable_path=os.environ.get('MIA_BROWSER_EXECUTABLE'))
             page=browser.new_page()
             errors=[]
             page.on('pageerror',lambda error:errors.append(str(error)))
@@ -69,9 +69,27 @@ with tempfile.TemporaryDirectory(prefix='mia-browser-fixture-') as data_dir:
             assert page.request.get(url+'/api/tasks').json()==[]
             page.reload()
             page.get_by_role('button',name='Inteligência',exact=True).click()
+            pending=page.request.get(url+'/api/runs').json()[0]
+            page.set_viewport_size({'width':390,'height':844})
+            page.get_by_label('Título da tarefa',exact=True).fill('Tarefa revisada no navegador')
+            page.get_by_label('Notas da tarefa',exact=True).fill('Notas escolhidas durante a revisão.')
+            page.get_by_label('Data da tarefa',exact=True).fill('2030-12-01')
+            page.get_by_label('Prioridade da tarefa',exact=True).fill('3')
+            assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Task review mobile overflow'
             page.get_by_role('button',name='Confirmar e criar tarefa').click()
             expect(page.get_by_text('Concluída',exact=True)).to_be_visible()
+            tasks=page.request.get(url+'/api/tasks').json()
+            assert len(tasks)==1 and tasks[0]['title']=='Tarefa revisada no navegador'
+            assert tasks[0]['notes']=='Notas escolhidas durante a revisão.' and tasks[0]['priority']==3
+            applied=page.request.get(url+'/api/runs').json()[0]
+            assert applied['proposal']['title']=='Tarefa confirmada pelo navegador'
+            assert applied['task_result']['title']=='Tarefa revisada no navegador'
+            replay=page.request.post(url+'/api/runs/'+pending['id']+'/approve',data={'edits':{'title':'Não aplicar de novo'}})
+            assert replay.status==200 and replay.json()['task_result']==applied['task_result']
             assert len(page.request.get(url+'/api/tasks').json())==1
+            page.reload()
+            page.get_by_role('button',name='Inteligência',exact=True).click()
+            expect(page.get_by_text('Tarefa aplicada: Tarefa revisada no navegador',exact=False)).to_be_visible()
             page.get_by_label('Seu pedido').fill('Proponha outra tarefa')
             page.locator('input[name=consent]').check()
             page.get_by_role('button',name='Enviar pedido').click()
@@ -165,7 +183,7 @@ with tempfile.TemporaryDirectory(prefix='mia-browser-fixture-') as data_dir:
             assert page.request.get(url+'/api/personalization').json()['text']==''
             assert not errors, errors
             browser.close()
-            print('Browser harness passed: HTTP test double, task/organization, mobile personalization with evidence, reload, edited confirmation, goal in Today, opt-in context, clearing context.')
+            print('Browser harness passed: HTTP test double, edited task review/replay/persistence, organization, mobile personalization with evidence, reload, edited confirmation, goal in Today, opt-in context, clearing context.')
     finally:
         server.terminate()
         server.wait(timeout=10)
