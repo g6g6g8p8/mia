@@ -192,6 +192,8 @@ As instalações privadas não dependem desse domínio.
 Aquisição do domínio, identidade visual, preços e hospedagem opcional serão tratados separadamente.
 
 ## 12. Estado desta entrega
+
+Atualização de 12/10: primeiro ensaio com modelo real autorizado e concluído, com sete chamadas sintéticas de DeepSeek via OpenRouter, custo informado US$ 0.001906923 sobre teto total US$ 1. Corrigidos formato de citação e registro de uso em resposta rejeitada. Detalhes/limites em [REAL-MODEL-VALIDATION.md](REAL-MODEL-VALIDATION.md). Aceites de provedores diretos, organização/personalização reais, pilotos externos e benchmark comparativo continuam abertos; menções anteriores abaixo a ausência de modelo real descrevem as etapas anteriores.
 - Fundação documental preparada em repositório Git local novo.
 - README independente e contrato inicial do harness.
 - Nenhum código ou histórico do sistema de origem importado.

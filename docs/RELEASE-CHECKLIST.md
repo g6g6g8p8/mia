@@ -2,6 +2,8 @@
 
 Estado: **alpha técnica, não release final para distribuição ampla**. Esta lista descreve evidência, não promessa.
 
+Atualização: ensaio inicial real via OpenRouter concluído, documentado em [REAL-MODEL-VALIDATION.md](REAL-MODEL-VALIDATION.md). O teto US$ 1 foi autorizado para essa rodada, com gasto informado de US$ 0.001906923. Ainda não fecha modelo direto sem gateway, personalização real, benchmark comparativo ou piloto externo.
+
 Ensaio completo em Ubuntu 24.04.5 isolado aprovado: instalação nova, 59 testes sem rede, migração, reinício, restauração e HTTP/assets do pacote instalado. Evidência reproduzível em VALIDATION.md e `scripts/clean_ubuntu.sh`. Protocolo de modelo real preparado em [BENCHMARK.md](BENCHMARK.md); ainda não executado.
 
 | Marco | Comprovado | Falta para fechar |

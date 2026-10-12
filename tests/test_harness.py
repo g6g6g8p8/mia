@@ -158,6 +158,24 @@ def priced_config(browser, budget='0.04'):
     return browser.put('/api/ai/config',json={'enabled':True,'endpoint':'https://provider.example.test/v1','model':'test-model','api_key':'secret-fixture','daily_budget_usd':budget,'input_usd_per_million':'1','output_usd_per_million':'2','daily_call_limit':20})
 
 
+@pytest.mark.parametrize('reason',['length','invalid_tool'])
+def test_usage_is_kept_when_response_is_rejected(ready,monkeypatch,reason):
+    browser,area,_=ready
+    priced_config(browser)
+    async def fake(*args):
+        result=reply(area)
+        result['usage']={'prompt_tokens':100,'completion_tokens':1000,'total_tokens':1100}
+        if reason=='length': result['choices'][0]['finish_reason']='length'
+        else: result['choices'][0]['message']['tool_calls'][0]['function']['name']='forbidden'
+        return result
+    monkeypatch.setattr(harness,'call_provider',fake)
+    run=browser.post('/api/runs',json=request(area)).json()
+    assert run['state']=='failed' and run['cost_status']=='estimated'
+    assert run['charged_micro']==2100 and run['usage']['completion_tokens']==1000
+    assert not browser.get('/api/tasks').json()
+    if reason=='length': assert 'limite de saída' in run['error']
+
+
 def test_budget_reservation_reconciliation_and_failed_unknown_usage(ready,monkeypatch):
     browser,area,path=ready
     assert priced_config(browser).status_code==200
