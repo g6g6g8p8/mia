@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "status": "pending",
+  "participant_code": null,
+  "consent_to_share_minimized_results": null,
+  "installation": {
+    "mia_version": null,
+    "commit_or_package_sha256": null,
+    "os_family": null,
+    "os_version": null,
+    "architecture": null,
+    "method": null,
+    "installed_without_founder_help": null,
+    "first_useful_result_minutes": null
+  },
+  "configuration": {
+    "ai_mode": null,
+    "public_model_id_optional": null,
+    "limit_configured": null,
+    "connection_check": "not_run",
+    "direct_provider_generation": "not_run",
+    "access_from_second_device_without_vpn": "not_run",
+    "controlled_remote_https": "not_run"
+  },
+  "sources": {
+    "format": null,
+    "selected_count": null,
+    "imported_count": null,
+    "real_export_compatibility": "not_run"
+  },
+  "tasks": {
+    "empty_install_and_local_access": "not_run",
+    "import_preview_selection_confirmation": "not_run",
+    "search_and_open_correct_source": "not_run",
+    "consult_with_correct_citation": "not_run",
+    "understood_provider_destination_and_context": "not_run",
+    "reject_then_edit_and_approve_proposal": "not_run",
+    "repeat_confirmation_single_effect": "not_run",
+    "personal_context_only_when_selected": "not_run",
+    "organization_review_and_partial_approval": "not_run",
+    "personalization_review_and_partial_approval": "not_run",
+    "reimport_conflict_pause_and_reactivate": "not_run",
+    "restart_preserves_data": "not_run",
+    "backup_restore_in_separate_install": "not_run",
+    "update_and_recovery": "not_run"
+  },
+  "assistance": {
+    "task_ids_requiring_help": [],
+    "blocker_category": null,
+    "sanitized_issue_id_optional": null
+  },
+  "cost": {
+    "currency": null,
+    "estimated_amount": null,
+    "provider_confirmed_amount": null,
+    "knowledge": "unknown",
+    "input_tokens": null,
+    "output_tokens": null
+  },
+  "safety": {
+    "data_loss": null,
+    "duplicate_effect": null,
+    "unauthorized_context_or_destination": null,
+    "configured_limit_exceeded": null,
+    "credential_disclosed": null,
+    "pilot_stopped": null
+  },
+  "outcome": {
+    "would_continue": null,
+    "retest_required_task_ids": [],
+    "release_decision": "pending"
+  }
+}
