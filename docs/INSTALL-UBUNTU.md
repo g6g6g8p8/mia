@@ -23,12 +23,27 @@ No primeiro acesso, crie o proprietário e a primeira área. Não há conta exte
 
 ## Parar e atualizar
 
+Primeiro faça e verifique um snapshot conforme [BACKUP.md](BACKUP.md), guarde-o fora do volume e registre o commit atual. Aguarde qualquer geração em andamento. Não apague o volume.
+
 ```bash
 docker compose down
+git pull --ff-only
 docker compose up -d --build
 ```
 
 O volume `mia-data` permanece quando os containers são recriados. Não execute `docker compose down -v` se quiser preservar os dados.
+
+Confira `docker compose ps`, `/api/status`, login e uma fonte/tarefa conhecida. Em falha, siga a restauração em diretório vazio descrita em BACKUP; não execute versão antiga diretamente sobre banco migrado.
+
+## Verificação isolada para mantenedores
+
+```bash
+bash scripts/clean_ubuntu.sh 2d43f085c8e9388202ec3d3914f1da20a4a14b9a
+```
+
+Requer Docker e Git no host. Cria um contêiner Ubuntu 24.04 com Python/dependências novos, instala o pacote, desconecta a rede e executa os testes, atualização/restauração e inicialização HTTP com assets. Usa dados sintéticos e remove o contêiner/diretório temporário ao terminar; a imagem Ubuntu pode permanecer no cache. Consome rede durante instalação e até 1 GB de memória no contêiner. Não usa volume de uma instalação existente.
+
+Isso valida um ambiente de usuário Ubuntu isolado, não uma instalação completa de sistema operacional, systemd, roteador, certificado público ou operação por usuário sem ajuda. O pacote Docker do produto usa a base definida no Dockerfile; o Ubuntu aqui é o ambiente de teste da instalação nativa.
 
 ## Backup do volume
 

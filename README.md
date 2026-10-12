@@ -84,6 +84,7 @@ Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 - [Onboarding e importação de conhecimento](docs/ONBOARDING.md)
 - [Backup e restauração](docs/BACKUP.md)
 - [Acesso local e remoto](docs/ACCESS.md)
+- [Aceites e pendências para release](docs/RELEASE-CHECKLIST.md)
 
 ## Desenvolvimento
 O histórico deste repositório começa em um commit novo. Não contém dados de usuários, conversas, vaults ou histórico de outros projetos.
