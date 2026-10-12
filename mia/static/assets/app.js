@@ -1,5 +1,6 @@
 import {renderPersonalizationPage} from './personalization.js';
 import {guideAI} from './ai-setup.js';
+import {renderAccess} from './access.js';
 
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
@@ -159,6 +160,7 @@ function navigate(view) {
   if (view === "areas") renderAreas();
   if (view === "search") renderSearch();
   if (view === "system") renderSystem();
+  if (view === "access") renderAccess({api,esc,pageHead,errorMessage}).catch(errorMessage);
   if (view === "intelligence") renderIntelligence().catch(errorMessage);
   if (view === "onboarding") renderGuide().catch(errorMessage);
   if (view === "knowledge") renderKnowledge().catch(errorMessage);
@@ -285,6 +287,7 @@ function renderSystem() {
   document.querySelector('#resume-guide').onclick=()=>navigate('onboarding');
   document.querySelector('#system-sources').onclick=()=>navigate('knowledge');
   document.querySelector('#system-ai').onclick=()=>navigate('ai-settings');
+  const accessButton=document.createElement('button');accessButton.className='btn';accessButton.textContent='Acesso à Mia';accessButton.onclick=()=>navigate('access');document.querySelector('#system-ai').after(accessButton);
   const personal=document.createElement('button');personal.className='btn';personal.textContent='Meu contexto';personal.onclick=()=>navigate('personalization');document.querySelector('#system-ai').after(personal);
 }
 

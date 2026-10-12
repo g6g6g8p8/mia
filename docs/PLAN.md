@@ -165,7 +165,9 @@ Manter os marcos, acrescentando estes critérios:
 - **M4 — Limites da rede:** quando a rede não aceitar conexões de entrada, explicar a necessidade de uma rota alcançável (configuração do roteador/IPv6, servidor próprio ou túnel opcional escolhido pelo usuário). A interface não pode prometer resolver CGNAT sem infraestrutura adicional. Nenhum fornecedor de túnel será obrigatório.
 - **M5 — Aceite independente:** instalar e concluir uma consulta com provedor direto, sem OpenRouter; acessar de outro dispositivo sem Tailscale; validar HTTPS remoto em instalação controlada pelo participante. Documentar o que ainda exigiu ação fora da Mia.
 
-Hoje: configuração de API compatível já acontece em Sistema; acesso remoto guiado ainda não foi implementado. O link do piloto continua usando Tailscale até existir e ser validada uma alternativa. Não alterar a rede do piloto apenas para demonstrar independência.
+Hoje: configuração de API compatível já acontece em Sistema. Na 0.2.0a6, o assistente de acesso salva preferências e endereço HTTPS e diagnostica a sessão atual; não aplica configuração de rede/certificados nem valida acesso externo. Detalhes em [ACCESS.md](ACCESS.md). O link do piloto continua usando Tailscale até existir e ser validada uma alternativa. Não alterar a rede do piloto apenas para demonstrar independência.
+
+Retorno ao plano original após esse complemento: concluir aceites M2/M3 com modelo real e fontes próprias dos participantes (provedor/modelo/teto autorizados ainda pendentes); seguir no M4 com recuperação e atualização reproduzível; somente então fechar M5. Não marcar marcos concluídos pela existência dos assistentes. A automação de HTTPS/rede e validação sem Tailscale continuam pendentes no M4/M5.
 
 ### Verificações do produto
 - Instalação e reinício em Ubuntu limpo.

@@ -1,6 +1,6 @@
 [project]
 name = "mia-personal-ai"
-version = "0.2.0a5"
+version = "0.2.0a6"
 description = "Self-hosted personal AI harness"
 requires-python = ">=3.12"
 dependencies = [

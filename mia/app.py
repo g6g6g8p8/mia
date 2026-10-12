@@ -24,7 +24,7 @@ from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
-from . import knowledge, organization, personalization
+from . import knowledge, organization, personalization, access
 
 
 ROOT = Path(__file__).resolve().parent
@@ -578,6 +578,17 @@ def get_document(doc: str,owner: Owner) -> dict:
 @app.get("/api/ai/config")
 def ai_config(owner: Owner) -> dict:
     return harness.config()
+
+
+@app.get('/api/access/config')
+def access_config(owner: Owner) -> dict:
+    return {**access.load(), 'secure_cookie': os.environ.get('MIA_COOKIE_SECURE', 'false').lower() == 'true'}
+
+
+@app.put('/api/access/config')
+def save_access_config(payload: access.AccessSettings, owner: Owner) -> dict:
+    access.save(payload)
+    return access_config(owner)
 
 
 @app.get("/api/ai/context")

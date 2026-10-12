@@ -92,6 +92,19 @@ with tempfile.TemporaryDirectory(prefix='mia-onboarding-fixture-') as data:
             assert page.request.get(url+'/api/search?q=novembro').json()['results']
             page.get_by_role('button',name='Excluir lote e suas fontes').click()
             expect(page.get_by_role('heading',name='Fontes disponíveis (0)')).to_be_visible()
+            page.get_by_role('button',name='Sistema',exact=True).click()
+            page.get_by_role('button',name='Acesso à Mia',exact=True).click()
+            page.get_by_label('Forma de acesso').select_option('remote')
+            page.get_by_label('Endereço HTTPS preparado (opcional)').fill('https://mia.example.test')
+            page.get_by_role('button',name='Salvar preferência de acesso').click()
+            expect(page.get_by_text('Preferência salva. A rede não foi alterada.')).to_be_visible()
+            page.get_by_role('button',name='Verificar conexão atual').click()
+            expect(page.locator('#access-result')).to_contain_text('sessão autenticada')
+            page.get_by_role('button',name='Sistema',exact=True).click()
+            page.get_by_role('button',name='Acesso à Mia',exact=True).click()
+            expect(page.get_by_label('Forma de acesso')).to_have_value('remote')
+            expect(page.get_by_label('Endereço HTTPS preparado (opcional)')).to_have_value('https://mia.example.test')
+            assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Access mobile overflow'
             assert not errors,errors
             browser.close()
             print('M3 browser passed: mobile onboarding, persisted goal/step, import preview, conflicts/comparison, pause/resume, selection, local search, original source, AI disabled config, deletion.')

@@ -34,6 +34,16 @@ docker compose cp mia:/data/mia-snapshot.db ./mia-snapshot.db
 
 Use nome novo por snapshot e guarde cópia fora do volume. Restaure no diretório vazio escolhido pelo comando Python acima, ou em instalação nativa temporária; para Docker, configure deliberadamente o volume da nova instalação apontando para esses dados. Assistente de restauração de volume ainda não existe.
 
-## Limites
+## Atualização e recuperação — procedimento M4
+
+1. Registre a versão/commit atual e o comando de inicialização da sua instalação. Não atualize durante uma execução de IA.
+2. Gere um backup com nome novo e use `verify`. Guarde cópia fora da máquina. Preserve separadamente configurações locais e credenciais, sem colocá-las no Git.
+3. Pare a Mia pelo mecanismo usado na instalação, atualize para o commit escolhido e reinstale/reconstrua o pacote. Mantenha o mesmo diretório de dados. Não use múltiplos workers.
+4. Inicie e confira `/api/status`, login, uma fonte/tarefa conhecida e o acesso pelo dispositivo habitual.
+5. Se falhar, pare a versão nova. Restaure o backup em diretório vazio e execute a versão anterior apontando para esse diretório. Não execute código antigo sobre banco já migrado e não sobrescreva o banco original. Reconfigure a IA e as preferências de acesso.
+
+Este é um procedimento manual. Instalador de atualização, reversão automática e ensaio de upgrade entre versões em Ubuntu limpo continuam pendentes; o backup restaurado não contém alterações feitas depois do snapshot.
+
+## Limitações atuais
 
 Somente backups locais confiáveis. Sem criptografia, agendamento, rotação, restauração do ZIP exportado ou atualização automática. O ensaio entre máquinas usou dados sintéticos; não restaurou dados reais do proprietário.
