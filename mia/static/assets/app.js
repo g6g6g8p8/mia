@@ -315,7 +315,8 @@ async function renderIntelligence() {
       return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>'+esc(r.request.message)+'</h3>' +
         '<p style="white-space:pre-wrap">'+esc(r.answer||r.error||'Aguardando resposta. Atualize esta aba em alguns instantes.')+'</p>' +
         (p?'<div class="card"><h3>Proposta: '+esc(p.title)+'</h3><p>'+esc(p.notes)+'</p><p>Data: '+esc(p.due_date||'sem data')+' · Prioridade: '+p.priority+'</p>'+
-        (r.state==='awaiting_confirmation'?'<button class="btn primary" data-decision="approve" data-run="'+esc(r.id)+'">Confirmar e criar tarefa</button> <button class="btn" data-decision="reject" data-run="'+esc(r.id)+'">Recusar</button>':'')+'</div>':'') +
+        (r.state==='awaiting_confirmation'?'<form class="form" data-task-review="'+esc(r.id)+'"><label>Título da tarefa<input name="title" required minlength="2" maxlength="200" value="'+esc(p.title)+'"></label><label>Notas da tarefa<textarea name="notes" maxlength="10000">'+esc(p.notes)+'</textarea></label><label>Data da tarefa<input name="due_date" type="date" value="'+esc(p.due_date||'')+'"></label><label>Prioridade da tarefa<input name="priority" type="number" min="1" max="3" required value="'+p.priority+'"></label><p class="subtle">Revise antes de confirmar. A área autorizada permanece a mesma.</p><button class="btn primary" type="submit">Confirmar e criar tarefa</button> <button type="button" class="btn" data-decision="reject" data-run="'+esc(r.id)+'">Recusar</button></form>':'')+
+        (r.task_result?'<p>Tarefa aplicada: '+esc(r.task_result.title)+' · Data: '+esc(r.task_result.due_date||'sem data')+' · Prioridade: '+r.task_result.priority+'</p>':'')+'</div>':'') +
         '<details><summary>Contexto enviado · '+r.sources.length+' fontes (não é verificação automática da resposta)</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(r.sources,null,2))+'</pre></details>' +
         '<p class="subtle">Tokens: '+esc(r.usage?.total_tokens??'não informado')+' · '+(r.estimated_cost_usd!==null?'Custo estimado US$ '+r.estimated_cost_usd:r.cost_status==='unknown'?'Custo desconhecido':r.cost_status==='overrun'?'Uso excedeu os limites; novas chamadas bloqueadas':'Custo não confirmado; reserva US$ '+r.reserved_usd)+'</p>'+
         (r.invalid_citations.length?'<p class="subtle">Referências não reconhecidas: '+esc(r.invalid_citations.join(', '))+'</p>':'')+
@@ -337,6 +338,12 @@ async function renderIntelligence() {
   document.querySelectorAll('[data-decision]').forEach(button=>button.onclick=async()=>{
     button.disabled=true;
     try { await api('/api/runs/'+button.dataset.run+'/'+button.dataset.decision,{method:'POST',body:'{}'}); await refresh(); await renderIntelligence(); }
+    catch(error){errorMessage(error);button.disabled=false;}
+  });
+  document.querySelectorAll('[data-task-review]').forEach(review=>review.onsubmit=async event=>{
+    event.preventDefault();const button=review.querySelector('[type=submit]');button.disabled=true;
+    const edits=Object.fromEntries(new FormData(review));edits.priority=Number(edits.priority);edits.due_date=edits.due_date||null;
+    try{await api('/api/runs/'+review.dataset.taskReview+'/approve',{method:'POST',body:JSON.stringify({edits})});await refresh();await renderIntelligence();}
     catch(error){errorMessage(error);button.disabled=false;}
   });
   bindDocuments();

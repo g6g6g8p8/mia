@@ -101,6 +101,7 @@ def public_run(row) -> dict:
         value[field] = json.loads(value.pop(field + "_json") or "null")
     value['organization_result'] = json.loads(value.pop('organization_result_json') or 'null')
     value['personalization_result'] = json.loads(value.pop('personalization_result_json') or 'null')
+    value['task_result'] = json.loads(value.pop('task_result_json', None) or 'null')
     value.pop('personalization_base_json',None)
     allowed = {source["source"] for source in value["sources"]}
     cited = set(re.findall(r"(?:doc|area|task|profile):[A-Za-z0-9-]+", value.get("answer") or ""))
@@ -287,7 +288,7 @@ async def execute(payload: RunInput, owner: dict, task_type) -> dict:
     return get_run(run_id, owner)
 
 
-def decide(run_id: str, owner: dict, approve: bool, audit) -> dict:
+def decide(run_id: str, owner: dict, approve: bool, audit, edits: dict | None = None) -> dict:
     with transaction(immediate=True) as db:
         row = db.execute("SELECT * FROM runs WHERE id=? AND owner_id=?", (run_id, owner["id"])).fetchone()
         if not row:
@@ -301,11 +302,14 @@ def decide(run_id: str, owner: dict, approve: bool, audit) -> dict:
         task_id = None
         if approve:
             proposal = json.loads(row["proposal_json"])
+            # The owner can edit task content; the authorized area stays fixed.
+            applied = {**proposal, **(edits or {})}
             if not db.execute("SELECT 1 FROM areas WHERE id=? AND owner_id=?", (proposal["area_id"], owner["id"])).fetchone():
                 raise HTTPException(409, "Área não está mais disponível")
             task_id, stamp = str(uuid.uuid4()), iso()
             db.execute("INSERT INTO tasks(id,owner_id,area_id,title,notes,due_date,priority,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
-                       (task_id, owner["id"], proposal["area_id"], proposal["title"], proposal["notes"], proposal["due_date"], proposal["priority"], stamp, stamp))
+                       (task_id, owner["id"], proposal["area_id"], applied["title"], applied["notes"], applied["due_date"], applied["priority"], stamp, stamp))
+            db.execute('UPDATE runs SET task_result_json=? WHERE id=?', (json.dumps(applied), run_id))
             audit(db, owner["id"], "task.created.confirmed", "task", task_id, {"run_id": run_id})
         db.execute("UPDATE runs SET state=?,task_id=?,updated_at=? WHERE id=?", ("completed" if approve else "rejected", task_id, iso(), run_id))
         audit(db, owner["id"], "run.approved" if approve else "run.rejected", "run", run_id)

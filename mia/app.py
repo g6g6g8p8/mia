@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
 from .db import connect, database_path, initialize, transaction
@@ -130,6 +130,24 @@ class TaskInput(BaseModel):
 
 class TaskPatch(BaseModel):
     status: Literal["open", "done"]
+
+
+class TaskReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    title: str = Field(min_length=2, max_length=200)
+    notes: str = Field(default='', max_length=10_000)
+    due_date: date | None = None
+    priority: int = Field(default=2, ge=1, le=3)
+
+    @field_validator('title')
+    @classmethod
+    def clean_title(cls, value: str) -> str:
+        return TaskInput.clean_title(value)
+
+
+class TaskApproval(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    edits: TaskReview | None = None
 
 
 def owner_exists() -> bool:
@@ -689,8 +707,9 @@ async def start_run(payload: harness.RunInput, owner: Owner) -> dict:
 
 
 @app.post("/api/runs/{run_id}/approve")
-def approve_run(run_id: str, owner: Owner) -> dict:
-    return harness.decide(run_id, owner, True, audit)
+def approve_run(run_id: str, owner: Owner, payload: TaskApproval | None = None) -> dict:
+    edits = payload.edits.model_dump(mode='json') if payload and payload.edits else None
+    return harness.decide(run_id, owner, True, audit, edits)
 
 
 @app.post("/api/runs/{run_id}/reject")
