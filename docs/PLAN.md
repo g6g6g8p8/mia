@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.11 · 12/10/2026 · Status: M2 ampliado, M3 com organização assistida e sugestões revisáveis de contexto pessoal/objetivo; backup/restauração do M4 testado. Aceites com modelo real e usuários externos permanecem pendentes.
+Versão 0.12 · 12/10/2026 · Status: M2/M3 implementados parcialmente; instalação limpa de pacote, atualização e recuperação do M4 validadas em Ubuntu isolado. Aceites com modelo real e usuários externos permanecem pendentes. Situação consolidada em RELEASE-CHECKLIST.md.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -211,6 +211,7 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - M3 inicial: onboarding retomável, objetivo, upload/colagem, revisão, seleção, deduplicação, lotes, busca textual, fontes no contexto e configuração gráfica. Adaptadores de conversas são experimentais.
 - M4 parcial: snapshot consistente, integridade, restauração em destino vazio e sessões invalidadas. Backup sintético Linux restaurado no Mac.
 - M4 recuperação entre versões: ensaio reproduzível 0.2.0a3 → 0.2.0a6 → restauração para 0.2.0a3 passou em ambientes isolados no Linux e Mac. Preservou dados, migração, reinício, invalidação de sessão restaurada e reserva de chamada interrompida. Instalação/atualização automatizada em Ubuntu limpo, falha elétrica e recuperação sem ajuda continuam pendentes.
+- Atualização de evidência M4: instalação de pacote/dependências em contêiner Ubuntu 24.04 novo concluída, seguida de 59 testes, atualização/restauração e HTTP/assets com rede desconectada. Procedimento reproduzível em `scripts/clean_ubuntu.sh`; detalhes e limites em VALIDATION.md. Isso fecha o ensaio técnico isolado, não boot de sistema completo, atualizador automático ou operação por usuário sem ajuda.
 - 31 testes passaram no Linux e Mac; onboarding/importação/busca mobile e proposta/confirmar/recusar passaram no navegador. Dados reais do proprietário permanecem em sua instalação.
 - M3 ampliado: revisão informa duplicatas e notas com mesmo caminho/conteúdo diferente; usuário compara fontes e pausa/reativa versões. Fontes pausadas permanecem exportáveis e ficam fora de novas consultas. Não há escolha automática de versão.
 - M3 organização assistida: até seis fontes explícitas, prévia limitada, chamada com orçamento compartilhado, até quatro áreas sugeridas, edição/seleção/recusa, confirmação transacional e revalidação de fontes. Cria áreas e move fontes somente após aprovação, preservando proposta original e escolha aplicada. Áreas podem ser editadas depois.

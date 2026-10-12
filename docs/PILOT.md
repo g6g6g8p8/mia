@@ -26,6 +26,8 @@ Para exportações experimentais ChatGPT/Claude, cada participante pode validar 
 
 ## Registrar, sem inventar métricas
 
+Modelo de relatório por participante (sem dados pessoais): versão/OS; instalou sem ajuda (sim/não e ponto de bloqueio); tipo de fonte escolhida; tempo até primeiro resultado útil; encontrou e abriu a fonte correta; entendeu aprovação e envio ao provedor; reinício/restauração conferidos; custo conhecido/estimado/desconhecido; erro reproduzível minimizado; decisão de continuar. Não coletar o conteúdo da fonte ou a chave. Critérios sintéticos de qualidade/custo estão em [BENCHMARK.md](BENCHMARK.md).
+
 No ensaio de organização, selecionar poucas fontes próprias, conferir a prévia, gerar sugestões, editar um nome/descrição, recusar ou confirmar parte da proposta e verificar o destino das fontes. Reabrir a proposta após reload e editar a área já criada. Registrar se os trechos iniciais bastaram para sugestões úteis; não atribuir ao teste simulado qualidade de um modelo real.
 
 Em Meu contexto, gerar uma sugestão, conferir trechos e autoria, editar e aprovar apenas um campo. Verificar se o objetivo aprovado aparece em Hoje e se o contexto pessoal fica fora da prévia de Inteligência até ser marcado. Editar/limpar o contexto e confirmar que execuções anteriores continuam como histórico. Registrar falsas atribuições ao usuário, material antigo tratado como atual e se a pessoa entende a substituição do objetivo.
