@@ -68,3 +68,13 @@ def test_schedule_retention_and_failed_copy_preserve_backups(client,monkeypatch)
     assert not list((data/'auto-backups').glob('.pending-*'))
     backup_jobs.configure(backup_jobs.Policy(enabled=False,keep=2))
     assert not backup_jobs.run(clock=start+timedelta(days=4))
+
+
+def test_backup_error_visible_even_if_status_cannot_be_saved(client,monkeypatch):
+    browser,_=client
+    browser.post('/api/setup',json=setup_payload())
+    def fail(*args): raise OSError('Synthetic disk full')
+    monkeypatch.setattr(backup_jobs,'snapshot',fail)
+    monkeypatch.setattr(backup_jobs,'_write',fail)
+    assert browser.post('/api/backups').status_code==503
+    assert browser.get('/api/backups').json()['error']

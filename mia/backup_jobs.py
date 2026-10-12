@@ -15,6 +15,7 @@ from .backup import snapshot
 from .db import data_dir
 
 LOCK = threading.RLock()
+FAILURES = {}
 NAME = re.compile(r'mia-auto-\d{8}T\d{12}Z-[a-f0-9]{32}\.db')
 
 
@@ -53,7 +54,7 @@ def status():
     with LOCK:
         policy = Policy.model_validate(_read('backup-policy.json', {}))
         state = _read('backup-status.json', {})
-        return {**policy.model_dump(), **state, 'files': [dict(name=p.name, bytes=p.stat().st_size) for p in _files()]}
+        return {**policy.model_dump(), **state, **FAILURES.get(str(data_dir()), {}), 'files': [dict(name=p.name, bytes=p.stat().st_size) for p in _files()]}
 
 
 def configure(policy):
@@ -65,7 +66,7 @@ def configure(policy):
 def run(force=False, clock=None):
     with LOCK:
         policy = Policy.model_validate(_read('backup-policy.json', {}))
-        state = _read('backup-status.json', {})
+        state = {**_read('backup-status.json', {}), **FAILURES.get(str(data_dir()), {})}
         now = clock or datetime.now(timezone.utc)
         if not force:
             if not policy.enabled:
@@ -86,10 +87,17 @@ def run(force=False, clock=None):
             for old in _files()[policy.keep:]:
                 old.unlink()
             _write('backup-status.json', state)
+            FAILURES.pop(str(data_dir()), None)
             return True
         except Exception:
             state['error'] = 'Backup ou retenção não concluído. Confira espaço e permissões da instalação.'
-            _write('backup-status.json', state)
+            # A full disk can also prevent saving the error. Keep it visible
+            # in this process and log it even when persistence is impossible.
+            FAILURES[str(data_dir())] = dict(state)
+            try:
+                _write('backup-status.json', state)
+            except Exception:
+                logging.getLogger(__name__).exception('Could not persist backup failure status')
             logging.getLogger(__name__).exception('Local backup failed')
             raise
         finally:

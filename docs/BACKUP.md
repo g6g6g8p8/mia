@@ -8,6 +8,8 @@ Em **Sistema → Backups**, crie/baixe uma cópia ou habilite cópias a cada 24 
 
 O limite é de 1 a 30 cópias (padrão 7). Somente após criar e validar uma nova cópia, remove snapshots mais antigos criados por esta rotina em `MIA_DATA_DIR/auto-backups`. Também vale para o botão “Criar backup agora”; não remove backups feitos por comando ou arquivos com outros nomes. A interface mostra última tentativa, último sucesso e falha persistida. Download exige sessão autenticada e não é armazenado em cache HTTP.
 
+Se o disco cheio impedir até a gravação do estado de falha, o erro continua visível enquanto o processo está ativo e fica no log; essa indicação em memória se perde ao encerrar o processo. Uma cópia interrompida antes da publicação não aparece como backup válido.
+
 Backups ficam no mesmo disco, sem criptografia. Baixe e guarde cópia fora da máquina; isso não é armazenamento remoto. Chaves/configurações de IA, acesso e política de backup não entram no snapshot. A restauração permanece por comando em diretório separado. Habilitar a rotina não configura inicialização automática da Mia com o sistema operacional.
 
 ## Instalação nativa
