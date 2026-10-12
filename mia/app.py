@@ -57,12 +57,19 @@ async def safe_validation(request: Request, error: RequestValidationError):
 
 @app.middleware("http")
 async def limit_upload(request: Request, call_next):
+    managed_root = os.environ.get('MIA_OPERATIONS_ROOT')
+    if managed_root and request.method not in SAFE_METHODS:
+        try:
+            maintenance = (Path(managed_root) / 'journal.json').exists()
+        except OSError:
+            maintenance = True
+        if maintenance:
+            return JSONResponse({'detail': 'Atualização ou recuperação em andamento. Aguarde a conclusão no terminal antes de alterar dados.'}, status_code=503, headers={'Retry-After':'5', 'Cache-Control':'no-store'})
     if request.url.path == '/api/imports' and request.method == 'POST':
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
             if len(body) > 12_000_000:
-                from fastapi.responses import JSONResponse
                 return JSONResponse({'detail':'Upload excede o limite de 8 MB (12 MB codificado)'},status_code=413)
         request._body = bytes(body)
     return await call_next(request)

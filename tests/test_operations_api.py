@@ -22,3 +22,22 @@ def test_unavailable_manager_state_is_explicit_without_paths(client, monkeypatch
     response = browser.get('/api/operations')
     assert response.json()['recovery_required'] is True
     assert str(private_root) not in response.text
+
+
+def test_pending_operation_does_not_accept_mutations_before_commit(client, monkeypatch, tmp_path):
+    browser, _ = client
+    browser.post('/api/setup', json=setup_payload())
+    private_root = tmp_path / 'managed'
+    private_root.mkdir()
+    journal = private_root / 'journal.json'
+    journal.write_text('{"phase":"recovered-starting"}')
+    monkeypatch.setenv('MIA_OPERATIONS_ROOT', str(private_root))
+    assert browser.get('/health').status_code == 200
+    assert browser.get('/api/status').status_code == 200
+    assert browser.get('/api/tasks').json() == []
+    response = browser.post('/api/tasks', json={'title':'Must wait for commit'})
+    assert response.status_code == 503
+    assert response.headers['cache-control'] == 'no-store'
+    assert browser.get('/api/tasks').json() == []
+    journal.unlink()
+    assert browser.post('/api/tasks', json={'title':'Committed version'}).status_code == 201
