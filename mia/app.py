@@ -26,7 +26,7 @@ from .security import hash_password, iso, new_session, now, session_hash, verify
 from . import harness
 from . import settings as installation_settings
 from . import connection
-from . import knowledge, organization, personalization, access, backup_jobs
+from . import knowledge, organization, personalization, access, backup_jobs, operations
 
 
 ROOT = Path(__file__).resolve().parent
@@ -609,6 +609,16 @@ def ai_config(owner: Owner) -> dict:
 @app.get('/api/access/config')
 def access_config(owner: Owner) -> dict:
     return {**access.load(), 'secure_cookie': os.environ.get('MIA_COOKIE_SECURE', 'false').lower() == 'true'}
+
+
+@app.post('/api/access/plan')
+def access_plan(payload: access.AccessPlanInput, owner: Owner) -> JSONResponse:
+    return JSONResponse(access.prepare(payload), headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/api/operations')
+def operation_status(owner: Owner) -> JSONResponse:
+    return JSONResponse({'app_version': __version__, **operations.public_status()}, headers={'Cache-Control': 'no-store'})
 
 
 @app.get('/api/backups')

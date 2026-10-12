@@ -2,6 +2,7 @@ import {renderPersonalizationPage} from './personalization.js';
 import {guideAI} from './ai-setup.js';
 import {renderAccess} from './access.js';
 import {renderBackups} from './backups.js';
+import {renderOperations} from './operations.js';
 
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
@@ -163,6 +164,7 @@ function navigate(view) {
   if (view === "system") renderSystem();
   if (view === "access") renderAccess({api,esc,pageHead,errorMessage}).catch(errorMessage);
   if (view === "backups") renderBackups({api,esc,pageHead,errorMessage}).catch(errorMessage);
+  if (view === "operations") renderOperations({api,esc,pageHead,errorMessage}).catch(errorMessage);
   if (view === "intelligence") renderIntelligence().catch(errorMessage);
   if (view === "onboarding") renderGuide().catch(errorMessage);
   if (view === "knowledge") renderKnowledge().catch(errorMessage);
@@ -290,6 +292,7 @@ function renderSystem() {
   document.querySelector('#system-sources').onclick=()=>navigate('knowledge');
   document.querySelector('#system-ai').onclick=()=>navigate('ai-settings');
   const backupButton=document.createElement('button');backupButton.className='btn';backupButton.textContent='Backups';backupButton.onclick=()=>navigate('backups');document.querySelector('#system-ai').after(backupButton);
+  const operationButton=document.createElement('button');operationButton.className='btn';operationButton.textContent='Operação e atualização';operationButton.onclick=()=>navigate('operations');document.querySelector('#system-ai').after(operationButton);
   const accessButton=document.createElement('button');accessButton.className='btn';accessButton.textContent='Acesso à Mia';accessButton.onclick=()=>navigate('access');document.querySelector('#system-ai').after(accessButton);
   const personal=document.createElement('button');personal.className='btn';personal.textContent='Meu contexto';personal.onclick=()=>navigate('personalization');document.querySelector('#system-ai').after(personal);
 }

@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix='mia-package-') as temporary:
                     time.sleep(.1)
             else:
                 raise RuntimeError('Installed package did not start')
-            for path in ['/', '/assets/app.js', '/assets/app.css', '/assets/mia-icon.svg', '/assets/ai-setup.js', '/assets/access.js', '/assets/personalization.js', '/assets/backups.js']:
+            for path in ['/', '/assets/app.js', '/assets/app.css', '/assets/mia-icon.svg', '/assets/ai-setup.js', '/assets/access.js', '/assets/personalization.js', '/assets/backups.js', '/assets/operations.js']:
                 with urllib.request.urlopen(origin+path,timeout=3) as response:
                     assert response.status==200 and response.read(),path
             print('PASS: installed package starts over HTTP and serves all interface modules offline')
