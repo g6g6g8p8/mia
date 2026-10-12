@@ -89,4 +89,6 @@ Sem chamada paga ou histórico pessoal real. O teste verifica presença literal 
 
 ## Recuperação e independência — 12/10/2026
 
+Na 0.2.0a5, 52 testes passaram no Linux e o fluxo Chromium mobile passou no Mac: escolher conexão direta, trocar para servidor local, verificar limpeza de chave/modelo, salvar, recarregar e desativar. Sem transbordamento horizontal. Nenhuma chamada ao endpoint configurado foi necessária. Sintaxe dos módulos JavaScript validada. O endereço OpenAI segue a [referência oficial](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create); a seleção não certifica compatibilidade de um modelo nem cobra um teste de geração.
+
 52 testes automatizados aprovados no Linux após reforço do backup: verificação somente leitura, rejeição de referências inválidas, preservação de arquivos existentes e limpeza de uma restauração cuja publicação falhou. O ensaio existente continua verificando login, fontes, tarefas, objetivo e contexto após restaurar. Nenhum dado pessoal ou modelo pago utilizado. O roadmap recebeu critérios explícitos de configuração interna sem dependência de Tailscale/OpenRouter; acesso remoto guiado permanece planejado, não validado.

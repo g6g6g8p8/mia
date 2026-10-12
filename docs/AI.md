@@ -2,7 +2,7 @@
 
 A instalação funciona sem IA. Nenhuma chave, conta do projeto, gateway ou máquina do desenvolvedor é exigida.
 
-OpenRouter é opcional. O proprietário pode informar diretamente uma API compatível em Sistema, sem gateway intermediário. APIs com protocolos diferentes precisam de adaptadores próprios, ainda não implementados. O roadmap prevê seleção guiada de provedores na Mia; o formulário atual exige endereço e identificador do modelo.
+OpenRouter é opcional. Em Sistema e no onboarding, escolha continuar sem IA, OpenAI direto, outro serviço/gateway compatível ou servidor local. OpenAI preenche apenas o endereço; modelo, chave e preços são escolhidos pelo proprietário. Outros serviços exigem endereço próprio. A seleção exibe instruções e limpa chave digitada/modelo ao trocar de destino. APIs com protocolos diferentes precisam de adaptadores próprios, ainda não implementados. Não há teste automático de conexão nem catálogo de modelos.
 
 ## Configuração pelo proprietário
 
