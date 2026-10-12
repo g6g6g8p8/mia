@@ -14,6 +14,7 @@ Decisões confirmadas:
 - Onboarding personalizado.
 - IA local ou APIs externas escolhidas pelo usuário.
 - Sem conta central, infraestrutura do fundador ou plataforma comercial obrigatória.
+- Configuração de IA e acesso pela própria Mia. Tailscale e OpenRouter não são dependências obrigatórias; seu uso no ambiente de teste não define a instalação do produto.
 - Repositório totalmente novo, histórico Git iniciado do zero e README independente.
 - Nenhum histórico pessoal, conversa, vault, credencial ou configuração privada no produto.
 - mia.cc é o domínio proposto; disponibilidade e propriedade ainda não verificadas.
@@ -154,6 +155,19 @@ Navegação proposta: Hoje, Áreas, Planejamento, Inteligência e Sistema; Busca
 Branches de implementação partem da linha do novo repositório. O produto existente não recebe mudanças para acomodar o Mia.
 
 ## 10. Testes obrigatórios
+
+### Complemento aprovado em 12/10: configuração autônoma
+
+Manter os marcos, acrescentando estes critérios:
+
+- **M3 — IA na interface:** escolher serviço direto, gateway opcional ou servidor local, informar credencial/modelo/limites e conferir destino. Endereço compatível já é configurável; assistente por provedor, adaptadores nativos e teste de conexão ainda pendentes. Nenhum gateway será intermediário obrigatório. Verificar conexão sem geração quando possível; teste que gere custo exige valor limite e confirmação explícitos.
+- **M4 — Acesso na interface:** mostrar acesso neste computador, na rede local e remoto; guiar endereço/domínio, HTTPS e diagnóstico. Acesso local e LAN não exigem VPN nem conta externa. Não publicar portas automaticamente. Configuração remota deve apresentar alterações e obter confirmação antes de aplicá-las, com opção de desativar e recuperar acesso local.
+- **M4 — Limites da rede:** quando a rede não aceitar conexões de entrada, explicar a necessidade de uma rota alcançável (configuração do roteador/IPv6, servidor próprio ou túnel opcional escolhido pelo usuário). A interface não pode prometer resolver CGNAT sem infraestrutura adicional. Nenhum fornecedor de túnel será obrigatório.
+- **M5 — Aceite independente:** instalar e concluir uma consulta com provedor direto, sem OpenRouter; acessar de outro dispositivo sem Tailscale; validar HTTPS remoto em instalação controlada pelo participante. Documentar o que ainda exigiu ação fora da Mia.
+
+Hoje: configuração de API compatível já acontece em Sistema; acesso remoto guiado ainda não foi implementado. O link do piloto continua usando Tailscale até existir e ser validada uma alternativa. Não alterar a rede do piloto apenas para demonstrar independência.
+
+### Verificações do produto
 - Instalação e reinício em Ubuntu limpo.
 - Persistência ao recriar serviços.
 - Núcleo sem internet e sem IA, após instalação.

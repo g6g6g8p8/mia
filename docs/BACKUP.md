@@ -16,11 +16,14 @@ Usa `MIA_DATA_DIR` ou `./data`, cria arquivo `0600` e não sobrescreve backup ex
 Restauração em diretório **novo e vazio**:
 
 ```bash
+.venv/bin/python -m mia.backup verify backups/mia-snapshot.db
 .venv/bin/python -m mia.backup restore backups/mia-snapshot.db ./restored-data
 MIA_DATA_DIR=./restored-data .venv/bin/uvicorn mia.app:app --host 127.0.0.1 --port 8123
 ```
 
 Valida integridade e estrutura, recusa destino com dados e invalida sessões antigas. Entre com a senha do proprietário restaurado e reconfigure IA. Gerações interrompidas não são reenviadas; propostas pendentes permanecem.
+
+`verify` lê o arquivo sem restaurar nem mostrar conteúdo pessoal, verificando integridade SQLite, tabelas essenciais e referências. Não substitui ensaio de restauração nem certifica compatibilidade com versões futuras. A restauração prepara uma cópia temporária privada e só publica o banco após invalidar sessões e validar a cópia; falhas não deixam um banco parcialmente restaurado. A publicação exige suporte a hard links no sistema de arquivos de destino. Backups incompletos por falha também são removidos.
 
 ## Docker
 

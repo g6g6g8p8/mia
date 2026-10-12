@@ -86,3 +86,7 @@ Versão `0.2.0a4`, concluída em 12/10/2026: 48 testes passaram no Linux e macOS
 Chromium mobile (390 × 844): fontes → prévia → geração simulada → reload → edição de sugestão → abrir apoio → confirmar contexto/objetivo → objetivo em Hoje → prévia sem contexto pessoal → inclusão explícita → limpar contexto. Fluxos anteriores de organização, tarefas e onboarding/importação passaram. Corrigida a associação explícita de rótulos aos campos da tela nova. Nenhum erro JavaScript ou transbordamento horizontal na revisão.
 
 Sem chamada paga ou histórico pessoal real. O teste verifica presença literal dos trechos e controles de aplicação, não se a interpretação do modelo é correta, atual ou atribuída à pessoa certa. Esses aceites dependem de modelos reais e usuários piloto.
+
+## Recuperação e independência — 12/10/2026
+
+52 testes automatizados aprovados no Linux após reforço do backup: verificação somente leitura, rejeição de referências inválidas, preservação de arquivos existentes e limpeza de uma restauração cuja publicação falhou. O ensaio existente continua verificando login, fontes, tarefas, objetivo e contexto após restaurar. Nenhum dado pessoal ou modelo pago utilizado. O roadmap recebeu critérios explícitos de configuração interna sem dependência de Tailscale/OpenRouter; acesso remoto guiado permanece planejado, não validado.

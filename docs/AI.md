@@ -2,6 +2,8 @@
 
 A instalação funciona sem IA. Nenhuma chave, conta do projeto, gateway ou máquina do desenvolvedor é exigida.
 
+OpenRouter é opcional. O proprietário pode informar diretamente uma API compatível em Sistema, sem gateway intermediário. APIs com protocolos diferentes precisam de adaptadores próprios, ainda não implementados. O roadmap prevê seleção guiada de provedores na Mia; o formulário atual exige endereço e identificador do modelo.
+
 ## Configuração pelo proprietário
 
 Use **Sistema → Configurar IA** ou a etapa de IA no onboarding. Informe endereço base (prefixo como `/v1`, sem `/chat/completions`), modelo, chave e limite diário. Salvar não faz chamada. A configuração gráfica prevalece sobre o ambiente e é salva em `MIA_DATA_DIR/ai-settings.json`, permissão `0600`. Sem criptografia implementada pelo aplicativo; o administrador da máquina pode ler esse arquivo.
