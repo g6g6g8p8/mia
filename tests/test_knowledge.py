@@ -26,6 +26,23 @@ def confirm(browser,batch):
     return browser.post('/api/imports/'+batch['id']+'/confirm',json={'item_ids':[i['id'] for i in batch['items']]})
 
 
+def test_retrieval_ranks_answer_above_common_word_distractors(ready):
+    browser,area,_=ready
+    note='O encontro de jardinagem será em 20 de novembro de 2030. A sala tem capacidade para 12 pessoas. O endereço ainda não está registrado.'
+    confirm(browser,upload(browser,area,note.encode(),'encontro.md').json())
+    for i in range(7):
+        distractor=f'Nota sintética independente número {i}. '+('Registrar observações sobre solo, rega e iluminação das plantas. Separar hipótese de observação; consultar fontes antes de concluir. '*5)
+        confirm(browser,upload(browser,area,distractor.encode(),f'estudo-{i}.md').json())
+    query='Qual é a data do encontro de jardinagem, capacidade da sala e endereço? Responda brevemente com fontes e declare lacunas.'
+    sources=browser.get('/api/ai/context',params={'area_id':area,'q':query}).json()
+    documents=[s for s in sources if s['source'].startswith('doc:')]
+    assert documents[0]['path']=='encontro.md'
+    assert '12 pessoas' in documents[0]['content']
+    assert len(documents)<=3
+    stop_only=browser.get('/api/ai/context',params={'area_id':area,'q':'de do da com para'}).json()
+    assert not any(s['source'].startswith('doc:') for s in stop_only)
+
+
 def test_review_confirm_repeat_delete_and_export(ready):
     browser,area,_=ready
     raw='# Decisão\n\nLançamento previsto em novembro.'.encode()

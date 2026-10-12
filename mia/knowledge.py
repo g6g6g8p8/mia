@@ -224,14 +224,17 @@ def remove(batch,owner,audit):
 
 
 def retrieve(owner,area_id,query,limit=3):
-    terms=list(dict.fromkeys(re.findall(r'\w{2,}',normalized(query))))[:8]
+    stopwords={'que','para','uma','como','qual','quais','the','and','com','essa','area','esta','de','do','da','dos','das','em','no','na','nos','nas','um','os','as','ao','aos','ou','por'}
+    terms=[t for t in dict.fromkeys(re.findall(r'\w{2,}',normalized(query))) if t not in stopwords][:8]
     if not terms: return []
-    terms=[t for t in terms if t not in {'que','para','uma','como','qual','quais','the','and','com','essa','area','esta'}] or terms
     conditions=['c.searchable LIKE ?' for _ in terms]
     values=['%'+t+'%' for t in terms]
     scope='d.owner_id=? AND d.active=1'; scope_values=[owner['id']]
     if area_id: scope+=' AND d.area_id=?'; scope_values.append(area_id)
-    sql=f"SELECT d.id,d.title,d.path,d.kind,d.area_id,d.created_at,c.ordinal,c.content FROM chunks c JOIN documents d ON d.id=c.document_id WHERE {scope} AND ({' OR '.join(conditions)}) ORDER BY ({' + '.join(conditions)}) DESC,d.id,c.ordinal LIMIT ?"
+    # LIKE has lower precedence than addition: each match must be grouped
+    # before summing, otherwise the score becomes chained comparisons.
+    score=' + '.join('('+condition+')' for condition in conditions)
+    sql=f"SELECT d.id,d.title,d.path,d.kind,d.area_id,d.created_at,c.ordinal,c.content FROM chunks c JOIN documents d ON d.id=c.document_id WHERE {scope} AND ({' OR '.join(conditions)}) ORDER BY ({score}) DESC,d.id,c.ordinal LIMIT ?"
     with connect() as db:
         return [{'source':'doc:'+r['id'],**dict(r)} for r in db.execute(sql,scope_values+values+values+[limit])]
 

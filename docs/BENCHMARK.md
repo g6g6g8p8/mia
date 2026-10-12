@@ -1,6 +1,6 @@
 # Ensaio de qualidade e custo — protocolo antes de medir
 
-Status: preparado; nenhum resultado de modelo real registrado. Execução depende de provedor/modelo e teto total autorizados. Use instalação descartável e fontes sintéticas abaixo, nunca chaves ou históricos pessoais no repositório.
+Status: ensaio sintético executado em 12/10/2026; [resultados](REAL-MODEL-VALIDATION.md), incluindo comparação após correção de busca. Amostra insuficiente para alegar economia ou qualidade geral. Use instalação descartável e fontes sintéticas abaixo, nunca chaves ou históricos pessoais no repositório.
 
 ## Material sintético
 

@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.12 · 12/10/2026 · Status: M2/M3 implementados parcialmente; instalação limpa de pacote, atualização e recuperação do M4 validadas em Ubuntu isolado. Aceites com modelo real e usuários externos permanecem pendentes. Situação consolidada em RELEASE-CHECKLIST.md.
+Versão 0.13 · 12/10/2026 · Status: M2/M3 implementados parcialmente; instalação limpa de pacote, atualização e recuperação do M4 validadas em Ubuntu isolado. Ensaios sintéticos com modelo real via gateway concluídos; aceites com provedor direto e usuários externos permanecem pendentes. Situação consolidada em RELEASE-CHECKLIST.md.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -167,7 +167,7 @@ Manter os marcos, acrescentando estes critérios:
 
 Hoje: configuração de API compatível já acontece em Sistema. Na 0.2.0a6, o assistente de acesso salva preferências e endereço HTTPS e diagnostica a sessão atual; não aplica configuração de rede/certificados nem valida acesso externo. Detalhes em [ACCESS.md](ACCESS.md). O link do piloto continua usando Tailscale até existir e ser validada uma alternativa. Não alterar a rede do piloto apenas para demonstrar independência.
 
-Retorno ao plano original após esse complemento: concluir aceites M2/M3 com modelo real e fontes próprias dos participantes (provedor/modelo/teto autorizados ainda pendentes); seguir no M4 com recuperação e atualização reproduzível; somente então fechar M5. Não marcar marcos concluídos pela existência dos assistentes. A automação de HTTPS/rede e validação sem Tailscale continuam pendentes no M4/M5.
+Retorno ao plano original após esse complemento: concluir aceites M2/M3 com modelo real e fontes próprias dos participantes (modelo via gateway e teto total de US$ 1 já autorizados; fontes reais dos participantes pendentes); seguir no M4 com recuperação e atualização reproduzível; somente então fechar M5. Não marcar marcos concluídos pela existência dos assistentes. A automação de HTTPS/rede e validação sem Tailscale continuam pendentes no M4/M5.
 
 ### Verificações do produto
 - Instalação e reinício em Ubuntu limpo.
@@ -193,7 +193,7 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 
 ## 12. Estado desta entrega
 
-Atualização de 12/10: primeiro ensaio com modelo real autorizado e concluído, com sete chamadas sintéticas de DeepSeek via OpenRouter, custo informado US$ 0.001906923 sobre teto total US$ 1. Corrigidos formato de citação e registro de uso em resposta rejeitada. Detalhes/limites em [REAL-MODEL-VALIDATION.md](REAL-MODEL-VALIDATION.md). Aceites de provedores diretos, organização/personalização reais, pilotos externos e benchmark comparativo continuam abertos; menções anteriores abaixo a ausência de modelo real descrevem as etapas anteriores.
+Atualização de 12/10 — 0.2.0a9: 17 chamadas sintéticas de DeepSeek via OpenRouter, custo informado acumulado US$ 0.0045882598 sobre teto total US$ 1. Organização e personalização passaram com edição, aprovação parcial e idempotência. Comparação de contexto revelou falha de ordenação da busca, corrigida e revalidada. Entrada caiu de 2.653 para 983 tokens no caso medido; custo observado não diminuiu. Detalhes em [REAL-MODEL-VALIDATION.md](REAL-MODEL-VALIDATION.md). Provedor direto, fontes/exports reais e pilotos externos continuam pendentes. Os itens abaixo registram a evolução histórica, inclusive pendências posteriormente resolvidas.
 - Fundação documental preparada em repositório Git local novo.
 - README independente e contrato inicial do harness.
 - Nenhum código ou histórico do sistema de origem importado.
