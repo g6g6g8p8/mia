@@ -1,5 +1,5 @@
 // Guidance only: the server remains responsible for destination and key rules.
-export function guideAI(form, settings) {
+export function guideAI(form, settings, api) {
   const destination = form.elements.endpoint;
   const enabled = form.elements.enabled;
   const key = form.elements.api_key;
@@ -13,6 +13,41 @@ export function guideAI(form, settings) {
     '<p id="ai-guide" class="subtle"></p>' +
     '<p class="subtle">Nenhum gateway é obrigatório. Salvar não envia seus dados nem testa o modelo.</p>';
   form.prepend(choices);
+  const probe = document.createElement('section');
+  probe.innerHTML = '<p class="subtle">Verificar consulta apenas o catálogo do destino salvo, com a chave salva. Não envia notas, não gera texto e não verifica saldo ou cobrança.</p><button type="button" class="btn" id="ai-check">Verificar conexão salva</button><p role="status" id="ai-check-result"></p>';
+  form.append(probe);
+  const check = probe.querySelector('button');
+  const status = probe.querySelector('[role="status"]');
+  let saved = settings;
+  let dirty = false;
+  let checking = false;
+  function refreshCheck() { check.disabled = checking || dirty || !saved.endpoint || !saved.model; }
+  function changed() {
+    dirty = true;
+    status.textContent = 'Salve as alterações antes de verificar a conexão.';
+    refreshCheck();
+  }
+  form.addEventListener('input', changed);
+  form.addEventListener('change', changed);
+  form.addEventListener('ai-saved', event => {
+    saved = event.detail;
+    dirty = false;
+    status.textContent = '';
+    refreshCheck();
+  });
+  check.onclick = async () => {
+    const snapshot = saved;
+    checking = true;
+    refreshCheck();
+    status.textContent = 'Consultando catálogo de ' + saved.endpoint + '…';
+    try {
+      const result = await api('/api/ai/connection', {method: 'POST', body: JSON.stringify({endpoint: saved.endpoint, model: saved.model})});
+      if (!dirty && saved === snapshot) status.textContent = result.endpoint + ' — ' + result.message;
+    } catch (error) {
+      if (!dirty && saved === snapshot) status.textContent = error.message;
+    } finally { checking = false; refreshCheck(); }
+  };
+  refreshCheck();
   const select = choices.querySelector('select');
   const help = choices.querySelector('#ai-guide');
   const classify = () => {

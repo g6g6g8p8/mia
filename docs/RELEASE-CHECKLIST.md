@@ -2,7 +2,7 @@
 
 Estado: **alpha técnica, não release final para distribuição ampla**. Esta lista descreve evidência, não promessa.
 
-Atualização 0.2.0a9: consulta, ação, organização e personalização com modelo real via OpenRouter validadas em material sintético. Comparação de contexto executada e falha de busca corrigida. Total acumulado: 17 chamadas, US$ 0.0045882598 informado pelo provedor, dentro do teto total US$ 1. [Resultados e limitações](REAL-MODEL-VALIDATION.md). Não fecha provedor direto, economia, fontes reais ou piloto externo.
+Atualização de evidência do modelo (0.2.0a9): consulta, ação, organização e personalização com modelo real via OpenRouter validadas em material sintético. Comparação de contexto executada e falha de busca corrigida. Total acumulado: 17 chamadas, US$ 0.0045882598 informado pelo provedor, dentro do teto total US$ 1. [Resultados e limitações](REAL-MODEL-VALIDATION.md). Não fecha provedor direto, economia, fontes reais ou piloto externo.
 
 Ensaio completo em Ubuntu 24.04.5 isolado aprovado: instalação nova, 59 testes sem rede, migração, reinício, restauração e HTTP/assets do pacote instalado. Evidência reproduzível em VALIDATION.md e `scripts/clean_ubuntu.sh`. Protocolo em [BENCHMARK.md](BENCHMARK.md), com ensaio sintético executado. A versão atual passou 66 testes no Linux; a evidência Ubuntu acima pertence à versão anterior.
 
@@ -27,3 +27,9 @@ Ensaio completo em Ubuntu 24.04.5 isolado aprovado: instalação nova, 59 testes
 Não divulgar economia percentual, custo fixo, compatibilidade universal de modelos/exports, instalação sem ajuda ou segurança certificada a partir de testes simulados. Falha que perde dados, duplica efeitos, envia contexto não autorizado ou excede limites bloqueia release até correção e novo ensaio do caso.
 
 Conversa contínua, projetos estruturados e conectores adicionais permanecem evolução de produto; não entram como funcionalidades entregues nesta alpha.
+
+## Configuração na 0.2.0a10
+
+Verificação do catálogo do destino salvo disponível na interface, sem gerar texto ou enviar notas. Autenticação e origem obrigatórias; destino comparado com a tela, sem redirecionamento de chave, resposta limitada a 2 MiB e prazo total de dez segundos. Falhas não exibem resposta bruta/segredos nem repetem a chamada. Catálogo público não comprova chave; alias ausente não comprova modelo inválido. Provedor direto real continua pendente.
+
+Validação 0.2.0a10: 77 testes aprovados no Linux e Mac; onboarding mobile completo passou no Mac com servidor de catálogo local sintético. O teste verificou que salvar não consulta o catálogo, editar bloqueia a verificação até salvar, o botão faz apenas GET /models e nenhuma execução de geração é criada. Não foi feita nova chamada paga.

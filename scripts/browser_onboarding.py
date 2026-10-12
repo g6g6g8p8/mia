@@ -6,8 +6,24 @@ import sys
 import tempfile
 import time
 import urllib.request
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from playwright.sync_api import sync_playwright,expect
+
+metadata_requests = []
+class Catalog(BaseHTTPRequestHandler):
+    def do_GET(self):
+        metadata_requests.append(self.path)
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(b'{"data":[{"id":"synthetic-local-model"}]}')
+    def log_message(self, *args):
+        pass
+
+catalog = ThreadingHTTPServer(('127.0.0.1', 0), Catalog)
+threading.Thread(target=catalog.serve_forever, daemon=True).start()
 
 with socket.socket() as s:
     s.bind(('127.0.0.1',0));port=s.getsockname()[1]
@@ -49,10 +65,16 @@ with tempfile.TemporaryDirectory(prefix='mia-onboarding-fixture-') as data:
             connection.select_option('local')
             expect(page.get_by_label('Chave própria')).to_have_value('')
             expect(page.get_by_label('Modelo',exact=True)).to_have_value('')
-            page.get_by_label('Endereço base da API').fill('http://127.0.0.1:19876/v1')
+            page.get_by_label('Endereço base da API').fill(f'http://127.0.0.1:{catalog.server_port}/v1')
             page.get_by_label('Modelo',exact=True).fill('synthetic-local-model')
+            expect(page.get_by_role('button',name='Verificar conexão salva')).to_be_disabled()
             page.get_by_role('button',name='Salvar configuração').click()
             expect(page.get_by_text('Configuração salva. Nenhuma chamada foi feita.')).to_be_visible()
+            assert metadata_requests == []
+            page.get_by_role('button',name='Verificar conexão salva').click()
+            expect(page.locator('#ai-check-result')).to_contain_text('identificador do modelo encontrado')
+            assert metadata_requests == ['/v1/models']
+            assert page.request.get(url+'/api/runs').json() == []
             page.reload()
             expect(connection).to_have_value('local')
             expect(page.get_by_label('Modelo',exact=True)).to_have_value('synthetic-local-model')
@@ -125,3 +147,4 @@ with tempfile.TemporaryDirectory(prefix='mia-onboarding-fixture-') as data:
             print('M3 browser passed: mobile onboarding, persisted goal/step, import preview, conflicts/comparison, pause/resume, selection, local search, original source, AI disabled config, deletion.')
     finally:
         server.terminate();server.wait(timeout=10)
+        catalog.shutdown();catalog.server_close()

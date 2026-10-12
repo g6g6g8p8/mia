@@ -25,6 +25,7 @@ from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
+from . import connection
 from . import knowledge, organization, personalization, access, backup_jobs
 
 
@@ -643,6 +644,11 @@ def save_ai_config(payload: installation_settings.AISettings, owner: Owner) -> d
         installation_settings.save(payload)
         audit(db, owner["id"], "ai.config.updated")
     return harness.config()
+
+
+@app.post('/api/ai/connection')
+async def check_ai_connection(payload: connection.Destination, owner: Owner) -> dict:
+    return await connection.check(payload)
 
 
 @app.get("/api/runs")

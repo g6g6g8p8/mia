@@ -20,6 +20,8 @@ A integração tem testes simulados e um [ensaio inicial com DeepSeek via OpenRo
 
 A primeira versão será validada com poucos usuários piloto. O repositório é público por decisão do proprietário; a licença específica de uso e distribuição ainda está pendente.
 
+Em Sistema → IA, **Verificar conexão salva** consulta apenas o catálogo do serviço com a chave salva. Não gera texto nem envia notas. O resultado distingue catálogo acessível, identificador encontrado e situações inconclusivas; não certifica a chave, saldo, suporte a ferramentas ou qualidade. Funciona também no onboarding e não exige gateway.
+
 ## O que o Mia deve oferecer
 - Onboarding para configurar objetivos, áreas, fontes e permissões.
 - Contexto recuperado conforme a tarefa, com indicação de origem.
