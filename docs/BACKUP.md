@@ -44,6 +44,18 @@ Use nome novo por snapshot e guarde cópia fora do volume. Restaure no diretóri
 
 Este é um procedimento manual. Instalador de atualização, reversão automática e ensaio de upgrade entre versões em Ubuntu limpo continuam pendentes; o backup restaurado não contém alterações feitas depois do snapshot.
 
+### Ensaio reproduzível sem dados reais
+
+Em um ambiente de desenvolvimento com dependências instaladas, execute:
+
+```bash
+python scripts/upgrade_smoke.py --baseline-ref 2d43f085c8e9388202ec3d3914f1da20a4a14b9a
+```
+
+O commit informado corresponde à 0.2.0a3 do repositório público. O script extrai esse commit e o `HEAD` em diretórios temporários, cria dados sintéticos, atualiza o banco, reinicia, restaura o snapshot em outro diretório e verifica a versão antiga sobre o banco restaurado. Não aponta para dados da instalação, não abre serviço de rede e não chama IA. Exige Git e Python 3.12+ com as dependências de desenvolvimento. O teste usa código dos commits, não alterações ainda não commitadas.
+
+Verifica identidade, tarefa, fonte, objetivo, migração de contexto, sessão invalidada após restauração e reserva de custo preservada após interrupção. Não substitui build de pacote, instalação de dependências em máquina limpa nem teste com falha elétrica real.
+
 ## Limitações atuais
 
 Somente backups locais confiáveis. Sem criptografia, agendamento, rotação, restauração do ZIP exportado ou atualização automática. O ensaio entre máquinas usou dados sintéticos; não restaurou dados reais do proprietário.
