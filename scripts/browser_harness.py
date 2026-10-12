@@ -23,6 +23,10 @@ class Provider(BaseHTTPRequestHandler):
         if body['tools'][0]['function']['name']=='propose_organization':
             assert len(context['context'])==1 and context['context'][0]['kind']=='markdown'
             result['choices'][0]['message']['tool_calls'][0]['function']={'name':'propose_organization','arguments':json.dumps({'areas':[{'name':'Pesquisa','description':'Notas para pesquisar plantas.','document_ids':[context['context'][0]['id']]}]})}
+        if body['tools'][0]['function']['name']=='propose_personalization':
+            assert len(context['context'])==1
+            evidence=[{'document_id':context['context'][0]['id'],'quote':'Estudar as plantas do jardim.'}]
+            result['choices'][0]['message']['tool_calls'][0]['function']={'name':'propose_personalization','arguments':json.dumps({'context':{'text':'Pesquisa pessoal sobre plantas.','evidence':evidence},'goal':{'text':'Organizar o estudo do jardim.','evidence':evidence}})}
         data=json.dumps(result).encode()
         self.send_response(200)
         self.send_header('Content-Type','application/json')
@@ -115,9 +119,53 @@ with tempfile.TemporaryDirectory(prefix='mia-browser-fixture-') as data_dir:
             expect(page.get_by_text('Contexto revisado pelo usuário de teste.',exact=True)).to_be_visible()
             context=page.request.get(url+'/api/ai/context?area_id='+new['id']+'&q=plantas').json()
             assert context[0]['description']=='Contexto revisado pelo usuário de teste.'
+            page.get_by_role('button',name='Fontes',exact=True).click()
+            page.get_by_role('button',name='Personalizar minha Mia',exact=True).click()
+            try:
+                expect(page.locator('#personalization-form')).to_be_visible(timeout=5000)
+                assert page.get_by_label('Área das fontes',exact=True).input_value(timeout=5000)==new['id']
+            except Exception:
+                print('Synthetic UI diagnostic:',errors,page.locator('#toast').inner_text(),page.locator('#personalization-form').inner_html())
+                raise
+            expect(page.locator('input[name=source]')).to_have_count(1)
+            page.locator('input[name=source]').check()
+            page.get_by_role('button',name='Ver trechos selecionados',exact=True).click()
+            expect(page.locator('#personal-preview-text')).to_contain_text('Estudar as plantas do jardim.')
+            page.locator('input[name=consent]').check()
+            page.get_by_role('button',name='Sugerir contexto e objetivo',exact=True).click()
+            expect(page.get_by_text('Aguardando sua revisão',exact=True)).to_be_visible()
+            assert page.request.get(url+'/api/personalization').json()['text']==''
+            page.reload()
+            page.get_by_role('button',name='Sistema',exact=True).click()
+            page.get_by_role('button',name='Meu contexto',exact=True).click()
+            page.locator('[data-personal-field=context] textarea').fill('Contexto escolhido no celular.')
+            page.get_by_label('Aplicar este contexto',exact=True).check()
+            page.get_by_label('Substituir meu objetivo atual',exact=True).check()
+            page.get_by_role('button',name='Abrir fonte de apoio',exact=True).first.click()
+            expect(page.locator('#source-dialog')).to_contain_text('Estudar as plantas do jardim.')
+            page.get_by_role('button',name='Fechar fonte',exact=True).click()
+            assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Personalization mobile overflow'
+            page.get_by_role('button',name='Confirmar personalização selecionada',exact=True).click()
+            expect(page.get_by_text('Personalização aplicada. Campos confirmados: contexto, objetivo.',exact=True)).to_be_visible()
+            page.get_by_role('button',name='Hoje',exact=True).click()
+            expect(page.get_by_text('Organizar o estudo do jardim.',exact=True)).to_be_visible()
+            page.get_by_role('button',name='Inteligência',exact=True).click()
+            page.get_by_role('button',name='Ver contexto que será enviado',exact=True).click()
+            expect(page.locator('#context-preview')).to_contain_text('area:')
+            expect(page.locator('#context-preview')).not_to_contain_text('Contexto escolhido no celular.')
+            page.locator('[name=include_personal_context]').check()
+            page.get_by_role('button',name='Ver contexto que será enviado',exact=True).click()
+            expect(page.locator('#context-preview')).to_contain_text('Contexto escolhido no celular.')
+            page.get_by_role('button',name='Sistema',exact=True).click()
+            page.get_by_role('button',name='Meu contexto',exact=True).click()
+            page.get_by_label('Meu contexto pessoal',exact=True).fill('')
+            with page.expect_response(lambda response:response.url.endswith('/api/personalization') and response.request.method=='PUT'):
+                page.get_by_role('button',name='Salvar meu contexto',exact=True).click()
+            expect(page.get_by_label('Meu contexto pessoal',exact=True)).to_have_value('')
+            assert page.request.get(url+'/api/personalization').json()['text']==''
             assert not errors, errors
             browser.close()
-            print('Browser harness passed: HTTP test double, task confirmation/rejection, mobile organization preview, persisted proposal, edited confirmation, source moved, no automatic task.')
+            print('Browser harness passed: HTTP test double, task/organization, mobile personalization with evidence, reload, edited confirmation, goal in Today, opt-in context, clearing context.')
     finally:
         server.terminate()
         server.wait(timeout=10)

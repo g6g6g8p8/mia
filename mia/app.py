@@ -24,7 +24,7 @@ from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
-from . import knowledge, organization
+from . import knowledge, organization, personalization
 
 
 ROOT = Path(__file__).resolve().parent
@@ -494,6 +494,7 @@ def export_data(owner: Owner) -> StreamingResponse:
         "runs": harness.list_runs(owner, all_runs=True),
         "documents": documents,
         "onboarding": dict(profile) if profile else None,
+        "personal_context": personalization.get_state(owner),
     }
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -511,19 +512,23 @@ class OnboardingInput(BaseModel):
     goal: str = Field(default='',max_length=1000)
     completed: bool = False
     step: int = Field(default=0,ge=0,le=3)
+    expected_goal_revision: int | None = Field(default=None,ge=0)
 
 
 @app.get('/api/onboarding')
 def get_onboarding(owner: Owner) -> dict:
     with connect() as db:
-        row=db.execute('SELECT goal,completed,step FROM onboarding WHERE owner_id=?',(owner['id'],)).fetchone()
-    return dict(row) if row else {'goal':'','completed':False,'step':0}
+        row=db.execute('SELECT goal,completed,step,goal_revision FROM onboarding WHERE owner_id=?',(owner['id'],)).fetchone()
+    return dict(row) if row else {'goal':'','completed':False,'step':0,'goal_revision':0}
 
 
 @app.put('/api/onboarding')
 def save_onboarding(payload: OnboardingInput, owner: Owner) -> dict:
-    with transaction() as db:
-        db.execute('INSERT INTO onboarding(owner_id,goal,completed,updated_at,step) VALUES(?,?,?,?,?) ON CONFLICT(owner_id) DO UPDATE SET goal=excluded.goal,completed=excluded.completed,updated_at=excluded.updated_at,step=excluded.step',(owner['id'],payload.goal.strip(),int(payload.completed),iso(),payload.step))
+    with transaction(immediate=True) as db:
+        current=personalization.state_from_db(db,owner)
+        if payload.expected_goal_revision is not None and current['goal_revision']!=payload.expected_goal_revision and current['goal']!=payload.goal.strip():
+            raise HTTPException(409,'O objetivo mudou. Reabra o onboarding antes de editar.')
+        db.execute('INSERT INTO onboarding(owner_id,goal,completed,updated_at,step,goal_revision) VALUES(?,?,?,?,?,?) ON CONFLICT(owner_id) DO UPDATE SET goal=excluded.goal,goal_revision=onboarding.goal_revision+(onboarding.goal!=excluded.goal),completed=excluded.completed,updated_at=excluded.updated_at,step=excluded.step',(owner['id'],payload.goal.strip(),int(payload.completed),iso(),payload.step,int(bool(payload.goal.strip()))))
     return get_onboarding(owner)
 
 
@@ -576,8 +581,8 @@ def ai_config(owner: Owner) -> dict:
 
 
 @app.get("/api/ai/context")
-def ai_context(area_id: str, owner: Owner, q: str = '') -> list[dict]:
-    return harness.context(owner, area_id, q)
+def ai_context(area_id: str, owner: Owner, q: str = '', include_personal_context: bool = False) -> list[dict]:
+    return harness.context(owner, area_id, q, include_personal_context)
 
 
 @app.put("/api/ai/config")
@@ -598,6 +603,22 @@ def runs(owner: Owner) -> list[dict]:
 @app.post('/api/organization/preview')
 def organization_preview(payload: organization.SourceSelection, owner: Owner) -> list[dict]:
     return organization.preview(payload,owner)
+
+
+@app.get('/api/personalization')
+def personal_context(owner: Owner) -> dict:
+    return personalization.get_state(owner)
+
+
+@app.put('/api/personalization')
+def edit_personal_context(payload: personalization.ContextEdit, owner: Owner) -> dict:
+    return personalization.edit_context(payload,owner,audit)
+
+
+@app.post('/api/runs/{run_id}/personalization/approve')
+def approve_personalization(run_id: str, payload: personalization.PersonalizationPlan, owner: Owner) -> dict:
+    personalization.approve(run_id,payload,owner,audit)
+    return harness.get_run(run_id,owner)
 
 
 @app.post('/api/runs/{run_id}/organization/approve')

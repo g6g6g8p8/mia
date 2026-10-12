@@ -78,3 +78,11 @@ Versão `0.2.0a3`, 11/10/2026: 40 testes aprovados. Novos casos cobrem prévia l
 No Chromium mobile, o adaptador HTTP real falou com um provedor simulado local: importação → seleção → prévia → consentimento → sugestão → reload → edição do nome → conferir original → confirmar → verificar área/destino das fontes → editar descrição da área → conferir novo contexto. Nenhuma tarefa adicional foi criada. Fluxo anterior de onboarding/importação e tarefa/recusa também passou. Sem erros JavaScript ou transbordamento horizontal na tela de revisão a 390 px.
 
 Isso valida o contrato e a revisão humana, não qualidade semântica, cobrança real ou adequação das sugestões a usuários reais. A geração usa somente o início das fontes escolhidas e não implementa perfil pessoal inferido.
+
+## Sexta rodada — contexto pessoal e objetivo revisáveis
+
+Versão `0.2.0a4`, concluída em 12/10/2026: 48 testes passaram no Linux e macOS. Casos novos cobrem trechos de apoio inexistentes, fontes externas, campos inesperados, confirmação parcial/concorrente, conflito com edição mais recente, fonte pausada, recusa, orçamento compartilhado, contexto fora do envio padrão e inclusão explícita. Backup/restauração também preservam contexto confirmado e revisão. Propostas originais e escolhas aplicadas permanecem na exportação.
+
+Chromium mobile (390 × 844): fontes → prévia → geração simulada → reload → edição de sugestão → abrir apoio → confirmar contexto/objetivo → objetivo em Hoje → prévia sem contexto pessoal → inclusão explícita → limpar contexto. Fluxos anteriores de organização, tarefas e onboarding/importação passaram. Corrigida a associação explícita de rótulos aos campos da tela nova. Nenhum erro JavaScript ou transbordamento horizontal na revisão.
+
+Sem chamada paga ou histórico pessoal real. O teste verifica presença literal dos trechos e controles de aplicação, não se a interpretação do modelo é correta, atual ou atribuída à pessoa certa. Esses aceites dependem de modelos reais e usuários piloto.

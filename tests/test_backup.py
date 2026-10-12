@@ -15,6 +15,7 @@ def test_snapshot_restore_in_empty_install_preserves_knowledge_and_login(client,
     batch=browser.post('/api/imports',json={'filename':'fonte.md','area_id':area,'content_base64':base64.b64encode(b'# Source\nBackup proof').decode()}).json()
     browser.post('/api/imports/'+batch['id']+'/confirm',json={'item_ids':[batch['items'][0]['id']]})
     browser.put('/api/onboarding',json={'goal':'Objetivo preservado','completed':True,'step':3})
+    browser.put('/api/personalization',json={'text':'Contexto confirmado preservado','expected_revision':0})
     backup=tmp_path/'snapshot.db';snapshot(backup)
     assert backup.stat().st_mode&0o777==0o600
     target=tmp_path/'restored';restore(backup,target)
@@ -26,3 +27,5 @@ def test_snapshot_restore_in_empty_install_preserves_knowledge_and_login(client,
         assert restarted.get('/api/tasks').json()[0]['title']=='Tarefa preservada'
         assert restarted.get('/api/documents').json()[0]['title']=='Source'
         assert restarted.get('/api/onboarding').json()['goal']=='Objetivo preservado'
+        assert restarted.get('/api/personalization').json()['text']=='Contexto confirmado preservado'
+        assert restarted.get('/api/personalization').json()['revision']==1

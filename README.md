@@ -14,7 +14,9 @@ O **M2** acrescenta pedidos independentes com contexto de uma área, adaptador o
 
 A organização assistida do M3 recebe até seis fontes escolhidas, propõe até quatro novas áreas e permite editar, selecionar, recusar ou confirmar. Confirmar cria as áreas e distribui as fontes autorizadas, com registro da proposta original e da escolha aplicada. Nomes e descrições das áreas podem ser editados depois.
 
-A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, inferência de perfil/objetivos pessoais, conectores, atualização/backup automáticos e benchmark de economia continuam pendentes.
+Em **Meu contexto**, o usuário pode solicitar sugestões de resumo pessoal e objetivo a partir de fontes selecionadas. Cada sugestão exige trechos de apoio presentes no material enviado. Campos são editáveis e aprovados separadamente. O contexto confirmado só entra em consultas de Inteligência quando o usuário marca a opção de incluí-lo.
+
+A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, conectores, atualização/backup automáticos e benchmark de economia continuam pendentes.
 
 A primeira versão será validada com poucos usuários piloto. O repositório é público por decisão do proprietário; a licença específica de uso e distribuição ainda está pendente.
 

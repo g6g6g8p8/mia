@@ -1,5 +1,5 @@
 # Contrato do harness
-Status: contrato-alvo. Implementado: contexto por área com fontes importadas, uma chamada, propostas confirmadas de tarefa ou organização de fontes, idempotência, persistência, cota de chamadas e orçamento estimado com reserva. Organização usa seleção explícita de fontes e confirmação editável; revalida estado e escopo antes de mover documentos. Consulte `AI.md` para limites reais. Fatura confirmada, qualidade com modelo real, conversa contínua e retomada de geração permanecem pendentes.
+Status: contrato-alvo. Implementado: contexto por área com fontes importadas, uma chamada, propostas confirmadas de tarefa, organização de fontes ou contexto pessoal/objetivo, idempotência, persistência, cota de chamadas e orçamento estimado com reserva. Organização e personalização usam seleção explícita de fontes e confirmação editável; revalidam estado e escopo antes de aplicar. Personalização exige trechos literais de apoio e preserva edições posteriores. Contexto pessoal confirmado só é incluído por opção explícita na consulta. Consulte `AI.md` para limites reais. Fatura confirmada, qualidade com modelo real, conversa contínua e retomada de geração permanecem pendentes.
 
 ## Entrada de uma execução
 - Identidade autenticada e área autorizada.

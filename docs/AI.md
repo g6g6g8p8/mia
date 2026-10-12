@@ -22,7 +22,7 @@ IA local é opcional e avançada. Um servidor local compatível pode ser usado, 
 4. Revise a resposta e as fontes que foram enviadas.
 5. Se houver proposta de tarefa, confirme ou recuse.
 
-Contexto: área, até 12 tarefas com notas limitadas e até três trechos de fontes importadas encontrados pelo pedido. Sem busca semântica ou conector externo. Outras áreas, e-mail, senha e histórico completo não são enviados. Referências inexistentes são indicadas; isso não certifica a interpretação. O modelo recebe a data no fuso do proprietário.
+Contexto: área, até 12 tarefas com notas limitadas e até três trechos de fontes importadas encontrados pelo pedido. Sem busca semântica ou conector externo. O contexto pessoal e objetivo só entram quando o usuário marca **Incluir meu contexto pessoal e objetivo confirmados nesta consulta**; aparecem na prévia como `profile:1`. Fontes de outras áreas, dados de autenticação e histórico completo não são adicionados. Referências inexistentes são indicadas; isso não certifica a interpretação. O modelo recebe a data no fuso do proprietário.
 
 ## Limites implementados
 
@@ -33,7 +33,7 @@ Contexto: área, até 12 tarefas com notas limitadas e até três trechos de fon
 - Reserva transacional da chamada; no máximo uma chamada em andamento por proprietário.
 - Falhas e chamadas interrompidas também consomem a cota: podem ter sido cobradas.
 - Identificador idempotente por pedido; aprovação repetida não duplica a tarefa.
-- Cada pedido habilita uma ferramenta: `propose_task` em Inteligência ou `propose_organization` em Organizar fontes. A resposta não pode trocar de ferramenta. Não há acesso a shell, arquivos externos ou conectores.
+- Cada pedido habilita uma ferramenta: `propose_task`, `propose_organization` ou `propose_personalization`, conforme a função escolhida. A resposta não pode trocar de ferramenta. Não há acesso a shell, arquivos externos ou conectores.
 - A proposta fica no banco e pode ser decidida depois. Ao reiniciar, chamadas em andamento viram falha explícita e não são reenviadas.
 - Use apenas um processo/worker da aplicação nesta versão.
 
@@ -56,3 +56,13 @@ Uma chamada compartilha cota, reserva e reconciliação com Inteligência. A fer
 Na revisão, selecione as áreas desejadas, edite nomes/descrições e desmarque documentos que devem permanecer no lugar. Confirmar cria novas áreas e move apenas os documentos escolhidos, mantendo conteúdo, IDs e proveniência da importação. Nomes já existentes exigem edição: esta versão não mescla áreas. Fontes pausadas, excluídas ou movidas desde a geração bloqueiam a confirmação correspondente. Confirmação repetida com o mesmo conteúdo é idempotente; uma seleção diferente após aplicação recebe conflito.
 
 Descrições aprovadas passam a ser contexto próprio das áreas. Pausar ou excluir a fonte original não apaga essas descrições; revise-as em **Áreas → Editar área**. Proposta original, trechos enviados e seleção aplicada ficam no histórico/exportação. Não são inferidos perfil pessoal, novos objetivos, prazos ou tarefas nesta função.
+
+## Contexto pessoal e objetivo — M3
+
+Em **Sistema → Meu contexto** ou **Fontes → Personalizar minha Mia**, selecione até seis fontes da mesma área, confira a prévia e autorize a geração. Usa os mesmos limites de trechos, orçamento e cota da organização. O contexto já confirmado e o objetivo atual não são enviados automaticamente nessa geração; apenas pedido, metadados e trechos das fontes selecionadas.
+
+Cada sugestão contém texto de até 1.000 caracteres e de um a três trechos literais de apoio, com IDs de fontes selecionadas. O servidor rejeita IDs externos, trechos ausentes e campos desconhecidos. Presença do trecho não comprova a conclusão: a pessoa revisa autoria, atualidade e interpretação antes de confirmar.
+
+Os campos começam desmarcados. O usuário pode editar texto, aplicar somente contexto ou somente objetivo, ou recusar tudo. Confirmar substitui somente os campos escolhidos. Revisões locais impedem que uma proposta antiga sobrescreva uma edição posterior; fontes pausadas, removidas ou movidas também bloqueiam a aprovação relevante. Confirmação repetida é idempotente e não repete a escrita.
+
+Contexto confirmado não é enviado por padrão em Inteligência; a inclusão é por pedido e visível na prévia. Editar ou limpar o contexto é uma operação local sem geração; não apaga snapshots de execuções anteriores. O objetivo continua editável no onboarding. Estado atual, proposta original, evidências enviadas e seleção aplicada são preservados na exportação e no backup. Não há aprendizado automático, avaliação psicológica nem detecção semântica garantida de autoria em históricos.

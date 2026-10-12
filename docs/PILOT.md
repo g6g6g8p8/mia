@@ -28,4 +28,6 @@ Para exportações experimentais ChatGPT/Claude, cada participante pode validar 
 
 No ensaio de organização, selecionar poucas fontes próprias, conferir a prévia, gerar sugestões, editar um nome/descrição, recusar ou confirmar parte da proposta e verificar o destino das fontes. Reabrir a proposta após reload e editar a área já criada. Registrar se os trechos iniciais bastaram para sugestões úteis; não atribuir ao teste simulado qualidade de um modelo real.
 
+Em Meu contexto, gerar uma sugestão, conferir trechos e autoria, editar e aprovar apenas um campo. Verificar se o objetivo aprovado aparece em Hoje e se o contexto pessoal fica fora da prévia de Inteligência até ser marcado. Editar/limpar o contexto e confirmar que execuções anteriores continuam como histórico. Registrar falsas atribuições ao usuário, material antigo tratado como atual e se a pessoa entende a substituição do objetivo.
+
 Tempo por tarefa, pontos de ajuda, erros, entendimento de confirmação e custos, qualidade da resposta, configuração usada e decisão de continuar ou não. Não coletar chaves, conteúdos pessoais ou telemetria sem consentimento. Usar os achados para corrigir o produto antes de divulgar promessas de economia.

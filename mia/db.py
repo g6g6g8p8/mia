@@ -106,6 +106,13 @@ CREATE TABLE IF NOT EXISTS imports (
     report_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS personal_context (
+    owner_id INTEGER PRIMARY KEY REFERENCES owner(id),
+    text TEXT NOT NULL DEFAULT '',
+    revision INTEGER NOT NULL DEFAULT 0,
+    evidence_json TEXT NOT NULL DEFAULT '[]',
+    updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS import_items (
     id TEXT PRIMARY KEY,
     import_id TEXT NOT NULL REFERENCES imports(id) ON DELETE CASCADE,
@@ -168,9 +175,14 @@ def initialize() -> None:
         if 'active' not in document_columns:
             db.execute("ALTER TABLE documents ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
         onboarding_columns = {row[1] for row in db.execute("PRAGMA table_info(onboarding)")}
+        if 'goal_revision' not in onboarding_columns:
+            db.execute('ALTER TABLE onboarding ADD COLUMN goal_revision INTEGER NOT NULL DEFAULT 0')
         if 'step' not in onboarding_columns:
             db.execute("ALTER TABLE onboarding ADD COLUMN step INTEGER NOT NULL DEFAULT 0")
         columns = {row[1] for row in db.execute("PRAGMA table_info(runs)")}
+        for name in ('personalization_base_json','personalization_result_json'):
+            if name not in columns:
+                db.execute(f'ALTER TABLE runs ADD COLUMN {name} TEXT')
         if 'organization_result_json' not in columns:
             db.execute('ALTER TABLE runs ADD COLUMN organization_result_json TEXT')
         for name, declaration in {"reserved_micro": "INTEGER NOT NULL DEFAULT 0", "charged_micro": "INTEGER NOT NULL DEFAULT 0", "cost_status": "TEXT NOT NULL DEFAULT 'unknown'", "pricing_json": "TEXT"}.items():

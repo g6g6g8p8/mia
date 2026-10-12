@@ -1,3 +1,5 @@
+import {renderPersonalizationPage} from './personalization.js';
+
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
 let state = { view: "today", owner: null, areas: [], today: null, onboarding: null };
@@ -161,6 +163,7 @@ function navigate(view) {
   if (view === "knowledge") renderKnowledge().catch(errorMessage);
   if (view === "ai-settings") renderAISettings().catch(errorMessage);
   if (view === "organization") renderOrganization().catch(errorMessage);
+  if (view === "personalization") renderPersonalization().catch(errorMessage);
 }
 
 function pageHead(kicker, title, action) {
@@ -281,6 +284,7 @@ function renderSystem() {
   document.querySelector('#resume-guide').onclick=()=>navigate('onboarding');
   document.querySelector('#system-sources').onclick=()=>navigate('knowledge');
   document.querySelector('#system-ai').onclick=()=>navigate('ai-settings');
+  const personal=document.createElement('button');personal.className='btn';personal.textContent='Meu contexto';personal.onclick=()=>navigate('personalization');document.querySelector('#system-ai').after(personal);
 }
 
 async function renderIntelligence() {
@@ -291,13 +295,15 @@ async function renderIntelligence() {
     '<section class="card"><p class="lede">' + (settings.enabled ? esc(settings.model) + ' · ' + esc(settings.endpoint) : 'IA desativada. Configure seu modelo em Sistema ou continue usando a busca local.') + '</p>' +
     '<p class="subtle">Até ' + settings.daily_call_limit + ' chamadas/dia (UTC), 1.000 tokens de saída e 45 segundos. '+(settings.daily_budget_usd?'Orçamento estimado: US$ '+esc(settings.daily_budget_usd)+'/dia.':'Custo desconhecido; nenhum orçamento monetário configurado.')+' Defina também um limite no provedor.</p>' +
     '<form class="form" id="run-form"><label>Área autorizada<select name="area_id">' + state.areas.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('') + '</select></label>' +
+    '<label><span><input type="checkbox" name="include_personal_context" style="width:auto"> Incluir meu contexto pessoal e objetivo confirmados nesta consulta</span></label>'+
     '<button type="button" class="btn" id="preview-context">Ver contexto que será enviado</button><pre id="context-preview" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>' +
     '<label>Seu pedido<textarea name="message" required minlength="2" maxlength="4000" placeholder="O que merece atenção nesta área? Ou: proponha uma tarefa para amanhã."></textarea></label>' +
     '<label><input type="checkbox" name="consent" required style="width:auto"> Autorizo enviar este pedido e o contexto da área ao provedor mostrado acima.</label>' +
-    '<p class="subtle">Até 12 tarefas e 3 trechos de fontes da área encontrados pelo seu pedido. Não envia outras áreas, e-mail ou senhas. Pedidos independentes.</p>' +
+    '<p class="subtle">Até 12 tarefas e 3 trechos de fontes da área encontrados pelo seu pedido. Contexto pessoal e objetivo só são incluídos se marcados acima; confira a prévia. Pedidos independentes.</p>' +
     '<button class="btn primary" type="submit" '+(!settings.enabled?'disabled':'')+'>Enviar pedido</button></form></section>' +
     '<section class="section"><h2>Execuções recentes</h2>' + runs.map(r=>{
       if(r.request.purpose==='organization')return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>Organização de fontes</h3><p>'+esc(r.error||r.answer||'Proposta de áreas com fontes selecionadas.')+'</p><button class="btn" data-open-organization>Revisar organização</button></article>';
+      if(r.request.purpose==='personalization')return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>Contexto e objetivo</h3><p>'+esc(r.error||r.answer||'Sugestões para revisão.')+'</p><button class="btn" data-open-personalization>Revisar personalização</button></article>';
       const p=r.proposal;
       return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>'+esc(r.request.message)+'</h3>' +
         '<p style="white-space:pre-wrap">'+esc(r.answer||r.error||'Aguardando resposta. Atualize esta aba em alguns instantes.')+'</p>' +
@@ -310,14 +316,14 @@ async function renderIntelligence() {
     }).join('')+'</section>';
   const form=document.querySelector('#run-form');
   document.querySelector('#preview-context').onclick=async()=>{
-    try { const data=await api('/api/ai/context?area_id='+encodeURIComponent(form.elements.area_id.value)+'&q='+encodeURIComponent(form.elements.message.value));
+    try { const data=await api('/api/ai/context?area_id='+encodeURIComponent(form.elements.area_id.value)+'&q='+encodeURIComponent(form.elements.message.value)+'&include_personal_context='+form.elements.include_personal_context.checked);
       const preview=document.querySelector('#context-preview'); if(preview) preview.textContent=JSON.stringify(data,null,2);
     } catch(error){errorMessage(error);}
   };
   form.onsubmit=async event=>{
     event.preventDefault();
     const button=form.querySelector('[type=submit]'); button.disabled=true; button.textContent='Processando…';
-    const values={message:form.elements.message.value,area_id:form.elements.area_id.value,consent:form.elements.consent.checked,request_key:crypto.randomUUID()};
+    const values={message:form.elements.message.value,area_id:form.elements.area_id.value,consent:form.elements.consent.checked,include_personal_context:form.elements.include_personal_context.checked,request_key:crypto.randomUUID()};
     try { await api('/api/runs',{method:'POST',body:JSON.stringify(values)}); await renderIntelligence(); }
     catch(error){errorMessage(error); button.disabled=false; button.textContent='Enviar pedido';}
   };
@@ -328,6 +334,7 @@ async function renderIntelligence() {
   });
   bindDocuments();
   document.querySelectorAll('[data-open-organization]').forEach(button=>button.onclick=()=>navigate('organization'));
+  document.querySelectorAll('[data-open-personalization]').forEach(button=>button.onclick=()=>navigate('personalization'));
 }
 
 function bindDocuments(){
@@ -343,7 +350,7 @@ function bindDocuments(){
 }
 
 async function saveGuide(step,completed=false){
-  state.onboarding=await api('/api/onboarding',{method:'PUT',body:JSON.stringify({goal:state.onboarding.goal,step,completed})});
+  state.onboarding=await api('/api/onboarding',{method:'PUT',body:JSON.stringify({goal:state.onboarding.goal,step,completed,expected_goal_revision:state.onboarding.goal_revision})});
 }
 
 async function renderGuide(){
@@ -359,6 +366,7 @@ async function renderGuide(){
   if(step===3){const docs=(await api('/api/documents')).filter(d=>d.active);body.innerHTML='<p class="lede">'+docs.length+' fontes disponíveis. Seu objetivo: '+esc(state.onboarding.goal||'ainda não informado')+'.</p><p>Use a busca para encontrar uma informação nas suas fontes. Com IA configurada, faça uma pergunta em Inteligência e confira as referências.</p><button class="btn" id="first-search">Buscar nas minhas fontes</button> <button class="btn" id="first-ai">Fazer uma pergunta</button>';body.querySelector('#first-search').onclick=async()=>{await saveGuide(3,true);navigate('search');};body.querySelector('#first-ai').onclick=async()=>{await saveGuide(3,true);navigate('intelligence');};}
   if(state.view!=='onboarding'||!body.isConnected)return;
   if(step===3){const organize=document.createElement('button');organize.className='btn';organize.textContent='Organizar minhas fontes';organize.onclick=async()=>{await saveGuide(3);navigate('organization');};body.append(organize);}
+  if(step===3){const personal=document.createElement('button');personal.className='btn';personal.textContent='Personalizar minha Mia';personal.onclick=()=>navigate('personalization');body.append(personal);}
   document.querySelector('#guide-back').onclick=async()=>{await saveGuide(Math.max(0,step-1));await renderGuide();};
   document.querySelector('#guide-next').onclick=async()=>{try{if(step===0)state.onboarding.goal=document.querySelector('#guide-goal').value;await saveGuide(Math.min(3,step+1),step===3);if(step===3)navigate('today');else await renderGuide();}catch(error){errorMessage(error);}};
   document.querySelector('#guide-skip').onclick=async()=>{if(step===0)state.onboarding.goal=document.querySelector('#guide-goal').value;await saveGuide(step,true);navigate('today');};
@@ -367,6 +375,7 @@ async function renderGuide(){
 async function renderKnowledge(){
   document.querySelector('#content').innerHTML=pageHead('FONTES LOCAIS','Seu conhecimento','<button class="btn" id="organize-sources">Organizar minhas fontes</button>')+'<section class="card" id="knowledge-panel"></section>';
   document.querySelector('#organize-sources').onclick=()=>navigate('organization');
+  const personal=document.createElement('button');personal.className='btn';personal.textContent='Personalizar minha Mia';personal.onclick=()=>navigate('personalization');document.querySelector('#organize-sources').after(personal);
   await knowledgePanel(document.querySelector('#knowledge-panel'));
 }
 
@@ -437,6 +446,10 @@ async function renderOrganization(selectedArea){
   });
   document.querySelectorAll('[data-reject-organization]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api('/api/runs/'+button.dataset.rejectOrganization+'/reject',{method:'POST',body:'{}'});await renderOrganization(areaId);}catch(error){errorMessage(error);button.disabled=false;}});
   bindDocuments();
+}
+
+async function renderPersonalization(selectedArea){
+  await renderPersonalizationPage({state,api,esc,pageHead,bindDocuments,errorMessage,refresh},selectedArea);
 }
 
 async function aiPanel(panel){

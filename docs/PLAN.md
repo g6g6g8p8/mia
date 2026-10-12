@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.10 · 11/10/2026 · Status: M2 ampliado, M3 com revisão de versões, pausa de fontes e organização assistida em áreas; backup/restauração do M4 testado. Aceites com modelo real e usuários externos permanecem pendentes.
+Versão 0.11 · 12/10/2026 · Status: M2 ampliado, M3 com organização assistida e sugestões revisáveis de contexto pessoal/objetivo; backup/restauração do M4 testado. Aceites com modelo real e usuários externos permanecem pendentes.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -87,7 +87,7 @@ Decisões técnicas finais dependem de testes de concorrência, restauração e 
 Nenhuma biblioteca será escolhida por exigir uma plataforma comercial como caminho obrigatório.
 
 ## 6. Onboarding
-Implementado: acesso, objetivo declarado, importação revisável, configuração gráfica de IA e caminho à primeira consulta/Hoje. Fluxo retomável. Sugestões inferidas de perfil continuam planejadas. Detalhes em [ONBOARDING.md](ONBOARDING.md).
+Implementado: acesso, objetivo declarado, importação revisável, configuração gráfica de IA e caminho à primeira consulta/Hoje. Fluxo retomável, sugestões de áreas e contexto pessoal/objetivo com evidências e confirmação. Detalhes em [ONBOARDING.md](ONBOARDING.md).
 
 1. Criar acesso local e configurar idioma e fuso.
 2. Informar objetivos e tipos de trabalho.
@@ -197,7 +197,8 @@ Aquisição do domínio, identidade visual, preços e hospedagem opcional serão
 - 31 testes passaram no Linux e Mac; onboarding/importação/busca mobile e proposta/confirmar/recusar passaram no navegador. Dados reais do proprietário permanecem em sua instalação.
 - M3 ampliado: revisão informa duplicatas e notas com mesmo caminho/conteúdo diferente; usuário compara fontes e pausa/reativa versões. Fontes pausadas permanecem exportáveis e ficam fora de novas consultas. Não há escolha automática de versão.
 - M3 organização assistida: até seis fontes explícitas, prévia limitada, chamada com orçamento compartilhado, até quatro áreas sugeridas, edição/seleção/recusa, confirmação transacional e revalidação de fontes. Cria áreas e move fontes somente após aprovação, preservando proposta original e escolha aplicada. Áreas podem ser editadas depois.
-- Pendências: modelo real/cobrança, amostras reais autorizadas de exports dos usuários de teste, inferência de perfil e objetivos pessoais, conversa contínua, múltiplos usuários/workers, atualização e backups automáticos e M5 externo.
+- M3 personalização inicial: sugestões de contexto pessoal/objetivo com trechos literais de apoio, edição e confirmação parcial, controle de revisão e revalidação das fontes. Contexto confirmado editável e exportável; uso em Inteligência somente por opção explícita em cada consulta. Qualidade semântica não validada por testes simulados.
+- Pendências: modelo real/cobrança, amostras reais autorizadas de exports dos usuários de teste, projetos estruturados, conversa contínua, múltiplos usuários/workers, atualização e backups automáticos e M5 externo.
 - Validação com modelo real continua exigindo provedor/modelo e teto de gasto autorizados; isso não bloqueia importação e busca local. Piloto externo será revisado para usar fontes reais selecionadas conforme `PILOT.md`.
 
 Este plano orienta o trabalho e não comprova funcionalidades, portabilidade, segurança ou economia já entregues.
