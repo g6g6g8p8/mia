@@ -2,6 +2,14 @@
 
 Parte inicial do M4. Snapshot consistente de SQLite, incluindo proprietário, áreas, tarefas, fontes, lotes revisáveis, objetivo e execuções. Testado com dados sintéticos do Linux para o Mac. Não copiar apenas um arquivo SQLite ativo ignorando o WAL.
 
+## Pela interface — 0.2.0a7
+
+Em **Sistema → Backups**, crie/baixe uma cópia ou habilite cópias a cada 24 horas. Desativado por padrão. Enquanto a Mia roda, verifica a política a cada minuto e ao iniciar; uma tentativa com falha aguarda uma hora antes de tentar novamente. Ao retomar após dias desligada, cria uma cópia atual, não reconstrói dias perdidos. Exige um único processo/worker, como o restante desta alpha.
+
+O limite é de 1 a 30 cópias (padrão 7). Somente após criar e validar uma nova cópia, remove snapshots mais antigos criados por esta rotina em `MIA_DATA_DIR/auto-backups`. Também vale para o botão “Criar backup agora”; não remove backups feitos por comando ou arquivos com outros nomes. A interface mostra última tentativa, último sucesso e falha persistida. Download exige sessão autenticada e não é armazenado em cache HTTP.
+
+Backups ficam no mesmo disco, sem criptografia. Baixe e guarde cópia fora da máquina; isso não é armazenamento remoto. Chaves/configurações de IA, acesso e política de backup não entram no snapshot. A restauração permanece por comando em diretório separado. Habilitar a rotina não configura inicialização automática da Mia com o sistema operacional.
+
 ## Instalação nativa
 
 Na pasta do aplicativo, com nome de destino novo:
@@ -58,4 +66,4 @@ Verifica identidade, tarefa, fonte, objetivo, migração de contexto, sessão in
 
 ## Limitações atuais
 
-Somente backups locais confiáveis. Sem criptografia, agendamento, rotação, restauração do ZIP exportado ou atualização automática. O ensaio entre máquinas usou dados sintéticos; não restaurou dados reais do proprietário.
+Somente backups locais confiáveis. Sem criptografia, restauração do ZIP exportado ou atualização automática. Agendamento/rotação locais disponíveis enquanto a aplicação está em execução. O ensaio entre máquinas usou dados sintéticos; não restaurou dados reais do proprietário.

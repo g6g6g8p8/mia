@@ -105,6 +105,21 @@ with tempfile.TemporaryDirectory(prefix='mia-onboarding-fixture-') as data:
             expect(page.get_by_label('Forma de acesso')).to_have_value('remote')
             expect(page.get_by_label('Endereço HTTPS preparado (opcional)')).to_have_value('https://mia.example.test')
             assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Access mobile overflow'
+            page.get_by_role('button',name='Sistema',exact=True).click()
+            page.get_by_role('button',name='Backups',exact=True).click()
+            page.get_by_label('Fazer backup automático a cada 24 horas').check()
+            page.get_by_label('Quantas cópias manter').fill('2')
+            page.get_by_role('button',name='Salvar política de backup').click()
+            expect(page.get_by_label('Fazer backup automático a cada 24 horas')).to_be_checked()
+            page.get_by_role('button',name='Criar backup agora').click()
+            download=page.locator('a[href^="/api/backups/"]').first
+            expect(download).to_be_visible()
+            response=page.request.get(url+download.get_attribute('href'))
+            assert response.status==200 and response.body().startswith(b'SQLite format 3')
+            page.get_by_label('Fazer backup automático a cada 24 horas').uncheck()
+            page.get_by_role('button',name='Salvar política de backup').click()
+            expect(page.get_by_label('Fazer backup automático a cada 24 horas')).not_to_be_checked()
+            assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Backup mobile overflow'
             assert not errors,errors
             browser.close()
             print('M3 browser passed: mobile onboarding, persisted goal/step, import preview, conflicts/comparison, pause/resume, selection, local search, original source, AI disabled config, deletion.')

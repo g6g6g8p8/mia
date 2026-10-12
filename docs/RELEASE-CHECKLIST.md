@@ -10,7 +10,7 @@ Ensaio completo em Ubuntu 24.04.5 isolado aprovado: instalação nova, 59 testes
 | M1 | Instalação de pacote em Ubuntu 24.04 isolado e macOS; HTTP/assets, identidade, fontes, tarefas, busca e persistência | Instalação por participantes sem ajuda no M5 |
 | M2 | Fontes delimitadas, ferramentas autorizadas, confirmação/idempotência, quotas/reserva/reconciliação; testes com simulador | Modelo real direto, qualidade/citações e custo observado com teto autorizado |
 | M3 | Onboarding mobile, imports sintéticos, conflitos, organização/contexto revisáveis, configuração guiada de IA | Exports reais escolhidos pelos participantes; primeiro resultado útil e compreensão da revisão |
-| M4 | Snapshot, integridade, restauração em outro diretório/máquina, migração e retorno à versão anterior, interrupção sem reenvio; teste offline no Ubuntu isolado | Automação de rede/HTTPS e atualização/backup; validação da rota remota sem VPN obrigatória; operação continua limitada a um proprietário e um worker |
+| M4 | Snapshot, rotina local opcional de 24 horas com retenção/download, integridade, restauração em outro diretório/máquina, migração e retorno à versão anterior, interrupção sem reenvio; teste offline no Ubuntu isolado | Automação de rede/HTTPS e atualização; cópia fora da máquina; validação da rota remota sem VPN obrigatória; operação continua limitada a um proprietário e um worker |
 | M5 | Roteiro do piloto e verificações técnicas reproduzíveis | 2–3 participantes, licença, benchmark real de qualidade/custo e decisão de release |
 
 ## Entradas necessárias para os aceites externos

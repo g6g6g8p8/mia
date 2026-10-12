@@ -49,7 +49,7 @@ Isso valida um ambiente de usuário Ubuntu isolado, não uma instalação comple
 
 A interface exporta JSON de áreas, tarefas, fontes, objetivo e execuções. Restauração desse ZIP ainda não existe; há snapshot consistente SQLite e restauração por comando em [BACKUP.md](BACKUP.md).
 
-Chaves e configuração de IA precisam ser recriadas após restaurar. Snapshot sintético foi restaurado entre Linux e Mac. Agendamento e rotação permanecem pendentes.
+Chaves e configuração de IA precisam ser recriadas após restaurar. Snapshot sintético foi restaurado entre Linux e Mac. Agendamento e rotação locais podem ser habilitados em Sistema → Backups enquanto a Mia roda; guarde cópia fora do volume.
 
 ## Acesso remoto
 

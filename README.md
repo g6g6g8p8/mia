@@ -16,7 +16,7 @@ A organização assistida do M3 recebe até seis fontes escolhidas, propõe até
 
 Em **Meu contexto**, o usuário pode solicitar sugestões de resumo pessoal e objetivo a partir de fontes selecionadas. Cada sugestão exige trechos de apoio presentes no material enviado. Campos são editáveis e aprovados separadamente. O contexto confirmado só entra em consultas de Inteligência quando o usuário marca a opção de incluí-lo.
 
-A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, conectores, atualização/backup automáticos e benchmark de economia continuam pendentes.
+A integração foi testada com um provedor simulado local: **não há ainda validação de qualidade ou cobrança com um modelo real**. Há backup SQLite pela interface, rotina local opcional a cada 24 horas com retenção e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, conectores, atualização automática e benchmark de economia continuam pendentes.
 
 A primeira versão será validada com poucos usuários piloto. O repositório é público por decisão do proprietário; a licença específica de uso e distribuição ainda está pendente.
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import asyncio
 import json
 import os
 import sqlite3
@@ -24,7 +25,7 @@ from .db import connect, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
-from . import knowledge, organization, personalization, access
+from . import knowledge, organization, personalization, access, backup_jobs
 
 
 ROOT = Path(__file__).resolve().parent
@@ -36,7 +37,13 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize()
-    yield
+    stop = asyncio.Event()
+    task = asyncio.create_task(backup_jobs.worker(stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        await task
 
 
 app = FastAPI(title="Mia", version=__version__, lifespan=lifespan)
@@ -583,6 +590,38 @@ def ai_config(owner: Owner) -> dict:
 @app.get('/api/access/config')
 def access_config(owner: Owner) -> dict:
     return {**access.load(), 'secure_cookie': os.environ.get('MIA_COOKIE_SECURE', 'false').lower() == 'true'}
+
+
+@app.get('/api/backups')
+def backup_status(owner: Owner) -> dict:
+    return backup_jobs.status()
+
+
+@app.put('/api/backups')
+def configure_backups(payload: backup_jobs.Policy, owner: Owner) -> dict:
+    return backup_jobs.configure(payload)
+
+
+@app.post('/api/backups')
+def create_backup(owner: Owner) -> dict:
+    try:
+        backup_jobs.run(force=True)
+    except Exception:
+        raise HTTPException(503, 'Backup não concluído. Confira o estado em Sistema → Backups.')
+    return backup_jobs.status()
+
+
+@app.get('/api/backups/{name}')
+def download_backup(name: str, owner: Owner):
+    from starlette.background import BackgroundTask
+    try:
+        file = backup_jobs.open_snapshot(name)
+    except FileNotFoundError:
+        raise HTTPException(404, 'Backup não encontrado')
+    def chunks():
+        while block := file.read(65536):
+            yield block
+    return StreamingResponse(chunks(), media_type='application/octet-stream', headers={'Content-Disposition':f'attachment; filename="{name}"','Cache-Control':'no-store'}, background=BackgroundTask(file.close))
 
 
 @app.put('/api/access/config')
