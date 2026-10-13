@@ -62,12 +62,14 @@ def _read(path: Path) -> dict:
     return json.loads(path.read_text()) if path.exists() else {}
 
 
-def _copy_private(source: Path, target: Path) -> None:
+def _copy_private(source: Path, target: Path, *, exclude_top: tuple[str, ...] = ()) -> None:
     """Copy regular files only; never follow user-controlled links."""
     if source.is_symlink() or not source.is_dir():
         raise OperationError("A origem deve ser um diretório real, sem links")
     target.mkdir(mode=0o700)
     for path in sorted(source.iterdir()):
+        if path.name in exclude_top:
+            continue
         output = target / path.name
         if path.is_symlink():
             raise OperationError("Links simbólicos não são aceitos nos dados/configuração")
@@ -178,7 +180,7 @@ class Manager:
         return self._path(active["release"]) / "venv/bin/python"
 
     def _pending(self) -> None:
-        if (self.root / "journal.json").exists():
+        if (self.root / "journal.json").exists() or (self.root / "migration-pending.json").exists():
             raise OperationError("Operação interrompida: execute recover antes de iniciar/atualizar")
 
     def _release(self, source: Path, wheelhouse: Path | None = None, offline: bool = False) -> dict:
@@ -273,7 +275,8 @@ class Manager:
         machine.chmod(0o600)
         shutil.copyfile(Path(__file__).resolve(), self.root / "manager.py")
         (self.root / "manager.py").chmod(0o600)
-        _write(self.root / "installation.json", {"format": 1, "host": host, "port": port, "python": sys._base_executable})
+        _write(self.root / "installation.json", {"format": 1, "host": host, "port": port, "python": sys._base_executable,
+               "manager_protocol": 2, "manager_sha256": hashlib.sha256((self.root / "manager.py").read_bytes()).hexdigest()})
         with _lock(self.root / "operation.lock"):
             release = self._release(source, wheelhouse, offline)
             _write(self.root / "active.json", {**release, "data": "data/initial"})
@@ -294,11 +297,14 @@ class Manager:
 
     def status(self) -> dict:
         active = self.active()
-        pending = _read(self.root / "journal.json")
+        pending = _read(self.root / "journal.json") or _read(self.root / "migration-pending.json")
         return {"managed": True, "version": active["version"], "release": Path(active["release"]).name,
                 "running": bool(self._record()), "recovery_required": bool(pending),
                 "operation": pending.get("phase"), "last_update": _read(self.root / "last-update.json").get("id"),
-                "instructions": "Use o terminal desta instalação: status, stop, update, recover ou rollback. Atualização exige fonte local confiável; o navegador não executa comandos."}
+                "paused": (self.root / "paused.json").exists(),
+                "background_service": _busy(self.root / "runner.lock"),
+                "restart_blocked": bool(_read(self.root / "restart-blocked.json")),
+                "instructions": "Fechar navegador ou Terminal não para a instalação gerenciada. Parar Mia é explícito. Serviços no computador dependem de ele estar ligado/acordado; atualização e recuperação são operações locais revisadas."}
 
     def _idle_database(self, active: dict) -> None:
         path = self._path(active["data"]) / "mia.db"
@@ -326,16 +332,19 @@ class Manager:
     def stop(self) -> dict:
         self._check()
         with _lock(self.root / "operation.lock"):
+            # Durable desired state: a background runner must not undo a stop.
+            _write(self.root / "paused.json", {"reason": "operator-stop"})
             self._stop()
         return self.status()
 
     def service_template(self, *, kind: str) -> str:
         """Render only; never install, enable or change host services."""
         self._check()
+        self._background_capability()
         config = _read(self.root / "installation.json")
-        arguments = [config["python"], str(self.root / "manager.py"), "--root", str(self.root), "serve"]
+        arguments = [config["python"], str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
         if kind == "launchd":
-            return plistlib.dumps({"Label": "local.mia", "ProgramArguments": arguments,
+            return plistlib.dumps({"Label": "local.mia." + hashlib.sha256(str(self.root).encode()).hexdigest()[:12], "ProgramArguments": arguments,
                                    "RunAtLoad": True, "KeepAlive": False, "ProcessType": "Background",
                                    "StandardOutPath": str(self.root / "service.log"), "StandardErrorPath": str(self.root / "service.log")}).decode()
         if kind != "systemd":
@@ -345,6 +354,12 @@ class Manager:
                 raise OperationError("Caminho com quebra de linha não é aceito em unidade systemd")
             return '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%").replace("$", "$$") + '"'
         return "[Unit]\nDescription=Mia personal AI (native)\n\n[Service]\nType=simple\nExecStart=" + " ".join(map(quote, arguments)) + "\nRestart=no\nTimeoutStopSec=25\nKillMode=control-group\nUMask=0077\n\n[Install]\nWantedBy=default.target\n"
+
+    def _background_capability(self) -> None:
+        config = _read(self.root / "installation.json")
+        manager = self.root / "manager.py"
+        if config.get("manager_protocol") != 2 or manager.is_symlink() or not manager.is_file() or config.get("manager_sha256") != hashlib.sha256(manager.read_bytes()).hexdigest():
+            raise OperationError("Gerenciador antigo ou alterado não suporta este contrato de serviço/migração. Atualizar o app não atualiza manager.py. Preserve a instalação anterior parada; instale em um diretório gerenciado novo e migre os dados explicitamente")
 
     def _start(self, *, recovering: bool = False, operation_fd: int | None = None) -> None:
         if not recovering:
@@ -394,7 +409,179 @@ class Manager:
     def start(self) -> dict:
         self._check()
         with _lock(self.root / "operation.lock") as operation:
+            (self.root / "paused.json").unlink(missing_ok=True)
+            (self.root / "restart-blocked.json").unlink(missing_ok=True)
             self._start(operation_fd=operation.fileno())
+        return self.status()
+
+    def service_run(self) -> None:
+        """User-service entrypoint. Observe, never automatically recover a journal.
+
+        The outer runner survives updates' stop/start and adopts their verified
+        process. Every attempted start holds the operation lock. A durable pause
+        and pending journal suppress restarts; three failures stop retries until
+        an explicit start. OS templates intentionally add no second retry loop.
+        """
+        self._check()
+        self._background_capability()
+        stopped = False
+        previous = {}
+        failures: list[float] = []
+        def terminate(_signal, _frame):
+            nonlocal stopped
+            stopped = True
+        with _lock(self.root / "runner.lock"):
+            old_signals = {sig: signal.signal(sig, terminate) for sig in (signal.SIGTERM, signal.SIGINT)}
+            try:
+                while not stopped:
+                    try:
+                        with _lock(self.root / "operation.lock") as operation:
+                            if any((self.root / name).exists() for name in ("paused.json", "journal.json", "migration-pending.json", "restart-blocked.json")):
+                                previous = {}
+                            else:
+                                running = self._record()
+                                if running and any(running.get(key) != self.active()[key] for key in ("release", "data", "version")):
+                                    _write(self.root / "restart-blocked.json", {"reason": "running-process-does-not-match-active"})
+                                    previous = {}
+                                    continue
+                                if not running:
+                                    now = time.monotonic()
+                                    failures = [stamp for stamp in failures if now - stamp < 60]
+                                    if previous:
+                                        failures.append(now)
+                                    if len(failures) >= 3:
+                                        _write(self.root / "restart-blocked.json", {"reason": "three-failures-within-60-seconds"})
+                                        previous = {}
+                                    else:
+                                        try:
+                                            self._start(operation_fd=operation.fileno())
+                                            previous = self._record()
+                                        except (OperationError, OSError, ValueError):
+                                            failures.append(now)
+                                            previous = {}
+                                            if len(failures) >= 3:
+                                                _write(self.root / "restart-blocked.json", {"reason": "three-failures-within-60-seconds"})
+                                else:
+                                    previous = running
+                    except OperationError:
+                        # Update owns the lock. No signal/start or failure charge.
+                        pass
+                    time.sleep(1)
+            finally:
+                # Host shutdown/logout is not an operator pause. The next login
+                # must resume automatically; only stop() persists paused.json.
+                # Serialize shutdown against update/start before signalling.
+                with _lock(self.root / "operation.lock", blocking=True):
+                    self._stop()
+                for sig, handler in old_signals.items():
+                    signal.signal(sig, handler)
+
+    def migrate_data(self, data_source: Path, *, source_stopped: bool = False, source_env_file: Path | None = None) -> dict:
+        """Explicit manual -> managed copy. Never move/delete/overwrite source.
+
+        Manual versions have no manager lock: stopping the source is a required
+        operator action, not something inferred from a port number. Two full
+        fingerprints catch writes during the offline copy. Never open SQLite
+        on the source: even a read can mutate its transient WAL/SHM files.
+        """
+        self._check()
+        self._background_capability()
+        if not source_stopped:
+            raise OperationError("Pare a instalação de origem e confirme --source-stopped; não copie um banco vivo")
+        original = data_source.expanduser()
+        source = original.resolve()
+        if original.is_symlink() or source.is_relative_to(self.root) or self.root.is_relative_to(source):
+            raise OperationError("Origem precisa ser um diretório real separado da instalação")
+        if source_env_file:
+            _validate_env(source_env_file)
+        with _lock(self.root / "operation.lock"):
+            self._pending()
+            active = self.active()
+            if self._record() or _busy(self.root / "service.lock"):
+                raise OperationError("Pare a instalação gerenciada antes de migrar")
+            if list(self._path(active["data"]).iterdir()):
+                raise OperationError("Migração exige dados gerenciados vazios; não substitui contexto existente")
+            database = source / "mia.db"
+            if not database.is_file() or database.is_symlink():
+                raise OperationError("Banco Mia da origem ausente ou não regular")
+            identity = "manual-migration-" + uuid.uuid4().hex
+            migration = {"phase": "migration-copying", "old": active, "snapshot": "snapshots/" + identity, "data": "data/" + identity}
+            _write(self.root / "migration-pending.json", migration)
+            snapshot = self.root / "snapshots" / identity
+            snapshot.mkdir(mode=0o700)
+            try:
+                before = _manifest(source)
+                _copy_private(source, snapshot / "data")
+                if _manifest(source) != before:
+                    raise OperationError("Origem mudou durante a cópia; mantenha o serviço parado")
+                # Normalize the copied database and its WAL into one verified
+                # SQLite backup. Original bytes, including WAL, remain untouched.
+                copied = snapshot / "data/mia.db"
+                normalized = snapshot / "normalized.db"
+                with sqlite3.connect(copied.as_uri() + "?mode=ro", uri=True) as incoming:
+                    with sqlite3.connect(normalized) as output:
+                        incoming.backup(output)
+                os.replace(normalized, copied)
+                copied.chmod(0o600)
+                for suffix in ("-wal", "-shm"):
+                    (snapshot / ("data/mia.db" + suffix)).unlink(missing_ok=True)
+                self._verify_db(copied)
+                for file in (snapshot / "data").rglob("*"):
+                    if file.is_file():
+                        with file.open("rb") as handle:
+                            os.fsync(handle.fileno())
+                _sync(snapshot / "data")
+                if source_env_file:
+                    shutil.copyfile(source_env_file, snapshot / "source-machine.env")
+                    (snapshot / "source-machine.env").chmod(0o600)
+                    with (snapshot / "source-machine.env").open("rb") as file:
+                        os.fsync(file.fileno())
+                _write(snapshot / "snapshot.json", {"files": _manifest(snapshot), "origin": "explicit-stopped-manual-source"})
+                _sync(snapshot)
+                _sync(snapshot.parent)
+                self._verify_snapshot("snapshots/" + identity)
+                relative = "data/" + identity
+                _copy_private(snapshot / "data", self.root / relative)
+                if _manifest(source) != before:
+                    raise OperationError("Origem mudou antes da confirmação; mantenha o serviço parado")
+                migration.update(phase="migration-ready", files=_manifest(self.root / relative))
+                _write(self.root / "migration-pending.json", migration)
+                self._complete_migration(migration)
+            except BaseException:
+                # Preserve complete snapshot/output for diagnosis. Active pointer
+                # only changes after the private copy is verified and durable.
+                raise
+        return self.status()
+
+    def _complete_migration(self, migration: dict) -> None:
+        if migration.get("phase") != "migration-ready":
+            raise OperationError("Cópia de migração interrompida antes da verificação. Use migrate-cancel; origem e arquivos parciais ficam preservados")
+        snapshot = self._verify_snapshot(migration["snapshot"])
+        target = self._path(migration["data"])
+        if _manifest(target) != migration["files"]:
+            raise OperationError("Dados de migração alterados; retomada recusada")
+        env = snapshot / "source-machine.env"
+        if env.exists():
+            _validate_env(env)
+            temporary = self.root / (".migration-env-" + uuid.uuid4().hex)
+            shutil.copyfile(env, temporary)
+            temporary.chmod(0o600)
+            with temporary.open("rb") as file:
+                os.fsync(file.fileno())
+            os.replace(temporary, self.root / "machine.env")
+        _write(self.root / "active.json", {**migration["old"], "data": migration["data"]})
+        _write(self.root / "migration.json", {"snapshot": migration["snapshot"], "data": migration["data"], "source_preserved": True})
+        (self.root / "migration-pending.json").unlink()
+        _sync(self.root)
+
+    def migrate_cancel(self) -> dict:
+        self._check()
+        with _lock(self.root / "operation.lock"):
+            migration = _read(self.root / "migration-pending.json")
+            if not migration or migration.get("phase") != "migration-copying" or self.active() != migration.get("old"):
+                raise OperationError("Somente uma cópia incompleta sem troca ativa pode ser cancelada; use recover para migração verificada")
+            (self.root / "migration-pending.json").unlink()
+            _sync(self.root)
         return self.status()
 
     def serve(self, *, recovery_id: str | None = None, operation_fd: int | None = None) -> None:
@@ -416,7 +603,7 @@ class Manager:
                     raise OperationError("Outra operação está em execução") from error
                 startup.callback(os.close, operation_fd)
             pending = _read(self.root / "journal.json")
-            if pending and (operation_fd is None or pending.get("id") != recovery_id):
+            if (self.root / "migration-pending.json").exists() or (pending and (operation_fd is None or pending.get("id") != recovery_id)):
                 self._pending()
             active = self.active()
             config = _read(self.root / "installation.json")
@@ -493,7 +680,11 @@ class Manager:
         target = self.root / relative
         target.mkdir(mode=0o700)
         try:
-            _copy_private(self._path(active["data"]), target / "data")
+            # Raw/unreviewed upload staging has its own bounded retention and
+            # does not silently become permanent backup content. Approved
+            # sources and job metadata remain recoverable; missing raw requires
+            # reupload, never a false completed migration.
+            _copy_private(self._path(active["data"]), target / "data", exclude_top=("migration-staging",))
             original = target / "data/mia.db"
             if original.exists():
                 # Consistent SQLite backup, rather than publishing copied WAL.
@@ -516,7 +707,8 @@ class Manager:
                         os.fsync(handle.fileno())
                 elif path.is_dir():
                     _sync(path)
-            _write(target / "snapshot.json", {"files": _manifest(target), "active": active})
+            _write(target / "snapshot.json", {"files": _manifest(target), "active": active,
+                   "excluded": ["migration-staging"], "retention": "Unreviewed uploads require reupload after restoration; approved sources and job metadata are preserved."})
             _sync(target)
             _sync(target.parent)
             return relative
@@ -628,6 +820,9 @@ class Manager:
     def recover(self) -> dict:
         self._check()
         with _lock(self.root / "operation.lock") as operation:
+            migration = _read(self.root / "migration-pending.json")
+            if migration:
+                self._complete_migration(migration)
             journal = _read(self.root / "journal.json")
             if journal:
                 self._restore(journal, operation_fd=operation.fileno())
@@ -683,8 +878,12 @@ def main() -> None:
             operation.add_argument("--port", type=int, default=8123)
             operation.add_argument("--host", default="127.0.0.1")
             operation.add_argument("--env-file", type=Path)
-    for command in ("start", "stop", "status", "recover"):
+    for command in ("start", "stop", "status", "recover", "service-run", "migrate-cancel"):
         commands.add_parser(command)
+    migration = commands.add_parser("migrate-data")
+    migration.add_argument("--data-source", required=True, type=Path)
+    migration.add_argument("--source-stopped", action="store_true")
+    migration.add_argument("--source-env-file", type=Path)
     foreground = commands.add_parser("serve")
     foreground.add_argument("--recovery-id", help=argparse.SUPPRESS)
     foreground.add_argument("--operation-fd", type=int, help=argparse.SUPPRESS)
