@@ -154,7 +154,15 @@ class Manager:
             raise OperationError("A instalação precisa pertencer ao usuário e ter permissão 0700")
 
     def _path(self, value: str) -> Path:
-        path = (self.root / value).resolve()
+        relative = Path(value)
+        if relative.is_absolute() or '..' in relative.parts:
+            raise OperationError('Estado contém caminho inválido')
+        path = self.root
+        for part in relative.parts:
+            path = path / part
+            if path.is_symlink():
+                raise OperationError('Links simbólicos não são aceitos em caminhos operacionais')
+        path = path.resolve()
         if not path.is_relative_to(self.root):
             raise OperationError("Estado aponta para fora da instalação")
         return path
