@@ -11,6 +11,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import socket
 import sqlite3
@@ -123,6 +124,30 @@ def test_recovery_target_missing_database_is_refused_instead_of_recreated_empty(
         managed.recover()
     assert (managed.root / "journal.json").exists()
     assert managed.active() == restored
+
+
+def test_recovery_target_link_cannot_alias_the_migrated_database(managed, monkeypatch):
+    original = populate(managed, monkeypatch)
+    managed.update(Path("unused"))
+    with sqlite3.connect(original / "mia.db") as database:
+        database.execute("CREATE TABLE only_in_new_version(value TEXT)")
+
+    def interrupted_finish(*_args):
+        raise KeyboardInterrupt("Crash before recovery finishes")
+
+    monkeypatch.setattr(managed, "_finish", interrupted_finish)
+    with pytest.raises(KeyboardInterrupt):
+        managed.rollback(acknowledge_post_update_loss=True)
+    restored = managed.active()
+    destination = managed.root / restored["data"]
+    shutil.rmtree(destination)
+    destination.symlink_to(original, target_is_directory=True)
+    monkeypatch.setattr(managed, "_start", lambda **_kwargs: pytest.fail("Old release must not run on the aliased migrated database"))
+    with pytest.raises(OperationError):
+        managed.recover()
+    assert (managed.root / "journal.json").exists()
+    with sqlite3.connect(original / "mia.db") as database:
+        assert database.execute("SELECT name FROM sqlite_master WHERE name='only_in_new_version'").fetchone() == ("only_in_new_version",)
 
 
 def test_child_eof_before_durable_record_does_not_execute_app(managed, monkeypatch):
