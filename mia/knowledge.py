@@ -308,6 +308,31 @@ def retrieve(owner,area_id,query,limit=3):
     return [{'source':'doc:'+r['id'],**{key:r[key] for key in r.keys() if key!='rank'}} for r in chosen]
 
 
+def selected_sources(owner, area_id, document_ids, query='', limit=6):
+    """One bounded excerpt per confirmed source, including lexical misses.
+
+    A user-confirmed relationship does not depend on its title matching words
+    in the source. Scope/active checks remain mandatory before reading chunks.
+    """
+    terms=list(dict.fromkeys(re.findall(r'\w{2,}',normalized(query[:4000]))))[:16]
+    output=[]
+    with connect() as db:
+        has_fts=db.execute("SELECT 1 FROM sqlite_master WHERE name='chunk_search'").fetchone()
+        for doc in list(dict.fromkeys(document_ids))[:max(1,min(6,limit))]:
+            row=db.execute('SELECT id,title,path,kind,area_id,created_at,hash FROM documents WHERE id=? AND owner_id=? AND active=1'+(' AND area_id=?' if area_id else ''),[doc,owner['id']]+([area_id] if area_id else [])).fetchone()
+            if not row:
+                continue
+            excerpt=None
+            if terms and has_fts:
+                match=' OR '.join('"'+term[:80]+'"' for term in terms)
+                excerpt=db.execute('SELECT c.ordinal,c.content FROM chunk_search JOIN chunks c ON c.rowid=chunk_search.rowid WHERE chunk_search MATCH ? AND c.document_id=? ORDER BY bm25(chunk_search),c.ordinal LIMIT 1',(match,doc)).fetchone()
+            if not excerpt:
+                excerpt=db.execute('SELECT ordinal,content FROM chunks WHERE document_id=? ORDER BY ordinal LIMIT 1',(doc,)).fetchone()
+            if excerpt:
+                output.append({'source':'doc:'+doc,**dict(row),**dict(excerpt),'selection':'fonte do foco confirmada pelo usuário'})
+    return output
+
+
 def document(doc,owner):
     with connect() as db:
         row=db.execute('SELECT * FROM documents WHERE id=? AND owner_id=?',(doc,owner['id'])).fetchone()

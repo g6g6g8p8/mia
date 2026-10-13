@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .db import connect, transaction
 from .security import iso
-from . import personalization
+from . import personalization, experience
 
 
 class ConversationCreate(BaseModel):
@@ -93,7 +93,7 @@ def rename(thread_id, payload, owner, audit=None):
     return detail(thread_id, owner)
 
 
-def source_current(db, source, owner, area_id, include_personal_context=False):
+def source_current(db, source, owner, area_id, include_personal_context=False, use_confirmed_focus=False):
     """Validate snapshots before reuse; ownership and revocation outrank history."""
     ref = source.get('source', '')
     if ref.startswith('doc:'):
@@ -110,10 +110,21 @@ def source_current(db, source, owner, area_id, include_personal_context=False):
             return False
         state = personalization.state_from_db(db, owner)
         return all(state[key] == source.get(key) for key in ('revision', 'goal_revision', 'text', 'goal'))
+    if ref == 'focus:1':
+        if not use_confirmed_focus:
+            return False
+        current=experience.focus_from_db(db,owner)
+        if current['revision']!=source.get('revision') or current['title']!=source.get('title'):
+            return False
+        for doc in source.get('source_ids',[]):
+            row=db.execute('SELECT area_id FROM documents WHERE id=? AND owner_id=? AND active=1',(doc,owner['id'])).fetchone()
+            if doc not in current['source_ids'] or not row or (area_id and row['area_id']!=area_id):
+                return False
+        return True
     return False
 
 
-def history_from_db(db, thread_id, owner, area_id, include_personal_context=False):
+def history_from_db(db, thread_id, owner, area_id, include_personal_context=False, use_confirmed_focus=False):
     """Whole turns are omitted if any source is revoked, preventing paraphrase leaks.
 
     Failed/reserved calls never become model messages or get retried. Historical
@@ -133,11 +144,11 @@ def history_from_db(db, thread_id, owner, area_id, include_personal_context=Fals
             skipped += 1
             continue
         allowed={source.get('source') for source in snapshots}
-        cited=set(re.findall(r'(?:doc|area|task|profile):[A-Za-z0-9-]+',row['answer'] or ''))
+        cited=set(re.findall(r'(?:doc|area|task|profile|focus):[A-Za-z0-9-]+',row['answer'] or ''))
         # Old imports/restores without a complete continuation snapshot cannot
         # prove which source/profile influenced an answer. Keep them visible,
         # but do not send them again on the owner's behalf.
-        if not row['continuation_json'] or cited-allowed or request.get('purpose', 'assistant') != 'assistant' or any(not source_current(db, source, owner, area_id, include_personal_context) for source in snapshots):
+        if not row['continuation_json'] or cited-allowed or request.get('purpose', 'assistant') != 'assistant' or any(not source_current(db, source, owner, area_id, include_personal_context,use_confirmed_focus) for source in snapshots):
             skipped += 1
             continue
         if not row['answer']:
@@ -155,10 +166,10 @@ def history_from_db(db, thread_id, owner, area_id, include_personal_context=Fals
         for source in snapshots:
             sources[(source.get('source'), source.get('ordinal'))] = source
     history = [message for turn in reversed(turns) for message in turn]
-    notice = 'Parte do histórico não foi enviada: fontes alteradas/pausadas, perfil sem autorização atual ou limite de contexto.' if skipped else None
+    notice = 'Parte do histórico não foi enviada: fontes/foco alterados, perfil/foco sem autorização atual ou limite de contexto.' if skipped else None
     return {'messages':history, 'sources':list(sources.values()), 'skipped_history_count':skipped, 'history_notice':notice}
 
 
-def history(thread_id, owner, area_id, include_personal_context=False):
+def history(thread_id, owner, area_id, include_personal_context=False, use_confirmed_focus=False):
     with connect() as db:
-        return history_from_db(db, thread_id, owner, area_id, include_personal_context)
+        return history_from_db(db, thread_id, owner, area_id, include_personal_context,use_confirmed_focus)

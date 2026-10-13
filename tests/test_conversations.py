@@ -220,3 +220,77 @@ def test_source_preflight_before_paid_reservation_and_thread_http_access(ready,m
     assert conflict.value.status_code==409
     assert browser.get('/api/runs').json()==[]
     assert browser.get('/api/conversations/'+thread['id']).json()['runs']==[]
+
+
+def test_library_provider_adapter_does_not_offer_task_tools(monkeypatch):
+    import httpx
+    actual=httpx.AsyncClient
+    requests=[]
+    def respond(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200,json=answer())
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:actual(transport=httpx.MockTransport(respond),**kwargs))
+    asyncio.run(harness.call_provider({'endpoint':'https://provider.example/v1','model':'fixture','max_output_tokens':1000,'_answer_only':True,'_key':'synthetic'},[],TaskInput.model_json_schema()))
+    assert 'tools' not in requests[0]
+    assert requests[0]['max_completion_tokens']==1000
+
+
+def test_selected_context_too_large_does_not_consume_budget_or_call_limit(ready,monkeypatch):
+    _,area,_,owner=ready
+    docs=[store(area,'Conteúdo sintético '+str(number)+' '+('nota de projeto '*150),'source-'+str(number)+'.md') for number in range(6)]
+    async def never(*args):
+        pytest.fail('Oversize selected context must not be sent')
+    monkeypatch.setattr(harness,'call_provider',never)
+    payload=harness.RunInput(request_key=uuid.uuid4(),area_id=area,purpose='organization',message='🔷'*4000,document_ids=docs,consent=True)
+    with pytest.raises(Exception) as error:
+        asyncio.run(harness.execute(payload,owner,TaskInput))
+    assert error.value.status_code==422
+    with connect() as db:
+        assert db.execute('SELECT count(*) FROM runs').fetchone()[0]==0
+
+
+def test_confirmed_focus_retrieves_lexical_misses_without_profile_or_area_expansion(ready,monkeypatch):
+    browser,area,_,owner=ready
+    doc=store(area,'# Caderno\nPrecisamos revisar contrato azul.','caderno.md')
+    other=browser.post('/api/areas',json={'name':'Privada'}).json()['id']
+    outside=store(other,'CONTEUDO_OUTRA_AREA em fonte privada.','privado.md')
+    assert browser.put('/api/focus',json={'title':'Trabalho atual','source_ids':[doc,outside],'expected_revision':0}).status_code==200
+    with transaction() as db:
+        personalization.write_context(db,owner,'PERFIL_FORA_DESTE_PEDIDO',[])
+    thread=conversations.create(conversations.ConversationCreate(area_id=area),owner)
+    seen=[]
+    async def fake(settings,messages,schema):
+        seen.append(json.dumps(messages,ensure_ascii=False))
+        return answer('Fonte para retomar doc:'+doc)
+    monkeypatch.setattr(harness,'call_provider',fake)
+    assert not any(s['source'].startswith('doc:') for s in harness.context(owner,area,'Trabalho atual'))
+    preview=browser.get('/api/ai/context',params={'thread_id':thread['id'],'q':'Trabalho atual','use_confirmed_focus':True}).json()
+    assert [s['id'] for s in preview if s['source'].startswith('doc:')]==[doc]
+    focus=next(s for s in preview if s['source']=='focus:1')
+    assert focus['source_ids']==[doc] and focus['omitted_source_count']==1
+    first=invoke(thread,owner,'Quero retomar Trabalho atual',use_confirmed_focus=True)
+    assert any(s['source']=='doc:'+doc for s in first['sources'])
+    assert 'contrato azul' in seen[-1]
+    assert 'CONTEUDO_OUTRA_AREA' not in seen[-1] and 'PERFIL_FORA_DESTE_PEDIDO' not in seen[-1]
+    second=invoke(thread,owner,'Outra dúvida sem foco')
+    assert second['included_turn_count']==0 and second['skipped_history_count']==1
+    assert not any(s['source']=='focus:1' for s in second['sources'])
+
+
+def test_focus_change_and_pause_remove_previous_focus_history(ready,monkeypatch):
+    browser,area,_,owner=ready
+    doc=store(area,'FONTE_FOCO_ANTIGO para trabalho.','caderno.md')
+    browser.put('/api/focus',json={'title':'Anterior','source_ids':[doc],'expected_revision':0})
+    thread=conversations.create(conversations.ConversationCreate(),owner)
+    seen=[]
+    async def fake(settings,messages,schema):
+        seen.append(json.dumps(messages))
+        return answer('FONTE_FOCO_ANTIGO usada doc:'+doc)
+    monkeypatch.setattr(harness,'call_provider',fake)
+    invoke(thread,owner,'Retome o foco',use_confirmed_focus=True)
+    browser.put('/api/documents/'+doc+'/state',json={'active':False})
+    browser.put('/api/focus',json={'title':'Novo foco','source_ids':[],'expected_revision':1})
+    result=invoke(thread,owner,'Continue foco atual',use_confirmed_focus=True)
+    assert 'FONTE_FOCO_ANTIGO' not in seen[-1]
+    assert result['skipped_history_count']==1 and result['included_turn_count']==0
+    assert next(s for s in result['sources'] if s['source']=='focus:1')['revision']==2
