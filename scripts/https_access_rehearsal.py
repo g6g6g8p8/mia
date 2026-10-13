@@ -108,7 +108,9 @@ def rehearse(caddy: Path) -> dict:
                                                                 'recovery_port': recovery_port},
                                         headers={'Origin': origin}).status_code == 200
                     report['checks'].append('forwarded HTTPS origin permits same origin and rejects foreign origin')
-                    assert browser.get(local + '/api/me').status_code == 401
+                    # Keep the cookie hostname identical so this checks Secure,
+                    # rather than merely testing a different cookie domain.
+                    assert browser.get(f'http://localhost:{backend_port}/api/me').status_code == 401
                     report['checks'].append('Secure cookie is not sent to local HTTP backend')
                     recovery = f'https://localhost:{recovery_port}'
                     assert browser.get(recovery + '/api/me').status_code == 200
