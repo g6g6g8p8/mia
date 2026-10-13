@@ -1,13 +1,17 @@
 # Mia
 ![Ícone da Mia — gatinha em estilo ASCII](assets/mia-icon.svg)
 
-**IA pessoal com contexto, ferramentas e controle de custos.**
+**IA pessoal com seu contexto de trabalho, sob seu controle.**
 
-Mia é um projeto de harness para IA pessoal: a estrutura que reúne memória, contexto, ferramentas e regras de execução para tornar modelos de IA úteis no dia a dia.
+Mia é um projeto de IA pessoal para reunir notas, conversas e decisões e ajudar você a retomar o trabalho com fontes. O código é público; seus arquivos e conversas ficam na instalação que você escolhe, separados do repositório.
 
-O usuário instala o Mia em seu computador ou servidor Ubuntu e acessa pelo navegador. Escolhe os modelos e as integrações que quer usar; seus dados permanecem sob seu controle.
+Você pode instalar no próprio computador ou em um servidor e acessar pelo navegador. Uma instalação no servidor pode atender Mac e iPhone com o mesmo contexto; uma instalação local depende de o computador estar disponível para acesso de outros dispositivos. Modelos locais ou APIs externas são escolhas opcionais, com custos e permissões próprios. O núcleo pode importar e buscar sem IA.
 
 ## Status
+
+**Alpha técnica; a experiência para novos usuários ainda precisa ser redesenhada.** No teste do proprietário em 13/10/2026, a experiência do zero recebeu 2/10 e um vault ZIP foi recusado. Os testes técnicos não demonstram migração representativa, primeiro valor ou instalação sem ajuda. O [novo plano de experiência](docs/EXPERIENCE-PLAN.md) prioriza migração por origens/grupos, retomada com fontes em Hoje e uso sem Terminal diário, mantendo instalação local e servidor como escolhas do participante. Estas melhorias são propostas, não funcionalidades já entregues.
+
+Na 0.2.0a11, o upload continua limitado a 8 MiB, ZIP expandido a 20 MiB e 300 entradas; exports ChatGPT/Claude são experimentais. Não existe instalador Mac para leigos, app iPhone, conector Drive ou sync offline. A licença específica ainda aguarda decisão do titular; código público não equivale a uma licença concedida.
 O M1 é um protótipo executável, validado em Docker sobre Ubuntu e em instalação Python independente no macOS, com fluxo de navegador automatizado. Inclui onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite.
 
 O **M2** acrescenta pedidos independentes com contexto de uma área, adaptador opcional Chat Completions, propostas confirmadas, histórico e orçamento estimado com reserva. O **M3 inicial** oferece onboarding retomável, objetivo declarado, importação local com revisão, busca de fontes e configuração de IA pela interface. Markdown, texto e ZIP são suportados; adaptadores de conversas ChatGPT/Claude são experimentais e reconhecem formatos específicos.
@@ -23,7 +27,7 @@ A primeira versão será validada com poucos usuários piloto. O repositório é
 Em Sistema → IA, **Verificar conexão salva** consulta apenas o catálogo do serviço com a chave salva. Não gera texto nem envia notas. O resultado distingue catálogo acessível, identificador encontrado e situações inconclusivas; não certifica a chave, saldo, suporte a ferramentas ou qualidade. Funciona também no onboarding e não exige gateway.
 
 ## O que o Mia deve oferecer
-- Onboarding para configurar objetivos, áreas, fontes e permissões.
+- Onboarding para trazer o próprio contexto, conferir cobertura e chegar a um primeiro resultado útil.
 - Contexto recuperado conforme a tarefa, com indicação de origem.
 - Memória persistente, inspecionável, editável e exportável pelo usuário.
 - Conversas e execuções que podem ser retomadas após reinício.
@@ -31,7 +35,7 @@ Em Sistema → IA, **Verificar conexão salva** consulta apenas o catálogo do s
 - Propostas de ação revisadas antes de executar alterações.
 - Escolha de modelos locais ou externos, com credenciais próprias.
 - Limites de uso, estimativas e registros de custo.
-- Central de comando com Hoje, Áreas, Planejamento, Busca, Inteligência e Sistema.
+- Experiência alinhada à proposta: Hoje, Conversas, Biblioteca e Ajustes, com busca transversal. Essa taxonomia está planejada; a interface atual ainda usa Áreas, Inteligência e Sistema.
 
 Exemplo de uso: preparar uma reunião a partir de documentos autorizados, apontar as fontes e sugerir próximos passos; o usuário revisa antes de registrar uma tarefa.
 

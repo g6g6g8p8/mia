@@ -1,5 +1,13 @@
 # Aceites de release — 12/10/2026
 
+## Revisão de experiência — 13/10/2026
+
+No teste do proprietário, o uso do zero recebeu **2/10**. Houve rejeição relatada de vault ZIP; a implementação bloqueia mais de 300 entradas antes de filtrar conteúdo útil. A instalação do Mac precisou de Terminal, correção de pip e orientação para reiniciar vazio. Isso confirma saúde/versionamento/instalação vazia naquele teste, não qualidade de migração ou uso sem ajuda.
+
+O próximo ciclo segue [EXPERIENCE-PLAN.md](EXPERIENCE-PLAN.md). M3 precisa migração representativa/primeiro valor com fontes e Hoje útil; M4 precisa uso diário sem Terminal e aceites distintos para local e servidor; M5 exige participantes com sua preferência de instalação e fontes próprias. O proprietário escolheu servidor Linux e retomada de trabalho; isso não obriga novos participantes a hospedar em servidor. Mockups e 141 testes existentes não fecham esses aceites.
+
+Nenhum novo limite, conector, instalador, app ou sincronização foi entregue por este replanejamento. Licença e alegações de economia continuam pendentes. Evidências históricas permanecem abaixo.
+
 Estado: **alpha técnica, não release final para distribuição ampla**. Esta lista descreve evidência, não promessa.
 
 Atualização de evidência do modelo (0.2.0a9): consulta, ação, organização e personalização com modelo real via OpenRouter validadas em material sintético. Comparação de contexto executada e falha de busca corrigida. Total acumulado: 17 chamadas, US$ 0.0045882598 informado pelo provedor, dentro do teto total US$ 1. [Resultados e limitações](REAL-MODEL-VALIDATION.md). Não fecha provedor direto, economia, fontes reais ou piloto externo.

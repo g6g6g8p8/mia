@@ -1,5 +1,13 @@
 # Mia — plano de produto e execução
-Versão 0.15 · 12/10/2026 · Status: 0.2.0a11 acrescenta operação nativa, atualização consciente e recuperação durável, revisão de tarefas e planos HTTPS. Ensaios técnicos Linux/Ubuntu isolado e navegador passaram; licença, provedor direto, acesso remoto real e participantes continuam pendentes. Situação consolidada em RELEASE-CHECKLIST.md.
+Versão 0.16 · 13/10/2026 · Status: 0.2.0a11 é alpha técnica. Avaliação do proprietário: experiência do zero 2/10. O ciclo seguinte prioriza migração de contexto e retomada do trabalho, com caminhos local e servidor sem Terminal diário. Proposta e gates em EXPERIENCE-PLAN.md; evidência anterior e aceites externos preservados em RELEASE-CHECKLIST.md.
+
+## Replanejamento de experiência — prioridade do próximo ciclo
+
+O proprietário escolheu retomar projetos, últimas decisões e pendências com fontes como primeiro resultado; servidor Linux acessado por Mac/iPhone será referência de seu teste. Novos participantes escolhem local ou servidor, sem herdar a preferência do proprietário. Aceites e resultados são separados por modalidade.
+
+A ordem de trabalho passa a ser: **E1 jornada/mensagem → E2 instalação e serviço + E3 migração em escala → E4 retomada/Hoje/conversas → E5 atualização das fontes/conectores → E6 pilotos independentes**. M0–M5 continuam existindo, mas M3 e M4 bloqueiam juntos o piloto; a sequência histórica rígida M2 → M3 → M4 não governa o próximo ciclo.
+
+O [contrato de experiência](EXPERIENCE-PLAN.md) especifica inventário e revisão agrupada, jobs retomáveis, formatos/proveniência, recuperação por trechos, Hoje útil sem tarefas, consentimento/custo e instalação sem comandos no caminho básico local. Não corrigir o problema simplesmente elevando 300 entradas nem criar apps com sync antes de validar migração e primeiro valor. O roteiro novo é proposta de trabalho; este replanejamento não alterou o código.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -88,6 +96,8 @@ Decisões técnicas finais dependem de testes de concorrência, restauração e 
 Nenhuma biblioteca será escolhida por exigir uma plataforma comercial como caminho obrigatório.
 
 ## 6. Onboarding
+
+**Direção do próximo ciclo:** migrar contexto antes de exigir área, projeto ou configuração de API. Instalação continua vazia; origens e grupos autorizados alimentam biblioteca, busca e foco confirmado. Conversas de IA antigas não se tornam fatos pessoais ou obrigações. A descrição abaixo registra a implementação anterior; fluxo futuro e diferenças local/servidor estão em [EXPERIENCE-PLAN.md](EXPERIENCE-PLAN.md).
 Implementado: acesso, objetivo declarado, importação revisável, configuração gráfica de IA e caminho à primeira consulta/Hoje. Fluxo retomável, sugestões de áreas e contexto pessoal/objetivo com evidências e confirmação. Detalhes em [ONBOARDING.md](ONBOARDING.md).
 
 1. Criar acesso local e configurar idioma e fuso.
@@ -131,18 +141,19 @@ Assinatura de aplicativo de chat não é crédito de API.
 Não há promessa de gasto mensal fixo ou economia percentual nesta versão.
 
 ## 8. Experiência web
-Navegação proposta: Hoje, Áreas, Planejamento, Inteligência e Sistema; Busca transversal.
+Nova taxonomia proposta: **Hoje, Conversas, Biblioteca e Ajustes**, com busca transversal. É direção de produto, não renomeação já implementada.
 
-- Hoje destaca prioridades, compromissos e mudanças relevantes.
-- Áreas são configuradas pelo usuário.
-- Planejamento reúne objetivos, semana, projetos e decisões.
-- Inteligência apresenta conversa, fontes, propostas e custo.
-- Sistema reúne modelos, fontes, permissões, orçamento, backup e saúde.
+- Hoje permite retomar foco confirmado, fontes/decisões e pendências revisáveis, mesmo com zero tarefas.
+- Conversas reúne threads, retomada, fontes, propostas e custo; conversa contínua ainda precisa implementação.
+- Biblioteca separa materiais originais, origens/importação, projetos/áreas e declarações confirmadas em Sobre mim.
+- Ajustes reúne instalação/acesso, modelos, permissões, limites, backup e atualização; detalhes avançados ficam fora da jornada básica.
 - Origem, idade do dado, inferência e lacuna são distinguíveis.
 - Ausência de dado não vira zero.
 - Inventário técnico fica fora do fluxo principal.
 
 ## 9. Execução por marcos
+
+Marcos preservam contratos e evidência. A ordem operacional E1–E6 e os gates de experiência no documento novo têm prioridade para o próximo ciclo; suíte técnica sozinha não fecha M3/M4/M5.
 | Marco | Entrega | Aceite |
 | --- | --- | --- |
 | M0 — Fundação limpa | Repositório novo, README, plano, contratos e revisão de extração | Um histórico independente sem conteúdo privado; capacidades planejadas claramente identificadas |

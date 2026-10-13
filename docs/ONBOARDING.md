@@ -1,5 +1,13 @@
 # Onboarding com conhecimento próprio
 
+## Revisão após uso do zero — 13/10/2026
+
+O proprietário avaliou a experiência em 2/10 e relatou rejeição de um vault ZIP. O código limita **todas as entradas** a 300 antes de filtrar pastas/metadados/mídia. Importação síncrona pequena, revisão individual e Hoje dependente de tarefas ainda não demonstram migração de contexto de trabalho.
+
+O [novo contrato de experiência](EXPERIENCE-PLAN.md) substitui o fluxo proposto como direção do próximo ciclo: escolher onde instalar → trazer origens → inventariar/revisar grupos → importar/indexar progressivamente → confirmar o que é atual → retomar trabalho em Hoje. Instalação local e servidor são escolhas do participante; o servidor é a referência do proprietário. Não exigir área ou chave de IA antes de importar, nem selecionar cada nota para migrar um vault.
+
+Este documento mantém abaixo a implementação e o histórico anteriores. Jobs grandes, novos limites, taxonomia, instaladores e Hoje ligado à biblioteca **não foram implementados** por esta revisão. Parsing de exports, recuperação de resposta e qualidade da retomada têm aceites separados.
+
 Status: M3 ampliado em 11/10/2026. Objetivo declarado, fluxo retomável, importação revisável, fontes, busca, configuração gráfica de IA, organização assistida em áreas e sugestões revisáveis de contexto pessoal/objetivo disponíveis. Projetos estruturados, sincronização contínua e compatibilidade ampla de exportações continuam planejadas. Qualidade das sugestões com modelos reais ainda não validada.
 
 ## Problema e resultado esperado
