@@ -43,6 +43,36 @@ def normalized(text):
     return ''.join(c for c in unicodedata.normalize('NFKD',text.casefold()) if not unicodedata.combining(c))
 
 
+def chunk_content(text, size=1800, overlap=180):
+    """Bounded, overlapping excerpts that prefer paragraph/message boundaries.
+
+    Splitting near a boundary keeps late material in long notes searchable;
+    overlap preserves phrases crossing a split. Originals remain unchanged.
+    """
+    if not isinstance(text, str):
+        raise ValueError('Texto inválido')
+    if size < 400 or not 0 <= overlap < size // 2:
+        raise ValueError('Limites de trecho inválidos')
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + size, len(text))
+        if end < len(text):
+            minimum = start + size // 2
+            boundary = text.rfind('\n\n', minimum, end)
+            if boundary >= minimum:
+                end = boundary + 2
+            else:
+                boundary = max(text.rfind('\n', minimum, end), text.rfind(' ', minimum, end))
+                if boundary >= minimum:
+                    end = boundary + 1
+        chunks.append(text[start:end])
+        if end == len(text):
+            break
+        start = max(start + 1, end - overlap)
+    return chunks
+
+
 def safe_path(name):
     if '\\' in name or '\x00' in name or re.match(r'^[A-Za-z]:',name):
         raise ValueError('Caminho não permitido')
@@ -199,8 +229,7 @@ def commit(batch,selection,owner,audit):
             else:
                 doc=str(uuid.uuid4()); imported+=1
                 db.execute('INSERT INTO documents(id,owner_id,area_id,title,path,kind,content,hash,created_at) VALUES(?,?,?,?,?,?,?,?,?)',(doc,owner['id'],row['area_id'],item['title'],item['path'],item['kind'],item['content'],item['hash'],iso()))
-                for n,start in enumerate(range(0,len(item['content']),1000)):
-                    chunk=item['content'][start:start+1200]
+                for n,chunk in enumerate(chunk_content(item['content'])):
                     db.execute('INSERT INTO chunks VALUES(?,?,?,?)',(doc,n,chunk,normalized(chunk)))
             db.execute('INSERT OR IGNORE INTO document_imports VALUES(?,?,?)',(doc,batch,item['path']))
         report=json.loads(row['report_json']); report.update(imported=imported,duplicates=duplicates,not_selected=len(items)-len(selected))
@@ -224,19 +253,44 @@ def remove(batch,owner,audit):
 
 
 def retrieve(owner,area_id,query,limit=3):
-    stopwords={'que','para','uma','como','qual','quais','the','and','com','essa','area','esta','de','do','da','dos','das','em','no','na','nos','nas','um','os','as','ao','aos','ou','por'}
-    terms=[t for t in dict.fromkeys(re.findall(r'\w{2,}',normalized(query))) if t not in stopwords][:8]
+    """Rank authorized chunks with BM25, then diversify documents.
+
+    Parameters never become FTS syntax. Scope filtering happens before the
+    candidate limit, so paused/unapproved/other-owner content cannot displace
+    authorized results. A legacy database without the new index uses lexical
+    matching with the same scope and resource bounds until migration.
+    """
+    stopwords={'que','para','uma','como','qual','quais','the','and','com','essa','area','esta','de','do','da','dos','das','em','no','na','nos','nas','um','os','as','ao','aos','ou','por','ser','sobre','responda','fontes','brevemente','declare'}
+    terms=[t[:80] for t in dict.fromkeys(re.findall(r'\w{2,}',normalized(query[:4000]))) if t not in stopwords][:16]
     if not terms: return []
-    conditions=['c.searchable LIKE ?' for _ in terms]
-    values=['%'+t+'%' for t in terms]
+    limit=max(1,min(12,int(limit)))
     scope='d.owner_id=? AND d.active=1'; scope_values=[owner['id']]
     if area_id: scope+=' AND d.area_id=?'; scope_values.append(area_id)
-    # LIKE has lower precedence than addition: each match must be grouped
-    # before summing, otherwise the score becomes chained comparisons.
-    score=' + '.join('('+condition+')' for condition in conditions)
-    sql=f"SELECT d.id,d.title,d.path,d.kind,d.area_id,d.created_at,c.ordinal,c.content FROM chunks c JOIN documents d ON d.id=c.document_id WHERE {scope} AND ({' OR '.join(conditions)}) ORDER BY ({score}) DESC,d.id,c.ordinal LIMIT ?"
+    columns='d.id,d.title,d.path,d.kind,d.area_id,d.created_at,d.hash,c.ordinal,c.content'
     with connect() as db:
-        return [{'source':'doc:'+r['id'],**dict(r)} for r in db.execute(sql,scope_values+values+values+[limit])]
+        has_fts = db.execute("SELECT 1 FROM sqlite_master WHERE name='chunk_search'").fetchone()
+        if has_fts:
+            match=' OR '.join('"'+term+'"' for term in terms)
+            rows=list(db.execute(f'SELECT {columns},bm25(chunk_search) AS rank FROM chunk_search JOIN chunks c ON c.rowid=chunk_search.rowid JOIN documents d ON d.id=c.document_id WHERE chunk_search MATCH ? AND {scope} ORDER BY rank,d.id,c.ordinal LIMIT ?', [match]+scope_values+[min(240,limit*30)]))
+        else:
+            conditions=['c.searchable LIKE ?' for _ in terms]
+            values=['%'+t+'%' for t in terms]
+            score=' + '.join('('+condition+')' for condition in conditions)
+            rows=list(db.execute(f"SELECT {columns},-({score}) AS rank FROM chunks c JOIN documents d ON d.id=c.document_id WHERE {scope} AND ({' OR '.join(conditions)}) ORDER BY rank,d.id,c.ordinal LIMIT ?",values+scope_values+values+[min(240,limit*30)]))
+    chosen=[]; deferred=[]; counts={}
+    for row in rows:
+        doc=row['id']
+        if doc in counts:
+            deferred.append(row)
+        else:
+            chosen.append(row); counts[doc]=1
+            if len(chosen)==limit: break
+    if len(chosen)<limit:
+        for row in deferred:
+            if counts[row['id']]>=2: continue
+            chosen.append(row); counts[row['id']]+=1
+            if len(chosen)==limit: break
+    return [{'source':'doc:'+r['id'],**{key:r[key] for key in r.keys() if key!='rank'}} for r in chosen]
 
 
 def document(doc,owner):
