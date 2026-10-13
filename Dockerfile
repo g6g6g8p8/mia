@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY pyproject.toml README.md requirements.lock ./
-COPY THIRD_PARTY_NOTICES.md ./
+COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md ./
 COPY THIRD_PARTY_LICENSES ./THIRD_PARTY_LICENSES
 COPY mia ./mia
 RUN pip install --no-cache-dir -r requirements.lock \

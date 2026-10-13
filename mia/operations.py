@@ -309,7 +309,10 @@ class Manager:
     def _idle_database(self, active: dict) -> None:
         path = self._path(active["data"]) / "mia.db"
         if path.exists():
-            with sqlite3.connect(path.as_uri() + "?mode=ro", uri=True) as db:
+            # Connection.__exit__ commits/rolls back but does not close. An
+            # idle reader surviving a worker restart can retain a mapping of
+            # deleted WAL/SHM files; every manager connection has a fixed scope.
+            with contextlib.closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
                 if db.execute("SELECT 1 FROM runs WHERE state='running' LIMIT 1").fetchone():
                     raise OperationError("Há uma geração em andamento/interrompida. Aguarde ou reinicie a versão atual antes de atualizar")
 
@@ -520,8 +523,8 @@ class Manager:
                 # SQLite backup. Original bytes, including WAL, remain untouched.
                 copied = snapshot / "data/mia.db"
                 normalized = snapshot / "normalized.db"
-                with sqlite3.connect(copied.as_uri() + "?mode=ro", uri=True) as incoming:
-                    with sqlite3.connect(normalized) as output:
+                with contextlib.closing(sqlite3.connect(copied.as_uri() + "?mode=ro", uri=True)) as incoming:
+                    with contextlib.closing(sqlite3.connect(normalized)) as output:
                         incoming.backup(output)
                 os.replace(normalized, copied)
                 copied.chmod(0o600)
@@ -695,8 +698,8 @@ class Manager:
                 original.unlink()
                 for suffix in ("-wal", "-shm"):
                     (target / ("data/mia.db" + suffix)).unlink(missing_ok=True)
-                with sqlite3.connect((self._path(active["data"]) / "mia.db").as_uri() + "?mode=ro", uri=True) as source:
-                    with sqlite3.connect(original) as destination:
+                with contextlib.closing(sqlite3.connect((self._path(active["data"]) / "mia.db").as_uri() + "?mode=ro", uri=True)) as source:
+                    with contextlib.closing(sqlite3.connect(original)) as destination:
                         source.backup(destination)
                 original.chmod(0o600)
                 self._verify_db(original)
@@ -722,7 +725,7 @@ class Manager:
 
     @staticmethod
     def _verify_db(path: Path) -> None:
-        with sqlite3.connect(path.as_uri() + "?mode=ro", uri=True) as db:
+        with contextlib.closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
             if db.execute("PRAGMA integrity_check").fetchall() != [("ok",)] or db.execute("PRAGMA foreign_key_check").fetchone():
                 raise OperationError("Banco não passou na verificação de integridade")
             tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -758,7 +761,7 @@ class Manager:
             _copy_private(snapshot / "data", self.root / relative)
             restored_db = self.root / relative / "mia.db"
             if restored_db.exists():
-                with sqlite3.connect(restored_db) as db:
+                with contextlib.closing(sqlite3.connect(restored_db)) as db:
                     db.execute("DELETE FROM sessions")
                     db.execute("DELETE FROM login_attempts")
                     db.commit()

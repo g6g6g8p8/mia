@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.17 · 13/10/2026 · Status: 0.2.0a12 implementa a nova jornada de contexto após avaliação 2/10. Migrações retomáveis, revisão por grupos, Hoje ligado a fontes, conversas e serviço de usuário entram no ciclo E1–E4; aceites com fontes reais, instalações-alvo e participantes continuam abertos. Contrato em EXPERIENCE-PLAN.md; evidência histórica e aceites externos em RELEASE-CHECKLIST.md.
+Versão 0.18 · 13/10/2026 · Status: 0.2.0a12 implementa a nova jornada de contexto após avaliação 2/10. Apache-2.0 adotada por escolha delegada do proprietário. Próxima execução: inventário/limpeza de Mia no MacBook e macserver, instalação vazia guiada, aceites reais 1–4 e piloto independente 5. [Roadmap operacional](ROADMAP.md); contrato em EXPERIENCE-PLAN.md; evidência em RELEASE-CHECKLIST.md.
 
 ## Replanejamento de experiência — prioridade do próximo ciclo
 
@@ -16,7 +16,7 @@ Proposta: **IA pessoal com contexto, ferramentas e controle de custos.**
 A central de comando é a interface do harness.
 
 Decisões confirmadas:
-- Código aberto, com licença específica pendente de revisão das dependências.
+- Código aberto sob Apache-2.0 para código, documentação e assets próprios; licenças das dependências preservadas separadamente.
 - Ubuntu primeiro, em servidor ou computador pessoal.
 - Primeira versão com poucos usuários piloto.
 - Onboarding personalizado.
@@ -174,11 +174,11 @@ Manter os marcos, acrescentando estes critérios:
 - **M3 — IA na interface:** escolher serviço direto, gateway opcional ou servidor local, informar credencial/modelo/limites e conferir destino. Seleção guiada inicial implementada na 0.2.0a5: sem IA, OpenAI direto com endereço preenchido, serviço compatível ou servidor local com instruções. Na 0.2.0a10, verificação explícita consulta o catálogo `/models` do destino salvo, sem geração ou envio de notas. Informa acesso, presença exata do identificador ou inconclusão; não comprova chave, saldo, ferramentas ou qualidade. Seleção em catálogo e outros adaptadores nativos ainda pendentes. Nenhum gateway será intermediário obrigatório. Verificar conexão sem geração quando possível; teste que gere custo exige valor limite e confirmação explícitos.
 - **M4 — Acesso na interface:** mostrar acesso neste computador, na rede local e remoto; guiar endereço/domínio, HTTPS e diagnóstico. Acesso local e LAN não exigem VPN nem conta externa. Não publicar portas automaticamente. Configuração remota deve apresentar alterações e obter confirmação antes de aplicá-las, com opção de desativar e recuperar acesso local.
 - **M4 — Limites da rede:** quando a rede não aceitar conexões de entrada, explicar a necessidade de uma rota alcançável (configuração do roteador/IPv6, servidor próprio ou túnel opcional escolhido pelo usuário). A interface não pode prometer resolver CGNAT sem infraestrutura adicional. Nenhum fornecedor de túnel será obrigatório.
-- **M5 — Aceite independente:** instalar e concluir uma consulta com provedor direto, sem OpenRouter; acessar de outro dispositivo sem Tailscale; validar HTTPS remoto em instalação controlada pelo participante. Documentar o que ainda exigiu ação fora da Mia.
+- **M5 — Aceite independente atual:** instalar e retomar trabalho com fontes usando documentação, na modalidade e rede escolhidas; IA opcional com destino/modelo da pessoa; HTTPS real quando remoto. Registrar ações fora da Mia e ajuda. Provedor direto sem gateway e alternativa sem Tailscale continuam ensaios de independência M2/M4, separados da conclusão de uma rodada sem IA ou em rede privada escolhida.
 
 Hoje: configuração de API compatível já acontece em Sistema. Na 0.2.0a6, o assistente de acesso salva preferências e endereço HTTPS e diagnostica a sessão atual; não aplica configuração de rede/certificados nem valida acesso externo. Detalhes em [ACCESS.md](ACCESS.md). O link do piloto continua usando Tailscale até existir e ser validada uma alternativa. Não alterar a rede do piloto apenas para demonstrar independência.
 
-Retorno ao plano original após esse complemento: concluir aceites M2/M3 com modelo real e fontes próprias dos participantes (modelo via gateway e teto total de US$ 1 já autorizados; fontes reais dos participantes pendentes); seguir no M4 com recuperação e atualização reproduzível; somente então fechar M5. Não marcar marcos concluídos pela existência dos assistentes. A automação de HTTPS/rede e validação sem Tailscale continuam pendentes no M4/M5.
+O próximo piloto segue ROADMAP.md, preservando os ensaios técnicos de independência e os aceites de release: modelos reais/autorizados, fontes próprias, recuperação e atualização reproduzível. Nenhum marco fecha pela existência dos assistentes. Não bloquear o núcleo sem IA ou obrigar trocar a rede escolhida para executar o piloto; documentar ensaios diretos/alternativos como pendentes onde não executados.
 
 ### Verificações do produto
 - Instalação e reinício em Ubuntu limpo.
@@ -208,9 +208,9 @@ Atualização 0.2.0a11: [operação nativa](OPERATIONS.md) para instalações no
 
 Sistema mostra estado operacional e prepara plano explícito para proxy HTTPS opcional, sem executar comandos de rede. Caddyfile gerado passou em ensaio loopback com TLS verificado, origem, cookie Secure e recuperação local; isso não comprova rota pública/LAN em outro dispositivo. Propostas de tarefa agora permitem edição antes de aprovação, preservando original e resultado aplicado no histórico/exportação e após restauração.
 
-A distribuição preserva 279 textos de avisos de terceiros, com inventários Python/Rust e checksums; roda verificação de wheel/sdist e pacote instalado. Essa revisão tem escopo documentado em [DEPENDENCIES.md](DEPENDENCIES.md), sem conceder licença própria ou certificar todos os binários/OS upstream. [Opções de licença](LICENSE-OPTIONS.md), roteiro independente e template privado de piloto foram preparados. Não foram criados participantes, fontes reais ou resultados externos. Nenhuma nova chamada paga: acumulado conhecido permanece US$ 0.0045882598 sobre teto total US$ 1.
+A distribuição preserva 279 textos de avisos de terceiros, com inventários Python/Rust e checksums; roda verificação de wheel/sdist e pacote instalado. A revisão inicial desses avisos não concedia licença própria nem certificava todos os binários/OS upstream. Em 13/10, LICENSE/NOTICE Apache-2.0 foram aplicados separadamente; [escopo](LICENSE-OPTIONS.md). Roteiro e template privado de piloto foram preparados, sem inventar participantes/fontes/resultados externos. Nenhuma nova chamada paga: acumulado conhecido permanece US$ 0.0045882598 sobre teto total US$ 1.
 
-Os aceites externos não foram apagados: M0 ainda depende da licença; M2 de provedor direto/qualidade representativa; M3 de fontes/exports autorizados e uso por participantes; M4 de boot nos sistemas suportados, cópia externa e rota HTTPS real; M5 de 2–3 participantes, benchmark representativo e decisão de release. A existência do gerenciador e dos planos não fecha esses marcos.
+Os aceites externos não foram apagados: M0 ainda depende da revisão do artefato concreto distribuído; a licença própria Apache-2.0 foi aplicada em 13/10. M2 depende de provedor direto/qualidade representativa; M3 de fontes/exports autorizados e uso por participantes; M4 de boot nos sistemas suportados, cópia externa e rota HTTPS real; M5 de 2–3 participantes, benchmark representativo e decisão de release. A existência do gerenciador e dos planos não fecha esses marcos.
 
 Atualização de 12/10 — 0.2.0a9: 17 chamadas sintéticas de DeepSeek via OpenRouter, custo informado acumulado US$ 0.0045882598 sobre teto total US$ 1. Organização e personalização passaram com edição, aprovação parcial e idempotência. Comparação de contexto revelou falha de ordenação da busca, corrigida e revalidada. Entrada caiu de 2.653 para 983 tokens no caso medido; custo observado não diminuiu. Detalhes em [REAL-MODEL-VALIDATION.md](REAL-MODEL-VALIDATION.md). Provedor direto, fontes/exports reais e pilotos externos continuam pendentes. Os itens abaixo registram a evolução histórica, inclusive pendências posteriormente resolvidas.
 - Fundação documental preparada em repositório Git local novo.
@@ -222,7 +222,7 @@ Atualização de 12/10 — 0.2.0a9: 17 chamadas sintéticas de DeepSeek via Open
 - Persistência confirmada após reiniciar o contêiner; os dados fictícios de validação foram removidos e a instância voltou ao estado inicial vazio.
 - O teste manteve o host em 68% de ocupação de disco. Detalhes reproduzíveis estão em `docs/VALIDATION.md`.
 - Conectores, restauração automática e expansão do harness continuam nos marcos seguintes.
-- O proprietário tornou o repositório público; a licença aberta específica permanece pendente.
+- O proprietário tornou o repositório público; a licença permanecia pendente nessa etapa histórica e foi definida como Apache-2.0 em 13/10.
 - M1 revisado no navegador em macOS independente: corrigidos formulários após envio, persistência do bloqueio de login, saída no celular, data no fuso do proprietário e resultados obsoletos na busca.
 - M2 inicial implementado: contexto por área, adaptador opcional Chat Completions, proposta de tarefa, confirmação/recusa, histórico, cota de chamadas e idempotência transacional.
 - 17 testes automatizados e dois fluxos reais de navegador aprovados. O fluxo de IA usa provedor simulado local, sem chamada paga.

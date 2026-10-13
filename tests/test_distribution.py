@@ -16,10 +16,18 @@ distribution = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(distribution)
 
 
-def make_wheel(tmp_path, extra=None, *, notice=b"Original copyright and license"):
+def make_wheel(tmp_path, extra=None, *, notice=b"Original copyright and license", own_notice=None):
     target = tmp_path / "mia_test-1.0-py3-none-any.whl"
     with zipfile.ZipFile(target, "w") as wheel:
         wheel.writestr("mia_test-1.0.dist-info/licenses/THIRD_PARTY_LICENSES/dependency--LICENSE", notice)
+        own_license = (distribution.ROOT / "LICENSE").read_text()
+        wheel.writestr("mia_test-1.0.dist-info/licenses/LICENSE", own_license)
+        wheel.writestr("mia_test-1.0.dist-info/licenses/NOTICE", own_notice if own_notice is not None else (distribution.ROOT / "NOTICE").read_bytes())
+        wheel.writestr("mia_test-1.0.dist-info/METADATA",
+                       "Metadata-Version: 2.1\nName: mia-test\nVersion: 1.0\n"
+                       + "Classifier: " + distribution.APACHE_CLASSIFIER + "\n"
+                       + "License-File: LICENSE\nLicense-File: NOTICE\n"
+                       + "License: " + own_license.replace("\n", "\n        ") + "\n\n")
         for path in ["mia/static/index.html", "mia/static/assets/app.js", "mia/static/assets/app.css"]:
             wheel.writestr(path, "synthetic asset")
         for path, content in (extra or {}).items():
@@ -30,6 +38,7 @@ def make_wheel(tmp_path, extra=None, *, notice=b"Original copyright and license"
 def test_current_lock_keeps_original_notice_inventory():
     expected = distribution.inventory_files()
     assert "THIRD_PARTY_NOTICES.md" in expected
+    assert "LICENSE" in expected and "NOTICE" in expected
     assert "THIRD_PARTY_LICENSES/inventory.json" in expected
     assert "THIRD_PARTY_LICENSES/rust-inventory.json" in expected
 
@@ -37,7 +46,7 @@ def test_current_lock_keeps_original_notice_inventory():
 @pytest.mark.parametrize("failure", ["runtime_version", "notice_bytes", "unknown_file"])
 def test_rust_supplement_rejects_drift_and_unreviewed_files(tmp_path, failure):
     shutil.copytree(distribution.ROOT / "THIRD_PARTY_LICENSES", tmp_path / "THIRD_PARTY_LICENSES")
-    for name in ["THIRD_PARTY_NOTICES.md", "requirements.lock"]:
+    for name in ["THIRD_PARTY_NOTICES.md", "requirements.lock", "pyproject.toml", "LICENSE", "NOTICE"]:
         shutil.copyfile(distribution.ROOT / name, tmp_path / name)
     path = tmp_path / "THIRD_PARTY_LICENSES/rust-inventory.json"
     inventory = json.loads(path.read_text())
@@ -63,6 +72,40 @@ def test_archive_cannot_omit_notice(tmp_path):
     expected = {"THIRD_PARTY_LICENSES/missing--LICENSE": b"Required notice"}
     with pytest.raises(ValueError, match="Missing or altered notice"):
         distribution.check_archive(make_wheel(tmp_path), expected)
+
+
+@pytest.mark.parametrize("failure", ["missing_license", "modified_grant", "wrong_metadata"])
+def test_project_grant_rejects_missing_modified_or_mislabelled_license(tmp_path, failure):
+    for name in ["pyproject.toml", "LICENSE", "NOTICE"]:
+        shutil.copyfile(distribution.ROOT / name, tmp_path / name)
+    if failure == "missing_license":
+        (tmp_path / "LICENSE").unlink()
+    elif failure == "modified_grant":
+        (tmp_path / "LICENSE").write_bytes(b"An incomplete license grant")
+    else:
+        manifest = tmp_path / "pyproject.toml"
+        manifest.write_text(manifest.read_text().replace("Apache Software License", "MIT License"))
+    with pytest.raises((OSError, ValueError)):
+        distribution.project_license_files(tmp_path)
+
+
+def test_archive_rejects_incorrect_project_license_metadata(tmp_path):
+    archive = make_wheel(tmp_path)
+    files = distribution.archive_files(archive)
+    metadata_path = "mia_test-1.0.dist-info/METADATA"
+    files[metadata_path] = files[metadata_path].replace(distribution.APACHE_CLASSIFIER.encode(), b"License :: Other/Proprietary License")
+    with zipfile.ZipFile(archive, "w") as wheel:
+        for path, content in files.items():
+            wheel.writestr(path, content)
+    with pytest.raises(ValueError, match="classifier"):
+        distribution.check_archive(archive, {"LICENSE": (distribution.ROOT / "LICENSE").read_bytes()})
+
+
+def test_archive_preserves_original_grant_and_attribution(tmp_path):
+    expected = distribution.project_license_files()
+    distribution.check_archive(make_wheel(tmp_path), expected)
+    with pytest.raises(ValueError, match="Missing or altered notice"):
+        distribution.check_archive(make_wheel(tmp_path, own_notice=b"Attribution removed"), expected)
 
 
 @pytest.mark.parametrize("name", ["data/owner.db", ".env", ".aws/credentials", "../outside", "/absolute"])

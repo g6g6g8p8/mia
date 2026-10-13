@@ -92,7 +92,7 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
         shutil.copytree(wheelhouse, resources / "wheelhouse")
         public = resources / "source"
         public.mkdir()
-        for name in ("pyproject.toml", "requirements.lock", "README.md", "MANIFEST.in", "THIRD_PARTY_NOTICES.md"):
+        for name in ("pyproject.toml", "requirements.lock", "README.md", "MANIFEST.in", "LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"):
             path = source / name
             if path.exists():
                 if path.is_symlink() or not path.is_file():

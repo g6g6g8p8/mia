@@ -48,6 +48,8 @@ def test_macos_bundle_is_offline_private_input_free_and_truthfully_unsigned(tmp_
     resources = output / "Contents/Resources"
     assert (resources / "runtime/bin/python3").exists()
     assert (resources / "source/mia/launcher.py").exists()
+    for name in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"):
+        assert (resources / "source" / name).read_bytes() == (package_macos.REPOSITORY / name).read_bytes()
     assert not (resources / "source/.git").exists()
     assert not (resources / "source/data").exists()
     assert not (resources / "source/.env").exists()
