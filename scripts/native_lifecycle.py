@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import base64
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from http.cookiejar import CookieJar
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -158,12 +158,12 @@ def data_directory(manager):
 
 
 def task_titles(database):
-    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as db:
+    with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as db:
         return {row[0] for row in db.execute('SELECT title FROM tasks')}
 
 
 def table_exists(database, name):
-    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as db:
+    with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as db:
         return bool(db.execute('SELECT name FROM sqlite_master WHERE type="table" AND name=?', (name,)).fetchone())
 
 
@@ -198,7 +198,7 @@ def populate(api, manager):
     api.call('PUT', '/api/personalization', {'text': PROFILE, 'expected_revision': 0})
     api.call('PUT', '/api/access/config', {'mode': 'computer', 'address': ''})
     manager.stop()
-    with sqlite3.connect(data_directory(manager) / 'mia.db') as db:
+    with closing(sqlite3.connect(data_directory(manager) / 'mia.db')) as db, db:
         db.execute("INSERT INTO runs(id,owner_id,request_key,request_json,state,model,endpoint,sources_json,created_at,updated_at,reserved_micro,charged_micro,cost_status) VALUES('synthetic-interrupted-run',1,'synthetic-interrupted-key','{}','running','synthetic','http://127.0.0.1:1','[]','2030-01-01','2030-01-01',25,25,'reserved')")
     manager.start()
     verify_identity(api, area, ['Preserve baseline task'])
@@ -396,7 +396,7 @@ def run(root, baseline, candidate, wheels):
                 check('recover' in str(error), 'Pending recovery did not block start')
             else:
                 raise AssertionError('Start bypassed pending recovery')
-            with sqlite3.connect(attempt_data / 'mia.db') as db:
+            with closing(sqlite3.connect(attempt_data / 'mia.db')) as db, db:
                 db.execute('CREATE TABLE interrupted_attempt_probe(value TEXT)')
             manager.recover()
             recovered = manager.active()
@@ -429,7 +429,7 @@ def run(root, baseline, candidate, wheels):
             retained_path = str(retained[0].relative_to(manager.root))
             manager._verify_snapshot(retained_path)
             check(task_titles(retained[0] / 'data/mia.db') == {'Preserve baseline task', 'Preserve reviewed task'}, 'Retained post-update task set changed')
-            with sqlite3.connect((retained[0] / 'data/mia.db').as_uri() + '?mode=ro', uri=True) as db:
+            with closing(sqlite3.connect((retained[0] / 'data/mia.db').as_uri() + '?mode=ro', uri=True)) as db:
                 check(db.execute('SELECT task_result_json FROM runs WHERE id=?', (reviewed_run,)).fetchone()[0] is not None, 'Reviewed result missing from retained snapshot')
             manager._verify_snapshot(retained_path)
             check(data_directory(manager) != post_update, 'Old code was started on migrated attempt data')
@@ -464,18 +464,25 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline-ref', default='7a026c2', help='Trusted earlier Git revision; default public 0.2.0a10')
     parser.add_argument('--wheelhouse', type=Path, help='Existing trusted wheels for this Python/platform; no downloads when supplied')
+    parser.add_argument('--keep-on-failure', action='store_true', help='Preserve disposable synthetic fixture after a failed rehearsal for diagnosis; processes are still stopped')
     args = parser.parse_args()
     check(sys.version_info >= (3, 12), 'Python 3.12+ required')
     root = Path(tempfile.mkdtemp(prefix='mia-native-lifecycle-'))
+    failed = False
     try:
         baseline, candidate = root / 'baseline-source', root / 'candidate-source'
         git_source(baseline, args.baseline_ref, root)
         public_source(candidate)
         wheels = wheelhouse(root, args.wheelhouse, (baseline, candidate))
         run(root, baseline, candidate, wheels)
+    except BaseException:
+        failed = True
+        raise
     finally:
         installation = root / 'installation'
-        if installation.exists() and operations._busy(installation / 'service.lock'):
+        if failed and args.keep_on_failure:
+            print('Failed synthetic fixture retained for diagnosis: ' + str(root), file=sys.stderr)
+        elif installation.exists() and operations._busy(installation / 'service.lock'):
             print('Fixture retained because process exit was not verified: ' + str(root), file=sys.stderr)
         else:
             shutil.rmtree(root)

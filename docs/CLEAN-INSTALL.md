@@ -152,13 +152,15 @@ ssh -N -L 8124:127.0.0.1:8123 "$MIA_SSH_TARGET"
 
 Use `http://127.0.0.1:8124` no Mac durante essa preparação. A porta 8124 evita conflito com uma Mia local em 8123; confira que também está livre. Esse túnel é temporário e depende da sessão SSH aberta.
 
+Antes de publicar uma rota acessível a outras pessoas, crie seu acesso de proprietário por essa conexão privada de preparação e confirme que `configured` passou a `true`. Digite a senha no seu navegador; não a compartilhe no chat ou no relatório. Uma Mia vazia permite criar o primeiro proprietário: não deixe essa etapa disponível em um endereço público. No Mac local, crie o acesso pelo loopback antes de preparar acesso de outro dispositivo.
+
 Para uso diário, prepare um endereço **HTTPS estável** conforme [ACCESS.md](ACCESS.md), com certificado confiável e serviço persistente. Escolha domínio/rede e topologia reais depois de conferir o proxy já existente. Uma rede privada existente, inclusive Tailscale, pode ser usada, mas não é obrigatória. Não redefina rotas compartilhadas de outros produtos. Não exponha uvicorn HTTP diretamente à internet.
 
 Teste login e escrita autorizada pelo endereço HTTPS no Mac e no iPhone; teste fora do Wi-Fi do servidor e após fechar SSH. Confira cookie Secure, reinicialização, backup e recuperação. No iPhone, pode salvar esse endereço na tela de início; isso abre a mesma instalação e não cria cópia offline. Registrar “servidor” no onboarding não configura essa infraestrutura.
 
 ## 7. Recomeçar a experiência e liberar o piloto
 
-Crie nome, senha e fuso; continue sem IA. Importe explicitamente um vault/export original, confira cobertura e exceções, escolha o trabalho atual e confirme suas fontes. A instalação antiga arquivada permanece separada. Hoje deve ajudar a retomar o foco com fontes conferíveis antes de configurar modelo; decisões e pendências sugeridas precisam de revisão de atualidade e autoria.
+Com o acesso já criado durante a preparação privada, entre e continue sem IA. Importe explicitamente um vault/export original, confira cobertura e exceções, escolha o trabalho atual e confirme suas fontes. A instalação antiga arquivada permanece separada. Hoje deve ajudar a retomar o foco com fontes conferíveis antes de configurar modelo; decisões e pendências sugeridas precisam de revisão de atualidade e autoria.
 
 Só depois, se desejar, configure provedor, modelo e chave própria. A chave de um produto existente deve ser lida sem impressão e transferida por canal local seguro, ou trocada por uma chave Mia separada com limite no provedor. Não inclua chaves no script, Git, relatório ou convite. Conferir conexão gera chamada apenas quando autorizada; salvamento e importação não chamam IA. Assinaturas de chat e créditos de API são diferentes.
 
