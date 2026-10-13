@@ -41,3 +41,22 @@ python scripts/check_distribution.py --archive /tmp/mia-dist/<pacote>.whl --arch
 Use o Python do ambiente virtual e instale o empacotador como ferramenta de desenvolvimento quando necessário. O script confere igualdade com o lock, origem/versões/contagens do suplemento Rust, hashes/originais Python instalados, ausência de arquivos não registrados no diretório de licenças, presença de todos os avisos/assets nos arquivos e padrões selecionados de arquivos privados/credenciais. É offline, não extrai arquivos nem segue links. Ele não é scanner universal de segredos ou avaliador de compatibilidade legal. Os nomes dos textos são únicos para preservar o conjunto também com empacotadores que achatem caminhos.
 
 Validação técnica da distribuição `0.2.0a11`: Linux x86_64, Python 3.12.14; 13 testes de comportamento do verificador passaram. Wheel e sdist novos passaram com setuptools 84.0.0 (`build` 1.6.1, `wheel` 0.48.0) e com setuptools 75.0.0, o mínimo declarado pelo projeto. As 279 licenças, os dois inventários e o aviso geral foram preservados byte a byte: 282 arquivos. Um ambiente virtual novo recebeu o lock e o wheel; a conferência dos avisos de runtime/metadados instalados e `scripts/package_smoke.py` passaram, com inicialização HTTP/assets fora do diretório-fonte. Isso é validação no host Linux existente, não instalação de sistema operacional novo, revisão de imagem completa, teste Mac ou concessão da licença própria.
+
+## Build Docker com wheelhouse verificado
+
+`scripts/build_offline_image.py` prepara um contexto temporário explícito com arquivos públicos de empacotamento, código/assets da Mia e avisos; não copia o checkout inteiro, Git, arquivos de ambiente, dados ou backups. Seleciona somente wheels das versões do lock e do bootstrap (`pip` 25.0.1, setuptools 75.8.0, `wheel` 0.45.1), verifica os SHA256 publicados pelo PyPI com HTTPS normal no host e gera locks com `--require-hashes`. No Dockerfile temporário, substitui o bloco de instalação por `--no-index --find-links` e instala a Mia com `--no-build-isolation`; executa o build com `--network none`. O Dockerfile original permanece igual. A imagem base precisa estar disponível no cache ou ser obtida pelo Docker com sua configuração normal de confiança; `--network none` não impede sozinho essa obtenção.
+
+```bash
+python scripts/build_offline_image.py \
+  --wheelhouse /caminho/wheels-verificados \
+  --tag mia:0.2.0a11-review \
+  --write-hash-manifest /tmp/mia-wheel-hashes.json \
+  --manifest-output /tmp/mia-image-source.json \
+  --validate
+```
+
+Os manifests públicos ficam fora do checkout e não são sobrescritos. Em uma repetição sem acesso ao índice no host, use `--hash-manifest /tmp/mia-wheel-hashes.json` no lugar de `--write-hash-manifest`, com o manifest previamente verificado e conservado sob controle do instalador; compare os hashes antes de qualquer instalação. É necessário fornecer wheels compatíveis com o Python/plataforma da imagem; não interpretar um conjunto Linux x86_64 como pacote para toda arquitetura. `DOCKER_CONFIG`, quando necessário no cloud, aponta para uma configuração existente fora do checkout; o helper não copia credenciais ou configurações privadas para o contexto.
+
+Ensaio efetivo: imagem local `mia:0.2.0a11-review`, Linux/amd64, ID `sha256:9d483221701a4d7863dba88ff8dbfe3170164d005358ebbfae793490e38c6cc1`. Build com rede dos comandos RUN desativada, 24 wheels conferidos e instalação sem dependências quebradas. Com rede dos contêineres desativada e usuário 10001, passaram HTTP/assets fora de `/app`, comparação dos 282 avisos/inventários do pacote instalado e instalação vazia → autenticação → tarefa sintética → reinício → uma única tarefa preservada. Checkers e avisos foram montados somente leitura a partir de cópias públicas temporárias; os contêineres/dados sintéticos foram removidos. Guardas adicionais rejeitaram uma roda alterada e fonte dentro de diretório privado em reproduções sintéticas.
+
+O primeiro ensaio encontrou permissão insuficiente nos scripts originais montados, que tinham modo 0600. O helper passou a usar cópias públicas temporárias 0644/diretórios 0755, mantendo o UID 10001 e todas as permissões do checkout. O build convencional teve falha de DNS no ambiente cloud; o build offline acima não comprova sucesso daquela rota de rede, instalação de VM completa, HTTPS remoto ou auditoria legal de todos os componentes da imagem. Nenhuma verificação TLS/assinatura foi desabilitada para contornar essas falhas.
