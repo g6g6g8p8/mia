@@ -483,6 +483,8 @@ class Manager:
         operator action, not something inferred from a port number. Two full
         fingerprints catch writes during the offline copy. Never open SQLite
         on the source: even a read can mutate its transient WAL/SHM files.
+        Unreviewed upload staging stays only in the original source, outside
+        permanent snapshots and active migrated data; affected jobs reupload.
         """
         self._check()
         self._background_capability()
@@ -511,7 +513,7 @@ class Manager:
             snapshot.mkdir(mode=0o700)
             try:
                 before = _manifest(source)
-                _copy_private(source, snapshot / "data")
+                _copy_private(source, snapshot / "data", exclude_top=("migration-staging",))
                 if _manifest(source) != before:
                     raise OperationError("Origem mudou durante a cópia; mantenha o serviço parado")
                 # Normalize the copied database and its WAL into one verified
@@ -536,7 +538,8 @@ class Manager:
                     (snapshot / "source-machine.env").chmod(0o600)
                     with (snapshot / "source-machine.env").open("rb") as file:
                         os.fsync(file.fileno())
-                _write(snapshot / "snapshot.json", {"files": _manifest(snapshot), "origin": "explicit-stopped-manual-source"})
+                _write(snapshot / "snapshot.json", {"files": _manifest(snapshot), "origin": "explicit-stopped-manual-source",
+                       "excluded": ["migration-staging"], "retention": "Unreviewed uploads remain in the original stopped source only. Jobs needing raw staging require reupload; approved sources and job metadata are preserved."})
                 _sync(snapshot)
                 _sync(snapshot.parent)
                 self._verify_snapshot("snapshots/" + identity)
@@ -570,7 +573,8 @@ class Manager:
                 os.fsync(file.fileno())
             os.replace(temporary, self.root / "machine.env")
         _write(self.root / "active.json", {**migration["old"], "data": migration["data"]})
-        _write(self.root / "migration.json", {"snapshot": migration["snapshot"], "data": migration["data"], "source_preserved": True})
+        _write(self.root / "migration.json", {"snapshot": migration["snapshot"], "data": migration["data"], "source_preserved": True,
+               "excluded": ["migration-staging"], "staging_requires_reupload": True})
         (self.root / "migration-pending.json").unlink()
         _sync(self.root)
 

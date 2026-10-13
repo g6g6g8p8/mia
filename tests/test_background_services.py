@@ -117,6 +117,31 @@ def test_interrupted_verified_migration_recovers_same_private_target(managed, mo
     assert (managed._path(managed.active()["data"]) / "notes/snapshot.json").exists()
 
 
+def test_manual_migration_keeps_unreviewed_staging_only_in_original_source(managed, monkeypatch, tmp_path):
+    directory = populate(managed, monkeypatch)
+    staging = directory / "migration-staging"
+    staging.mkdir()
+    (staging / "synthetic-raw-export.zip").write_bytes(b"unreviewed synthetic export; never permanent backup")
+    source = tmp_path / "stopped-manual-a12-data"
+    operations._copy_private(directory, source)
+    import shutil
+    shutil.rmtree(directory)
+    directory.mkdir()
+    original_files = operations._manifest(source)
+    managed.migrate_data(source, source_stopped=True)
+    record = operations._read(managed.root / "migration.json")
+    snapshot = managed._verify_snapshot(record["snapshot"])
+    target = managed._path(managed.active()["data"])
+    assert operations._manifest(source) == original_files
+    assert (source / "migration-staging/synthetic-raw-export.zip").exists()
+    assert not (snapshot / "data/migration-staging").exists()
+    assert not (target / "migration-staging").exists()
+    assert (target / "ai-settings.json").exists()
+    assert (target / "notes/snapshot.json").exists()
+    assert operations._read(snapshot / "snapshot.json")["excluded"] == ["migration-staging"]
+    assert record["excluded"] == ["migration-staging"] and record["staging_requires_reupload"]
+
+
 def test_snapshot_excludes_unapproved_upload_staging_only(managed, monkeypatch):
     data = populate(managed, monkeypatch)
     staging = data / "migration-staging"
