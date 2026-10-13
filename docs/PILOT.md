@@ -1,5 +1,17 @@
 # Piloto — 2 a 3 pessoas
 
+## Revisão do próximo piloto — 13/10/2026
+
+Aplicar o [plano de experiência](EXPERIENCE-PLAN.md), após avaliação 2/10 do proprietário. Antes de orientar, registrar a **preferência de instalação de cada participante**: local ou servidor/conectar à instalação existente. O Linux do proprietário não determina a escolha dos demais. Os resultados e falhas são separados por modalidade; código público ainda depende de decisão de licença para distribuição.
+
+Primeiro valor: reconhecer um projeto/assunto em andamento, reencontrar decisão com fonte e revisar uma pendência, sem cadastrar toda a organização para preencher Hoje. O onboarding deve importar vault/exports suportados em grupos e relatar cobertura, sem exigir que a pessoa divida arquivos para vencer o limite atual.
+
+Local: instalação sem comandos no caminho básico, fechar Terminal, reiniciar sessão, suspensão/retomada e preservar dados. Servidor: fechar SSH, reiniciar serviço/host, testar HTTPS no Mac/iPhone e acesso externo quando escolhido. Local no próprio computador não exige domínio, VPN ou servidor. Cliente no iPhone conectado ao mesmo backend não comprova sync offline.
+
+Selecionar participantes para observar ambos os caminhos quando houver preferência real, sem forçar uma modalidade por conveniência do mantenedor. Onde faltar artefato/infraestrutura, registrar aquele cenário como não executado, sem transferir sucesso da outra modalidade. Não convidar pessoas automaticamente nem coletar vaults/chaves no repositório.
+
+O roteiro histórico abaixo continua útil para controles do núcleo, mas não basta para declarar o novo piloto pronto. O template atual pode registrar modalidade/ajuda; será ampliado com cobertura da migração e retomada antes do ensaio redesenhado.
+
 Status: roteiro preparado. O proprietário realizou testes iniciais no celular e identificou lacuna de onboarding/importação. Piloto com usuários externos ainda não concluído.
 
 Objetivo: verificar instalação e primeira utilidade com **2–3 pessoas**, cada uma em uma instalação própria no Mac ou Ubuntu e com fontes escolhidas por ela. O responsável prepara o pacote identificado e estas instruções; o convite e a decisão de compartilhar resultados são explícitos. Não há participantes ou resultados registrados neste documento.
