@@ -1,0 +1,9 @@
+include README.md requirements.lock THIRD_PARTY_NOTICES.md
+recursive-include THIRD_PARTY_LICENSES *
+recursive-include docs *.md *.json
+recursive-include scripts *.py *.sh
+prune data
+prune backups
+prune logs
+prune .venv
+global-exclude *.py[cod]

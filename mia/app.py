@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
 from .db import connect, database_path, initialize, transaction
@@ -26,7 +26,7 @@ from .security import hash_password, iso, new_session, now, session_hash, verify
 from . import harness
 from . import settings as installation_settings
 from . import connection
-from . import knowledge, organization, personalization, access, backup_jobs
+from . import knowledge, organization, personalization, access, backup_jobs, operations
 
 
 ROOT = Path(__file__).resolve().parent
@@ -57,12 +57,19 @@ async def safe_validation(request: Request, error: RequestValidationError):
 
 @app.middleware("http")
 async def limit_upload(request: Request, call_next):
+    managed_root = os.environ.get('MIA_OPERATIONS_ROOT')
+    if managed_root and request.method not in SAFE_METHODS:
+        try:
+            maintenance = (Path(managed_root) / 'journal.json').exists()
+        except OSError:
+            maintenance = True
+        if maintenance:
+            return JSONResponse({'detail': 'Atualização ou recuperação em andamento. Aguarde a conclusão no terminal antes de alterar dados.'}, status_code=503, headers={'Retry-After':'5', 'Cache-Control':'no-store'})
     if request.url.path == '/api/imports' and request.method == 'POST':
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
             if len(body) > 12_000_000:
-                from fastapi.responses import JSONResponse
                 return JSONResponse({'detail':'Upload excede o limite de 8 MB (12 MB codificado)'},status_code=413)
         request._body = bytes(body)
     return await call_next(request)
@@ -130,6 +137,24 @@ class TaskInput(BaseModel):
 
 class TaskPatch(BaseModel):
     status: Literal["open", "done"]
+
+
+class TaskReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    title: str = Field(min_length=2, max_length=200)
+    notes: str = Field(default='', max_length=10_000)
+    due_date: date | None = None
+    priority: int = Field(default=2, ge=1, le=3)
+
+    @field_validator('title')
+    @classmethod
+    def clean_title(cls, value: str) -> str:
+        return TaskInput.clean_title(value)
+
+
+class TaskApproval(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    edits: TaskReview | None = None
 
 
 def owner_exists() -> bool:
@@ -593,6 +618,16 @@ def access_config(owner: Owner) -> dict:
     return {**access.load(), 'secure_cookie': os.environ.get('MIA_COOKIE_SECURE', 'false').lower() == 'true'}
 
 
+@app.post('/api/access/plan')
+def access_plan(payload: access.AccessPlanInput, owner: Owner) -> JSONResponse:
+    return JSONResponse(access.prepare(payload), headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/api/operations')
+def operation_status(owner: Owner) -> JSONResponse:
+    return JSONResponse({'app_version': __version__, **operations.public_status()}, headers={'Cache-Control': 'no-store'})
+
+
 @app.get('/api/backups')
 def backup_status(owner: Owner) -> dict:
     return backup_jobs.status()
@@ -689,8 +724,9 @@ async def start_run(payload: harness.RunInput, owner: Owner) -> dict:
 
 
 @app.post("/api/runs/{run_id}/approve")
-def approve_run(run_id: str, owner: Owner) -> dict:
-    return harness.decide(run_id, owner, True, audit)
+def approve_run(run_id: str, owner: Owner, payload: TaskApproval | None = None) -> dict:
+    edits = payload.edits.model_dump(mode='json') if payload and payload.edits else None
+    return harness.decide(run_id, owner, True, audit, edits)
 
 
 @app.post("/api/runs/{run_id}/reject")

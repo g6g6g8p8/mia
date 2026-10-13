@@ -2,6 +2,8 @@
 
 Status: roteiro preparado. O proprietário realizou testes iniciais no celular e identificou lacuna de onboarding/importação. Piloto com usuários externos ainda não concluído.
 
+Objetivo: verificar instalação e primeira utilidade com **2–3 pessoas**, cada uma em uma instalação própria no Mac ou Ubuntu e com fontes escolhidas por ela. O responsável prepara o pacote identificado e estas instruções; o convite e a decisão de compartilhar resultados são explícitos. Não há participantes ou resultados registrados neste documento.
+
 ## Antes de convidar
 
 - Validar um provedor/modelo real com chave e teto de gasto autorizados.
@@ -9,6 +11,24 @@ Status: roteiro preparado. O proprietário realizou testes iniciais no celular e
 - Definir licença de uso e distribuição; repositório já público por decisão do proprietário.
 - Importação básica e recuperação de fontes do M3 disponíveis (`ONBOARDING.md`). Cada participante escolhe dados próprios na instalação sob seu controle. A validação não depende de histórico do desenvolvedor.
 - Explicar limitações, tratamento de dados e que a versão não deve guardar informação crítica sem backup.
+- Usar pacote/commit identificado, checksum e [avisos](DEPENDENCIES.md) revisados. A licença específica depende do titular: [opções](LICENSE-OPTIONS.md).
+- Separar o núcleo sem IA dos aceites externos. Falta de chave, export real ou rota HTTPS não equivale a teste aprovado; marcar `not_run` e continuar tarefas locais possíveis.
+
+## Sessão curta e critérios definidos antes de começar
+
+Reserve cerca de 45–60 minutos para o primeiro uso. A instalação usa somente README/documentação. Registre ajuda quando necessária e deixe a pessoa operar as próprias fontes e credenciais, sem compartilhamento de tela de segredos. Mac e Ubuntu são os alvos; registrar cada ambiente efetivamente testado, sem extrapolar para outros.
+
+1. **Núcleo local:** acesso vazio → área → importação/prévia/seleção → busca → abrir a fonte certa → exportação. Medir tempo até o primeiro resultado que a própria pessoa considera útil.
+2. **Revisão:** reimportar uma nota alterada, comparar versões, pausar/reativar; com IA disponível, revisar organização/contexto pessoal e aprovar apenas parte. Conferir que o contexto pessoal não é enviado sem seleção.
+3. **IA autorizada:** cada pessoa escolhe destino/modelo e seus limites, confere a prévia e faz uma consulta com fonte. Recusar uma proposta, editar/aprovar outra, confirmar novamente e verificar um único efeito. O teste de catálogo não substitui geração com provedor direto; resultado simulado não fecha qualidade.
+4. **Operação:** reiniciar, verificar persistência, criar backup e restaurar em instalação separada. Ensaiar atualização/recovery com dados de teste e backup verificável antes de usar dados importantes.
+5. **Independência:** verificar outro dispositivo na LAN sem VPN obrigatória; HTTPS remoto somente com rota/destino controlados pelo participante e autorização específica. Registrar ações fora da Mia, sem alterar rede real só para preencher o roteiro.
+
+O núcleo local pode ser concluído sem chamada paga. Chaves e conteúdo permanecem na instalação da pessoa. O teto já autorizado de US$ 1 para ensaios do proprietário é acumulado e não fornece orçamento automático aos participantes. Para comparar qualidade/custo, usar [BENCHMARK.md](BENCHMARK.md), registrar a configuração e avaliar qualidade antes de calcular diferença. Custo sem evidência é desconhecido; não publicar promessa de economia.
+
+Critérios de sucesso da rodada: as 2 pessoas (ou pelo menos 2 das 3) concluem instalação, importação, busca/fonte e reinício usando a documentação sem intervenção do fundador; todas as pessoas que fazem IA entendem destino/contexto e revisão antes do efeito; nenhum caso de segurança abaixo fica aberto. Ajuda, tempo e a terceira pessoa bloqueada permanecem no relatório e exigem correção/reteste dos pontos aplicáveis. Esses critérios são uma regra de decisão do piloto, não resultados medidos. Aceites de exports reais, provedor direto e HTTPS exigem os testes correspondentes; falta de execução mantém o marco pendente.
+
+**Parada imediata:** perda de dados, efeito duplicado, envio não autorizado de contexto/destino, credencial exposta ou limite configurado excedido. Suspender o cenário, conservar backup/log local minimizado e abrir reprodução sintética; corrigir e repetir o caso antes de avançar ao release. Falha de usabilidade sem impacto em dados pode ser registrada e testada novamente. Decisão de release cabe ao titular depois de revisar os resultados e pendências.
 
 ## Tarefas do piloto
 
@@ -25,6 +45,12 @@ Acrescentar ao fluxo: importar um conjunto pequeno de notas próprias, revisar a
 Para exportações experimentais ChatGPT/Claude, cada participante pode validar o próprio arquivo localmente e informar formato, contagens, erros e resultado. Não pedir upload de históricos completos para o repositório ou para o desenvolvedor. Um relato de problema deve usar reprodução sintética ou trecho explicitamente autorizado e minimizado. Marcar compatibilidade como não validada até existir teste real; isso não bloqueia o piloto de notas e busca sem IA.
 
 ## Registrar, sem inventar métricas
+
+Copie [PILOT-RESULT-TEMPLATE.json](PILOT-RESULT-TEMPLATE.json) para um diretório privado **fora do checkout**, por exemplo `~/mia-pilot-results/`, e use códigos `P01`–`P03`, sem nome/email/contato. O template é vazio: `null` significa não coletado, `not_run` significa não executado. Nos resultados de tarefas use `pass`, `fail`, `not_run` ou `not_applicable`; uma dependência indisponível é `not_run`, com categoria de bloqueio. `status` passa a `completed` ou `stopped`; `release_decision` é `pending`, `retest` ou `eligible_for_owner_review`, nunca publicação automática.
+
+Não inserir títulos/conteúdo de notas, conversas, prompts/respostas, caminhos de arquivos, endereços privados, chaves, cookies, capturas de tela ou backup no relatório. Registre formatos/contagens, IDs de tarefas do template, tempos, entendimento, custo conhecido/estimado/desconhecido e um ID de issue já sanitizada quando necessário. O campo de modelo é opcional e somente identificador público; destino é classificado como direto/compatível/local, sem URL privada. O participante mantém as fontes e só compartilha este relatório minimizado com consentimento. Não subir resultados individuais reais ao repositório; publicar apenas síntese revisada, consentida e sem identificação. Apagar cópias compartilhadas quando a revisão terminar ou quando a pessoa retirar a autorização.
+
+Consolidação: quantidade de participantes por OS/método, quantos terminaram cada tarefa, quantos precisaram de ajuda, tempos observados e número de casos interrompidos. Identificar denominadores e `not_run`; nenhum campo ausente vira zero, falha vira aprovação ou amostra pequena vira alegação geral. Os participantes conferem a síntese antes de publicação.
 
 Modelo de relatório por participante (sem dados pessoais): versão/OS; instalou sem ajuda (sim/não e ponto de bloqueio); tipo de fonte escolhida; tempo até primeiro resultado útil; encontrou e abriu a fonte correta; entendeu aprovação e envio ao provedor; reinício/restauração conferidos; custo conhecido/estimado/desconhecido; erro reproduzível minimizado; decisão de continuar. Não coletar o conteúdo da fonte ou a chave. Critérios sintéticos de qualidade/custo estão em [BENCHMARK.md](BENCHMARK.md).
 

@@ -52,7 +52,9 @@ Use nome novo por snapshot e guarde cópia fora do volume. Restaure no diretóri
 4. Inicie e confira `/api/status`, login, uma fonte/tarefa conhecida e o acesso pelo dispositivo habitual.
 5. Se falhar, pare a versão nova. Restaure o backup em diretório vazio e execute a versão anterior apontando para esse diretório. Não execute código antigo sobre banco já migrado e não sobrescreva o banco original. Reconfigure a IA e as preferências de acesso.
 
-Este é um procedimento manual. Instalador de atualização, reversão automática e ensaio de upgrade entre versões em Ubuntu limpo continuam pendentes; o backup restaurado não contém alterações feitas depois do snapshot.
+Este é o procedimento manual para instalações existentes e Docker. O backup restaurado não contém alterações feitas depois do snapshot. Na 0.2.0a11, instalações nativas novas também podem usar o [gerenciador de operação](OPERATIONS.md), que prepara a versão, para seu próprio serviço, verifica snapshot e mantém registro durável de atualização/recuperação. Não é um atualizador de Docker nem modifica uma instalação manual existente.
+
+**Os snapshots do gerenciador diferem dos backups SQLite desta página:** incluem arquivos da instalação e configuração privada, que podem conter credenciais. Ficam com permissões restritas, sem criptografia. Não envie esses snapshots ao repositório, a um relato de erro ou a outro participante. O retorno recupera o estado anterior em diretório novo e conserva o banco posterior em separado; exige ciência explícita de que alterações posteriores não estarão no banco ativo restaurado.
 
 ### Ensaio reproduzível sem dados reais
 
@@ -68,4 +70,4 @@ Verifica identidade, tarefa, fonte, objetivo, migração de contexto, sessão in
 
 ## Limitações atuais
 
-Somente backups locais confiáveis. Sem criptografia, restauração do ZIP exportado ou atualização automática. Agendamento/rotação locais disponíveis enquanto a aplicação está em execução. O ensaio entre máquinas usou dados sintéticos; não restaurou dados reais do proprietário.
+Somente backups locais confiáveis. Sem criptografia, restauração do ZIP exportado, cópia externa automática ou atualização automática não solicitada. Agendamento/rotação locais disponíveis enquanto a aplicação está em execução. O ensaio entre máquinas usou dados sintéticos; não restaurou dados reais do proprietário. Baixe uma cópia para outro disco e confirme sua restauração antes de depender dela.

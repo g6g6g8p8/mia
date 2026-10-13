@@ -36,7 +36,7 @@ with tempfile.TemporaryDirectory(prefix='mia-onboarding-fixture-') as data:
             try: urllib.request.urlopen(url+'/health',timeout=1).close();break
             except OSError: time.sleep(.1)
         with sync_playwright() as p:
-            browser=p.chromium.launch(headless=True)
+            browser=p.chromium.launch(headless=True, executable_path=os.environ.get('MIA_BROWSER_EXECUTABLE'))
             page=browser.new_page(viewport={'width':390,'height':844})
             errors=[]
             page.on('pageerror',lambda e:errors.append(str(e)))

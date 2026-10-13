@@ -74,6 +74,10 @@ docker compose up -d --build
 
 Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 
+A 0.2.0a11 acrescenta [operação nativa gerenciada](docs/OPERATIONS.md) para instalações novas: versões separadas, atualização explícita com snapshot e recuperação/retorno em dados novos. O modo manual e Docker continuam disponíveis. Sistema → Operação e atualização mostra versão/estado, sem executar comandos pelo navegador. Sistema → Acesso prepara um plano HTTPS revisável com recuperação local; publicar domínio, rota ou portas continua sendo ação explícita do instalador.
+
+Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e a escolha aplicada ficam no histórico/exportação; repetir confirmação não cria outra tarefa.
+
 ## Documentação
 - [Plano de produto e execução](docs/PLAN.md)
 - [Contrato do harness](docs/HARNESS.md)
@@ -83,6 +87,8 @@ Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 - [Configurar IA e limites do M2](docs/AI.md)
 - [Instalação nativa no Mac ou Linux](docs/INSTALL-NATIVE.md)
 - [Roteiro do piloto com usuários](docs/PILOT.md)
+- [Opções de licença, aguardando decisão do titular](docs/LICENSE-OPTIONS.md)
+- [Dependências e avisos preservados na distribuição](docs/DEPENDENCIES.md)
 - [Onboarding e importação de conhecimento](docs/ONBOARDING.md)
 - [Backup e restauração](docs/BACKUP.md)
 - [Acesso local e remoto](docs/ACCESS.md)

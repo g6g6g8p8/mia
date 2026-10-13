@@ -180,7 +180,7 @@ def initialize() -> None:
         if 'step' not in onboarding_columns:
             db.execute("ALTER TABLE onboarding ADD COLUMN step INTEGER NOT NULL DEFAULT 0")
         columns = {row[1] for row in db.execute("PRAGMA table_info(runs)")}
-        for name in ('personalization_base_json','personalization_result_json'):
+        for name in ('personalization_base_json','personalization_result_json','task_result_json'):
             if name not in columns:
                 db.execute(f'ALTER TABLE runs ADD COLUMN {name} TEXT')
         if 'organization_result_json' not in columns:

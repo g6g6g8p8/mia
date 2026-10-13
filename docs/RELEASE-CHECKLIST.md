@@ -4,18 +4,20 @@ Estado: **alpha técnica, não release final para distribuição ampla**. Esta l
 
 Atualização de evidência do modelo (0.2.0a9): consulta, ação, organização e personalização com modelo real via OpenRouter validadas em material sintético. Comparação de contexto executada e falha de busca corrigida. Total acumulado: 17 chamadas, US$ 0.0045882598 informado pelo provedor, dentro do teto total US$ 1. [Resultados e limitações](REAL-MODEL-VALIDATION.md). Não fecha provedor direto, economia, fontes reais ou piloto externo.
 
-Ensaio completo em Ubuntu 24.04.5 isolado aprovado: instalação nova, 59 testes sem rede, migração, reinício, restauração e HTTP/assets do pacote instalado. Evidência reproduzível em VALIDATION.md e `scripts/clean_ubuntu.sh`. Protocolo em [BENCHMARK.md](BENCHMARK.md), com ensaio sintético executado. A versão atual passou 66 testes no Linux; a evidência Ubuntu acima pertence à versão anterior.
+Ensaio histórico em Ubuntu 24.04.5 isolado aprovado: instalação nova, 59 testes sem rede, migração, reinício, restauração e HTTP/assets do pacote instalado. Na 0.2.0a10 foram 77 testes Linux/Mac. A 0.2.0a11 passou 141 testes no Linux e no Ubuntu 24.04 isolado, com instalação nova de pacote e validação offline. Evidência e limites em VALIDATION.md. Protocolo em [BENCHMARK.md](BENCHMARK.md), com ensaio sintético executado.
 
 | Marco | Comprovado | Falta para fechar |
 | --- | --- | --- |
-| M0 | Repositório independente; instalação vazia; revisão automatizada de padrões privados no histórico | Escolha e inclusão da licença; revisão de avisos das dependências |
+| M0 | Repositório independente; instalação vazia; verificação de padrões selecionados no histórico; inventários e avisos Python/Rust preservados e conferidos nos pacotes | Escolha/inclusão da licença e atribuição; revisão da distribuição concreta de binários/OS conforme escopo em DEPENDENCIES.md |
 | M1 | Instalação de pacote em Ubuntu 24.04 isolado e macOS; HTTP/assets, identidade, fontes, tarefas, busca e persistência | Instalação por participantes sem ajuda no M5 |
 | M2 | Fontes delimitadas, ferramentas autorizadas, confirmação/idempotência, quotas/reserva/reconciliação; testes com simulador e modelo real via gateway, citações e custo observado | Provedor direto; qualidade representativa com participantes |
 | M3 | Onboarding mobile, imports sintéticos, conflitos, organização/contexto revisáveis, configuração guiada de IA; organização e contexto aprovados com modelo real e fontes sintéticas | Exports reais escolhidos pelos participantes; primeiro resultado útil e compreensão da revisão |
-| M4 | Snapshot, rotina local opcional de 24 horas com retenção/download, integridade, restauração em outro diretório/máquina, migração e retorno à versão anterior, interrupção sem reenvio; teste offline no Ubuntu isolado | Automação de rede/HTTPS e atualização; cópia fora da máquina; validação da rota remota sem VPN obrigatória; operação continua limitada a um proprietário e um worker |
-| M5 | Roteiro do piloto e verificações técnicas reproduzíveis | 2–3 participantes, licença, benchmark representativo de qualidade/custo e decisão de release |
+| M4 | Snapshot/rotina local/retorno, restauração sintética entre máquinas; gerenciador nativo com update explícito, rollback/recuperação duráveis e testes de falha; planos HTTPS e proxy loopback com TLS/origem/cookie/recuperação verificados; Ubuntu offline | Ativação/boot systemd e launchd nas máquinas-alvo; configuração e prova da rota externa/LAN; cópia fora da máquina; bootstrap não se atualiza; um proprietário e um worker |
+| M5 | Roteiro de 2–3 participantes, template privado de resultados, critérios de parada, opções de licença, avisos e verificações de distribuição | Participantes/fontes próprias, licença/atribuição, benchmark representativo e decisão de release |
 
 ## Entradas necessárias para os aceites externos
+
+A 0.2.0a11 fecha a implementação e os ensaios técnicos acima, sem declarar M0–M5 completos. O procedimento nativo está em [OPERATIONS.md](OPERATIONS.md); [ACCESS.md](ACCESS.md) distingue plano, infraestrutura e prova de acesso. A restauração automática na falha retorna erro explícito de atualização e preserva a tentativa; não oculta uma falha como sucesso.
 
 - Para aceite sem gateway: provedor direto escolhido e credencial própria configurada na Mia. O ensaio atual via gateway já tem autorização total de US$ 1; não exige nova autorização dentro desse teto. Credenciais nunca entram no repositório.
 - Participantes com suas próprias fontes e instalações. Sem necessidade de histórico do desenvolvedor; não enviar convites automaticamente.
