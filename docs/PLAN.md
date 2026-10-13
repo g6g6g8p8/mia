@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.14 · 12/10/2026 · Status: M2/M3 implementados parcialmente; instalação limpa de pacote, atualização e recuperação do M4 validadas em Ubuntu isolado. Ensaios sintéticos com modelo real via gateway concluídos; aceites com provedor direto e usuários externos permanecem pendentes. Situação consolidada em RELEASE-CHECKLIST.md.
+Versão 0.15 · 12/10/2026 · Status: 0.2.0a11 acrescenta operação nativa, atualização consciente e recuperação durável, revisão de tarefas e planos HTTPS. Ensaios técnicos Linux/Ubuntu isolado e navegador passaram; licença, provedor direto, acesso remoto real e participantes continuam pendentes. Situação consolidada em RELEASE-CHECKLIST.md.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.
@@ -192,6 +192,14 @@ As instalações privadas não dependem desse domínio.
 Aquisição do domínio, identidade visual, preços e hospedagem opcional serão tratados separadamente.
 
 ## 12. Estado desta entrega
+
+Atualização 0.2.0a11: [operação nativa](OPERATIONS.md) para instalações novas, com preparação de versão em venv separado, snapshot privado antes de trocar, saúde/versão por HTTP, bloqueio de alterações durante operação pendente e recuperação repetível em dados novos. O retorno exige ciência de que mudanças posteriores ficam preservadas em separado. Modo manual/Docker continua suportado; bootstrap gerenciado não se atualiza a si próprio. Revisão independente corrigiu corridas de startup, identidade de processo/release, precedência do ambiente, recuperação repetida e aliases por symlink. Testes adversariais incluem SIGKILL e falha fechada com snapshot/banco ausente.
+
+Sistema mostra estado operacional e prepara plano explícito para proxy HTTPS opcional, sem executar comandos de rede. Caddyfile gerado passou em ensaio loopback com TLS verificado, origem, cookie Secure e recuperação local; isso não comprova rota pública/LAN em outro dispositivo. Propostas de tarefa agora permitem edição antes de aprovação, preservando original e resultado aplicado no histórico/exportação e após restauração.
+
+A distribuição preserva 279 textos de avisos de terceiros, com inventários Python/Rust e checksums; roda verificação de wheel/sdist e pacote instalado. Essa revisão tem escopo documentado em [DEPENDENCIES.md](DEPENDENCIES.md), sem conceder licença própria ou certificar todos os binários/OS upstream. [Opções de licença](LICENSE-OPTIONS.md), roteiro independente e template privado de piloto foram preparados. Não foram criados participantes, fontes reais ou resultados externos. Nenhuma nova chamada paga: acumulado conhecido permanece US$ 0.0045882598 sobre teto total US$ 1.
+
+Os aceites externos não foram apagados: M0 ainda depende da licença; M2 de provedor direto/qualidade representativa; M3 de fontes/exports autorizados e uso por participantes; M4 de boot nos sistemas suportados, cópia externa e rota HTTPS real; M5 de 2–3 participantes, benchmark representativo e decisão de release. A existência do gerenciador e dos planos não fecha esses marcos.
 
 Atualização de 12/10 — 0.2.0a9: 17 chamadas sintéticas de DeepSeek via OpenRouter, custo informado acumulado US$ 0.0045882598 sobre teto total US$ 1. Organização e personalização passaram com edição, aprovação parcial e idempotência. Comparação de contexto revelou falha de ordenação da busca, corrigida e revalidada. Entrada caiu de 2.653 para 983 tokens no caso medido; custo observado não diminuiu. Detalhes em [REAL-MODEL-VALIDATION.md](REAL-MODEL-VALIDATION.md). Provedor direto, fontes/exports reais e pilotos externos continuam pendentes. Os itens abaixo registram a evolução histórica, inclusive pendências posteriormente resolvidas.
 - Fundação documental preparada em repositório Git local novo.

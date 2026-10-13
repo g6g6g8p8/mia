@@ -46,7 +46,10 @@ docker exec "$container" bash -lc '
   /venv/bin/python --version
 '
 docker network disconnect bridge "$container"
-docker exec -w /tmp "$container" /venv/bin/python -m pytest -q -p no:cacheprovider /src/tests
+docker exec -w /tmp "$container" /venv/bin/python -m pytest -o addopts= -q -p no:cacheprovider /src/tests
 docker exec -w /tmp "$container" /venv/bin/python /src/scripts/upgrade_smoke.py --baseline-ref "$baseline_ref"
 docker exec -w /tmp "$container" /venv/bin/python /src/scripts/package_smoke.py
+if [[ -n "${MIA_VALIDATION_WHEELHOUSE:-}" ]]; then
+  docker exec -w /tmp "$container" /venv/bin/python /src/scripts/native_lifecycle.py --wheelhouse /wheels
+fi
 echo "PASS: Ubuntu clean package installation and offline checks at $candidate_ref"

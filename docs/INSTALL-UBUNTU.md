@@ -23,6 +23,8 @@ No primeiro acesso, crie o proprietário e a primeira área. Não há conta exte
 
 ## Parar e atualizar
 
+O procedimento abaixo mantém o modo Docker existente. Para uma instalação nativa nova, veja [OPERATIONS.md](OPERATIONS.md), com atualização consciente e recuperação em dados separados. O gerenciador nativo não controla containers nem volumes Docker.
+
 Primeiro faça e verifique um snapshot conforme [BACKUP.md](BACKUP.md), guarde-o fora do volume e registre o commit atual. Aguarde qualquer geração em andamento. Não apague o volume.
 
 ```bash
@@ -42,6 +44,8 @@ bash scripts/clean_ubuntu.sh 2d43f085c8e9388202ec3d3914f1da20a4a14b9a
 ```
 
 Requer Docker e Git no host. Cria um contêiner Ubuntu 24.04 com Python/dependências novos, instala o pacote, desconecta a rede e executa os testes, atualização/restauração e inicialização HTTP com assets. Usa dados sintéticos e remove o contêiner/diretório temporário ao terminar; a imagem Ubuntu pode permanecer no cache. Consome rede durante instalação e até 1 GB de memória no contêiner. Não usa volume de uma instalação existente.
+
+Se a rede do runner exigir uma CA que não está no Ubuntu novo, forneça explicitamente `MIA_VALIDATION_WHEELHOUSE=/caminho/dos/wheels-verificados`; o runner monta o cache somente leitura e instala sem consultar índice. Inclua pins de `requirements.lock`, pytest 8.3.4, pip 25.0.1, setuptools 75.8.0 e wheel 0.45.1, além das dependências de teste. O cache precisa corresponder à arquitetura/Python do container. Não use `--trusted-host` ou desative TLS para contornar falhas de confiança.
 
 Isso valida um ambiente de usuário Ubuntu isolado, não uma instalação completa de sistema operacional, systemd, roteador, certificado público ou operação por usuário sem ajuda. O pacote Docker do produto usa a base definida no Dockerfile; o Ubuntu aqui é o ambiente de teste da instalação nativa.
 
