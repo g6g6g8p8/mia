@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Iterator
 
@@ -70,6 +70,31 @@ CREATE TABLE IF NOT EXISTS audit_events (
     entity_id TEXT,
     metadata_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES owner(id),
+    title TEXT NOT NULL,
+    area_id TEXT REFERENCES areas(id) ON DELETE SET NULL,
+    scope TEXT NOT NULL CHECK(scope IN ('area','library')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS conversations_owner_updated_idx
+ON conversations(owner_id, updated_at);
+
+CREATE TABLE IF NOT EXISTS experience_focus (
+    owner_id INTEGER PRIMARY KEY REFERENCES owner(id),
+    title TEXT NOT NULL DEFAULT '',
+    source_ids_json TEXT NOT NULL DEFAULT '[]',
+    revision INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS experience_location (
+    owner_id INTEGER PRIMARY KEY REFERENCES owner(id),
+    mode TEXT NOT NULL CHECK(mode IN ('local','remote')),
+    updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS runs (
@@ -169,7 +194,7 @@ def connect() -> sqlite3.Connection:
 
 
 def initialize() -> None:
-    with connect() as db:
+    with closing(connect()) as db:
         db.executescript(SCHEMA)
         document_columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
         if 'active' not in document_columns:
@@ -180,15 +205,37 @@ def initialize() -> None:
         if 'step' not in onboarding_columns:
             db.execute("ALTER TABLE onboarding ADD COLUMN step INTEGER NOT NULL DEFAULT 0")
         columns = {row[1] for row in db.execute("PRAGMA table_info(runs)")}
-        for name in ('personalization_base_json','personalization_result_json','task_result_json'):
+        for name in ('personalization_base_json','personalization_result_json','task_result_json','continuation_json'):
             if name not in columns:
                 db.execute(f'ALTER TABLE runs ADD COLUMN {name} TEXT')
+        if 'thread_id' not in columns:
+            db.execute('ALTER TABLE runs ADD COLUMN thread_id TEXT REFERENCES conversations(id) ON DELETE SET NULL')
+        db.execute('CREATE INDEX IF NOT EXISTS runs_thread_created_idx ON runs(thread_id, created_at)')
         if 'organization_result_json' not in columns:
             db.execute('ALTER TABLE runs ADD COLUMN organization_result_json TEXT')
         for name, declaration in {"reserved_micro": "INTEGER NOT NULL DEFAULT 0", "charged_micro": "INTEGER NOT NULL DEFAULT 0", "cost_status": "TEXT NOT NULL DEFAULT 'unknown'", "pricing_json": "TEXT"}.items():
             if name not in columns:
                 db.execute(f"ALTER TABLE runs ADD COLUMN {name} {declaration}")
         db.execute("UPDATE runs SET state='failed', error='Execução interrompida. Não reenviada automaticamente.' WHERE state='running'")
+        initialize_search(db)
+
+
+def initialize_search(db: sqlite3.Connection) -> None:
+    """Keep the derived index synchronized, including restored legacy databases."""
+    db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS chunk_search USING fts5(content,document_id UNINDEXED,ordinal UNINDEXED,tokenize='unicode61 remove_diacritics 2')")
+    db.executescript('''
+        CREATE TRIGGER IF NOT EXISTS chunk_search_insert AFTER INSERT ON chunks BEGIN
+            INSERT INTO chunk_search(rowid,content,document_id,ordinal) VALUES(new.rowid,new.content,new.document_id,new.ordinal);
+        END;
+        CREATE TRIGGER IF NOT EXISTS chunk_search_delete AFTER DELETE ON chunks BEGIN
+            DELETE FROM chunk_search WHERE rowid=old.rowid;
+        END;
+        CREATE TRIGGER IF NOT EXISTS chunk_search_update AFTER UPDATE ON chunks BEGIN
+            DELETE FROM chunk_search WHERE rowid=old.rowid;
+            INSERT INTO chunk_search(rowid,content,document_id,ordinal) VALUES(new.rowid,new.content,new.document_id,new.ordinal);
+        END;
+    ''')
+    db.execute('INSERT INTO chunk_search(rowid,content,document_id,ordinal) SELECT c.rowid,c.content,c.document_id,c.ordinal FROM chunks c WHERE NOT EXISTS(SELECT 1 FROM chunk_search f WHERE f.rowid=c.rowid)')
 
 
 @contextmanager

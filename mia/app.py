@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import sqlite3
+import threading
 import uuid
 import zipfile
 from contextlib import asynccontextmanager
@@ -21,30 +22,34 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
-from .db import connect, database_path, initialize, transaction
+from .db import connect, data_dir, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
 from . import settings as installation_settings
 from . import connection
-from . import knowledge, organization, personalization, access, backup_jobs, operations
+from . import knowledge, organization, personalization, access, backup_jobs, operations, experience, conversations, migrations
 
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
 COOKIE_NAME = "mia_session"
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+EXPORT_LOCK = threading.Lock()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize()
+    directory = data_dir()
+    migrations.initialize(directory)
     stop = asyncio.Event()
-    task = asyncio.create_task(backup_jobs.worker(stop))
+    tasks = [asyncio.create_task(backup_jobs.worker(stop)),
+             asyncio.create_task(migrations.worker(stop, directory))]
     try:
         yield
     finally:
         stop.set()
-        await task
+        await asyncio.gather(*tasks)
 
 
 app = FastAPI(title="Mia", version=__version__, lifespan=lifespan)
@@ -68,9 +73,9 @@ async def limit_upload(request: Request, call_next):
     if request.url.path == '/api/imports' and request.method == 'POST':
         body = bytearray()
         async for chunk in request.stream():
-            body.extend(chunk)
-            if len(body) > 12_000_000:
+            if len(body) + len(chunk) > 12_000_000:
                 return JSONResponse({'detail':'Upload excede o limite de 8 MB (12 MB codificado)'},status_code=413)
+            body.extend(chunk)
         request._body = bytes(body)
     return await call_next(request)
 
@@ -80,7 +85,7 @@ class SetupInput(BaseModel):
     email: str = Field(default="", max_length=200)
     timezone: str = Field(default="America/Sao_Paulo", min_length=3, max_length=80)
     password: str = Field(min_length=10, max_length=200)
-    area_name: str = Field(min_length=2, max_length=80)
+    area_name: str = Field(default='Minha biblioteca', min_length=2, max_length=80)
     area_description: str = Field(default="", max_length=500)
 
     @field_validator("name", "area_name")
@@ -317,6 +322,104 @@ def me(owner: Owner) -> dict:
     return owner
 
 
+@app.get('/api/installation')
+def installation_info(request: Request) -> JSONResponse:
+    return JSONResponse({'version':__version__, **experience.location(address=str(request.base_url).rstrip('/'))}, headers={'Cache-Control':'no-store'})
+
+
+@app.get('/api/experience')
+def experience_state(request: Request, owner: Owner) -> JSONResponse:
+    return JSONResponse(experience.overview(owner,str(request.base_url).rstrip('/')), headers={'Cache-Control':'no-store'})
+
+
+@app.put('/api/focus')
+def confirm_focus(payload: experience.FocusInput, owner: Owner) -> dict:
+    return experience.save_focus(payload,owner,audit)
+
+
+@app.put('/api/location')
+def confirm_location(payload: experience.LocationInput, request: Request, owner: Owner) -> dict:
+    return experience.save_location(payload,owner,audit,str(request.base_url).rstrip('/'))
+
+
+@app.get('/api/conversations')
+def list_conversations(owner: Owner) -> list[dict]:
+    return conversations.listing(owner)
+
+
+@app.post('/api/conversations', status_code=201)
+def create_conversation(payload: conversations.ConversationCreate, owner: Owner) -> dict:
+    return conversations.create(payload, owner, audit)
+
+
+@app.get('/api/conversations/{thread_id}')
+def get_conversation(thread_id: str, owner: Owner) -> dict:
+    return conversations.detail(thread_id, owner)
+
+
+@app.patch('/api/conversations/{thread_id}')
+def rename_conversation(thread_id: str, payload: conversations.ConversationRename, owner: Owner) -> dict:
+    return conversations.rename(thread_id, payload, owner, audit)
+
+
+@app.get('/api/migrations')
+def list_migrations(owner: Owner) -> list[dict]:
+    return migrations.list_jobs(owner)
+
+
+@app.post('/api/migrations', status_code=201)
+def create_migration(payload: migrations.CreateUpload, owner: Owner) -> dict:
+    return migrations.create_upload(payload, owner)
+
+
+@app.get('/api/migrations/{job}')
+def get_migration(job: str, owner: Owner, offset: int = 0, limit: int = 100, q: str = '') -> dict:
+    return migrations.get_job(job, owner, offset, limit, q)
+
+
+@app.put('/api/migrations/{job}/upload')
+@app.patch('/api/migrations/{job}/upload')
+async def upload_migration(job: str, request: Request, owner: Owner, offset: int = 0) -> dict:
+    # Authentication/origin checks run before accepting the stream. One chunk
+    # is bounded independently of Content-Length, which clients may omit.
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > migrations.MAX_CHUNK:
+            raise HTTPException(413, 'Envie blocos de no máximo 1 MiB; retome do offset recebido.')
+        body.extend(chunk)
+    return await asyncio.to_thread(migrations.append_upload, job, offset, bytes(body), owner)
+
+
+@app.post('/api/migrations/{job}/finish')
+def finish_migration(job: str, owner: Owner) -> dict:
+    return migrations.finish_upload(job, owner)
+
+
+@app.put('/api/migrations/{job}/selection')
+def select_migration(job: str, payload: migrations.Selection, owner: Owner) -> dict:
+    return migrations.save_selection(job, payload, owner)
+
+
+@app.post('/api/migrations/{job}/confirm')
+def confirm_migration(job: str, payload: migrations.Confirm, owner: Owner) -> dict:
+    return migrations.confirm(job, payload, owner, audit)
+
+
+@app.post('/api/migrations/{job}/cancel')
+def cancel_migration(job: str, owner: Owner) -> dict:
+    return migrations.cancel(job, owner, audit)
+
+
+@app.post('/api/migrations/{job}/resume')
+def resume_migration(job: str, owner: Owner) -> dict:
+    return migrations.resume(job, owner)
+
+
+@app.delete('/api/migrations/{job}')
+def remove_migration(job: str, owner: Owner) -> dict:
+    return migrations.remove(job, owner, audit)
+
+
 @app.get("/api/areas")
 def list_areas(owner: Owner) -> list[dict]:
     with connect() as db:
@@ -475,6 +578,7 @@ def today(owner: Owner) -> dict:
         "due_today": due_today,
         "areas": [dict(row) for row in areas],
         "tasks": [dict(row) for row in tasks],
+        "focus": experience.focus(owner),
     }
 
 
@@ -512,33 +616,84 @@ def search(q: str, owner: Owner) -> dict:
 
 @app.get("/api/export")
 def export_data(owner: Owner) -> StreamingResponse:
-    with connect() as db:
-        areas = [dict(row) for row in db.execute("SELECT * FROM areas WHERE owner_id = ? ORDER BY name", (owner["id"],))]
-        tasks = [dict(row) for row in db.execute("SELECT * FROM tasks WHERE owner_id = ? ORDER BY created_at", (owner["id"],))]
-        documents = [dict(row) for row in db.execute("SELECT * FROM documents WHERE owner_id=?",(owner['id'],))]
-        profile = db.execute("SELECT goal,completed FROM onboarding WHERE owner_id=?",(owner['id'],)).fetchone()
-    payload = {
-        "format": "mia-export",
-        "version": 1,
-        "exported_at": iso(),
-        "owner": {"name": owner["name"], "email": owner["email"], "timezone": owner["timezone"]},
-        "areas": areas,
-        "tasks": tasks,
-        "runs": harness.list_runs(owner, all_runs=True),
-        "documents": documents,
-        "onboarding": dict(profile) if profile else None,
-        "personal_context": personalization.get_state(owner),
-    }
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("mia-export.json", json.dumps(payload, ensure_ascii=False, indent=2))
-        archive.writestr("README.txt", "Mia export v1. Keep this file private.\n")
-    buffer.seek(0)
-    return StreamingResponse(
-        buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="mia-export.zip"'},
-    )
+    # Build one coherent archive on an unlinked private temporary file. The
+    # library can be larger than RAM; only one row/excerpt is encoded at a time.
+    from contextlib import closing
+    from starlette.background import BackgroundTask
+    import shutil
+    import tempfile
+    if not EXPORT_LOCK.acquire(blocking=False):
+        raise HTTPException(409, 'Uma exportação está em andamento. Aguarde a conclusão.')
+    file = None
+    released = False
+    def cleanup():
+        nonlocal released
+        if not released:
+            released = True
+            if file is not None:
+                file.close()
+            EXPORT_LOCK.release()
+    try:
+        with closing(connect()) as db:
+            db.execute('BEGIN')
+            estimated = db.execute('PRAGMA page_count').fetchone()[0] * db.execute('PRAGMA page_size').fetchone()[0]
+            if shutil.disk_usage(tempfile.gettempdir()).free < estimated + 64 * 1024 * 1024:
+                raise HTTPException(507, 'Espaço temporário insuficiente para exportar com segurança. Libere espaço e tente novamente.')
+            file = tempfile.TemporaryFile(mode='w+b')
+            encoder = json.JSONEncoder(ensure_ascii=False, separators=(',', ':'))
+            def rows(query):
+                return (dict(row) for row in db.execute(query, (owner['id'],)))
+            arrays = {
+                'areas':rows('SELECT * FROM areas WHERE owner_id=? ORDER BY name'),
+                'tasks':rows('SELECT * FROM tasks WHERE owner_id=? ORDER BY created_at'),
+                'runs':(harness.public_run(row) for row in db.execute('SELECT * FROM runs WHERE owner_id=? ORDER BY created_at', (owner['id'],))),
+                'documents':rows('SELECT * FROM documents WHERE owner_id=? ORDER BY created_at'),
+                'conversations':rows('SELECT * FROM conversations WHERE owner_id=? ORDER BY created_at'),
+                'migration_provenance':rows('SELECT p.* FROM migration_provenance p JOIN documents d ON d.id=p.document_id WHERE d.owner_id=? ORDER BY p.document_id,p.import_id'),
+            }
+            profile = db.execute('SELECT goal,completed FROM onboarding WHERE owner_id=?', (owner['id'],)).fetchone()
+            values = {
+                'format':'mia-export', 'version':1, 'exported_at':iso(),
+                'owner':{key:owner[key] for key in ('name','email','timezone')},
+                'onboarding':dict(profile) if profile else None,
+                'personal_context':personalization.state_from_db(db,owner),
+                'focus':experience.export_focus_from_db(db,owner),
+            }
+            with zipfile.ZipFile(file, 'w', zipfile.ZIP_DEFLATED) as archive:
+                with archive.open('mia-export.json', 'w', force_zip64=True) as output:
+                    def emit(value):
+                        for piece in encoder.iterencode(value):
+                            output.write(piece.encode('utf-8'))
+                    output.write(b'{')
+                    first = True
+                    for key,value in values.items():
+                        if not first: output.write(b',')
+                        first = False
+                        emit(key); output.write(b':'); emit(value)
+                    for key,items in arrays.items():
+                        output.write(b','); emit(key); output.write(b':[')
+                        first_item = True
+                        for item in items:
+                            if not first_item: output.write(b',')
+                            first_item = False
+                            emit(item)
+                        output.write(b']')
+                    output.write(b'}')
+                archive.writestr('README.txt', 'Mia export v1. Keep this file private.\\n')
+            db.rollback()
+        file.seek(0)
+    except BaseException:
+        cleanup()
+        raise
+    def chunks():
+        try:
+            while block := file.read(65536):
+                yield block
+        finally:
+            cleanup()
+    return StreamingResponse(chunks(), media_type='application/zip',
+        headers={'Content-Disposition':'attachment; filename="mia-export.zip"', 'Cache-Control':'no-store'},
+        background=BackgroundTask(cleanup))
 
 
 class OnboardingInput(BaseModel):
@@ -573,23 +728,36 @@ def prepare_import(payload: knowledge.ImportInput,owner: Owner) -> dict:
 @app.get('/api/imports')
 def imports(owner: Owner) -> list[dict]:
     with connect() as db:
-        ids=[row[0] for row in db.execute('SELECT id FROM imports WHERE owner_id=? ORDER BY created_at DESC',(owner['id'],))]
+        ids=[row[0] for row in db.execute('SELECT id FROM imports WHERE owner_id=? AND NOT EXISTS (SELECT 1 FROM migration_jobs m WHERE m.id=imports.id) ORDER BY created_at DESC',(owner['id'],))]
     return [knowledge.get_batch(batch,owner) for batch in ids]
 
 
 @app.get('/api/imports/{batch}')
 def get_import(batch: str,owner: Owner) -> dict:
+    require_legacy_import(batch, owner)
     return knowledge.get_batch(batch,owner)
 
 
 @app.post('/api/imports/{batch}/confirm')
 def confirm_import(batch: str,payload: knowledge.Selection,owner: Owner) -> dict:
+    require_legacy_import(batch, owner)
     return knowledge.commit(batch,payload,owner,audit)
 
 
 @app.delete('/api/imports/{batch}')
 def remove_import(batch: str,owner: Owner) -> dict:
+    with connect() as db:
+        modern = db.execute('SELECT 1 FROM migration_jobs WHERE id=? AND owner_id=?', (batch,owner['id'])).fetchone()
+    if modern:
+        return migrations.remove(batch, owner, audit)
     return knowledge.remove(batch,owner,audit)
+
+
+def require_legacy_import(batch: str, owner: dict) -> None:
+    with connect() as db:
+        modern = db.execute('SELECT 1 FROM migration_jobs WHERE id=? AND owner_id=?', (batch,owner['id'])).fetchone()
+    if modern:
+        raise HTTPException(409, 'Esta importação usa a revisão por grupos. Consulte-a em Biblioteca ou /api/migrations.')
 
 
 @app.get('/api/documents')
@@ -667,8 +835,10 @@ def save_access_config(payload: access.AccessSettings, owner: Owner) -> dict:
 
 
 @app.get("/api/ai/context")
-def ai_context(area_id: str, owner: Owner, q: str = '', include_personal_context: bool = False) -> list[dict]:
-    return harness.context(owner, area_id, q, include_personal_context)
+def ai_context(owner: Owner, area_id: str | None = None, thread_id: str | None = None, q: str = '', include_personal_context: bool = False, use_confirmed_focus: bool = False) -> list[dict]:
+    if thread_id:
+        area_id = conversations.scope(thread_id, owner, area_id)['area_id']
+    return harness.context(owner, area_id, q, include_personal_context, use_confirmed_focus)
 
 
 @app.put("/api/ai/config")
