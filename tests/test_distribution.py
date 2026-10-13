@@ -1,6 +1,8 @@
 """Release checks must detect omitted notices and accidental private artifacts."""
 import importlib.util
+import json
 from pathlib import Path
+import shutil
 import tarfile
 import zipfile
 
@@ -29,6 +31,25 @@ def test_current_lock_keeps_original_notice_inventory():
     expected = distribution.inventory_files()
     assert "THIRD_PARTY_NOTICES.md" in expected
     assert "THIRD_PARTY_LICENSES/inventory.json" in expected
+    assert "THIRD_PARTY_LICENSES/rust-inventory.json" in expected
+
+
+@pytest.mark.parametrize("failure", ["runtime_version", "notice_bytes", "unknown_file"])
+def test_rust_supplement_rejects_drift_and_unreviewed_files(tmp_path, failure):
+    shutil.copytree(distribution.ROOT / "THIRD_PARTY_LICENSES", tmp_path / "THIRD_PARTY_LICENSES")
+    for name in ["THIRD_PARTY_NOTICES.md", "requirements.lock"]:
+        shutil.copyfile(distribution.ROOT / name, tmp_path / name)
+    path = tmp_path / "THIRD_PARTY_LICENSES/rust-inventory.json"
+    inventory = json.loads(path.read_text())
+    if failure == "runtime_version":
+        inventory["source_archives"][0]["version"] = "999.0"
+        path.write_text(json.dumps(inventory))
+    elif failure == "notice_bytes":
+        (tmp_path / inventory["packages"][0]["files"][0]["path"]).write_bytes(b"Copyright removed")
+    else:
+        (tmp_path / "THIRD_PARTY_LICENSES/unreviewed.txt").write_bytes(b"Unreviewed")
+    with pytest.raises(ValueError):
+        distribution.inventory_files(tmp_path)
 
 
 def test_archive_requires_original_license_bytes(tmp_path):

@@ -32,6 +32,16 @@ def normalize(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
+def preserved_notice(root: Path, notice: dict) -> tuple[str, bytes]:
+    relative = PurePosixPath(notice["path"])
+    if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "THIRD_PARTY_LICENSES":
+        raise ValueError("Invalid notice path in inventory")
+    content = (root / str(relative)).read_bytes()
+    if hashlib.sha256(content).hexdigest() != notice["sha256"]:
+        raise ValueError(f"Notice checksum differs: {relative}")
+    return str(relative), content
+
+
 def inventory_files(root: Path = ROOT, *, installed: bool = False) -> dict[str, bytes]:
     """Fail on lock drift, omitted notices or modified notice bytes."""
     inventory = json.loads((root / "THIRD_PARTY_LICENSES/inventory.json").read_text())
@@ -57,17 +67,40 @@ def inventory_files(root: Path = ROOT, *, installed: bool = False) -> dict[str, 
             if distribution.version != package["version"]:
                 raise ValueError(f"Installed version differs: {package['name']}")
         for notice in package["files"]:
-            relative = PurePosixPath(notice["path"])
-            if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "THIRD_PARTY_LICENSES":
-                raise ValueError("Invalid notice path in inventory")
-            content = (root / str(relative)).read_bytes()
-            if hashlib.sha256(content).hexdigest() != notice["sha256"]:
-                raise ValueError(f"Notice checksum differs: {relative}")
-            expected[str(relative)] = content
+            relative, content = preserved_notice(root, notice)
+            expected[relative] = content
             if distribution and notice["source"].startswith("installed wheel: "):
                 original = notice["source"].removeprefix("installed wheel: ")
                 if distribution.locate_file(original).read_bytes() != content:
                     raise ValueError(f"Installed upstream notice differs: {package['name']}")
+
+    rust_path = root / "THIRD_PARTY_LICENSES/rust-inventory.json"
+    rust = json.loads(rust_path.read_text())
+    expected["THIRD_PARTY_LICENSES/rust-inventory.json"] = rust_path.read_bytes()
+    parents = set()
+    for source in rust["source_archives"]:
+        if pinned.get(normalize(source["package"])) != source["version"]:
+            raise ValueError("Rust source inventory differs from pinned Python runtime")
+        parent = source["package"] + "==" + source["version"]
+        parents.add(parent)
+        entries = sum(parent in package["parents"] for package in rust["packages"])
+        if entries != source["registry_entry_count"]:
+            raise ValueError("Rust source registry count differs from recorded closure")
+    seen = set()
+    for package in rust["packages"]:
+        identity = package["name"], package["version"]
+        if identity in seen or not package["files"] or not package["parents"]:
+            raise ValueError("Duplicate crate or missing Rust notices/provenance")
+        seen.add(identity)
+        if not set(package["parents"]).issubset(parents):
+            raise ValueError("Rust source inventory has an unknown parent")
+        for notice in package["files"]:
+            relative, content = preserved_notice(root, notice)
+            expected[relative] = content
+    actual_paths = {str(path.relative_to(root)) for path in (root / "THIRD_PARTY_LICENSES").rglob("*") if path.is_file()}
+    recorded_paths = {path for path in expected if path.startswith("THIRD_PARTY_LICENSES/")}
+    if actual_paths != recorded_paths:
+        raise ValueError("Third-party directory includes unrecorded files or missing notices")
     return expected
 
 

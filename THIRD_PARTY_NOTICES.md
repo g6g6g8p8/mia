@@ -7,12 +7,18 @@ copyright texts with any redistribution of the covered components.
 Revisão técnica: 12/10/2026, Linux x86_64. Este conjunto conserva os avisos de
 21 distribuições Python fixadas em `requirements.lock`, incluindo textos
 vendorizados fornecidos por httptools/uvloop, e a MPL-2.0 completa: 30 textos.
+O suplemento registra 140 pares crate/versão dos Cargo.lock de pydantic-core
+2.50.0 e watchfiles 1.3.0, conservando mais 249 textos, totalizando 279.
 Eles não foram modificados. Os dois comentários de licença de libuv foram
 extraídos literalmente com nova linha final, sem importar o código restante.
 
 Os textos e atribuições originais estão em `THIRD_PARTY_LICENSES/`; os nomes
 únicos identificam pacote/versão/componente. `inventory.json` registra origem,
-SHA256 de cada cópia e SHA256 do sdist upstream quando utilizado. Os mesmos
+SHA256 de cada cópia e SHA256 do sdist upstream quando utilizado.
+`rust-inventory.json` registra licenças declaradas, pacotes-fonte/checksums
+conferidos contra os Cargo.lock e seus membros originais. Esse fechamento
+inclui build/desenvolvimento e plataformas opcionais; não afirma que todos os
+crates estejam compilados em cada wheel. Os mesmos
 textos acompanham wheel/sdist e são copiados na construção da imagem.
 
 | Componente | Versão revisada | Licença declarada ou confirmada no texto |
@@ -47,10 +53,11 @@ coberto pelo aviso MPL fornecido pelo pacote; a licença completa acompanha o
 aviso e a fonte upstream está identificada nos metadados originais/PyPI.
 
 Scope limits: this is an inventory of pinned Python distributions and available
-bundled notices. It is not a complete audit of Rust crates in native wheels,
-Python/the operating system/base-image packages, development tools, trademark
-rights or project ownership. A distributor of an image or native dependency
-bundle must review those exact artifacts and corresponding source/notice
+bundled notices, plus the registry source closure in the reviewed Rust locks.
+It is not a reconstruction of every upstream native wheel build or a complete
+audit of per-file notices, Python/the operating system/base-image packages,
+development tools, trademark rights or project ownership. A distributor of an
+image or native dependency bundle must review those exact artifacts and source/notice
 requirements before a broad release. Do not infer license compatibility or a
 project license from this table. Details: `docs/DEPENDENCIES.md` and
 `docs/LICENSE-OPTIONS.md`. Changes to versions, extras, platforms or image
