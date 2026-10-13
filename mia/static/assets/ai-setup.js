@@ -59,7 +59,7 @@ export function guideAI(form, settings, api) {
     return 'compatible';
   };
   const explanations = {
-    none: 'Use tarefas, importação e busca sem modelo. Suas configurações ficam disponíveis para ativar depois.',
+    none: 'Traga suas fontes, busque e escolha o que retomar sem modelo. Suas configurações ficam disponíveis para ativar depois.',
     openai: 'Endereço preenchido para conexão direta. Informe sua chave de API e o identificador de um modelo com suporte a ferramentas. A assinatura de chat não configura esta conexão. A compatibilidade do modelo ainda precisa ser validada.',
     compatible: 'Informe o endereço base fornecido pelo serviço, incluindo /v1 quando necessário, sem /chat/completions. Esta versão exige Chat Completions, ferramentas e max_completion_tokens. APIs com outro protocolo ainda não são suportadas. OpenRouter é apenas uma opção.',
     local: 'Instale e inicie um servidor compatível na máquina onde a Mia roda. Informe endereço, porta e modelo; chave depende do servidor. “Local” é o computador da Mia, não o celular. Em Docker, localhost é o contêiner. A Mia ainda não instala modelos nem garante sua qualidade.'
