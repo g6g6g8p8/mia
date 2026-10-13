@@ -47,7 +47,7 @@ Explicar antes de importar:
 4. Importar/indexar não envia conteúdo a modelos. Consultar/analisar com IA pode enviar trechos autorizados ao destino escolhido, com consentimento e uso visíveis.
 5. API externa pode cobrar por uso; modelo local depende de hardware e energia. Não prometer eliminar gastos ou substituir todos os recursos de Claude/ChatGPT.
 
-Código público e intenção de open source não substituem a licença ainda pendente. Mac/Ubuntu têm evidência técnica; suporte universal a sistemas operacionais não foi validado. Windows só será anunciado após distribuição e testes próprios.
+Código, documentação e assets próprios usam Apache-2.0; terceiros conservam suas licenças. Dados pessoais não são abrangidos pela licença do software. Mac/Ubuntu têm evidência técnica; suporte universal a sistemas operacionais não foi validado. Windows só será anunciado após distribuição e testes próprios. Próximos aceites por instalação em [ROADMAP.md](ROADMAP.md).
 
 ## Uma experiência, três formas de entrar
 

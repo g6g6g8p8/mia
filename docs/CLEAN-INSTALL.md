@@ -140,7 +140,7 @@ curl -fsS http://127.0.0.1:8123/health
 curl -fsS http://127.0.0.1:8123/api/status
 ```
 
-Antes de criar acesso, espere a versão da revisão escolhida e `configured:false`. Feche o Terminal/SSH, abra novamente e repita a verificação: a Mia deve permanecer ativa. No Mac o LaunchAgent inicia depois do login; suspensão torna a instalação indisponível. No Linux, confira `loginctl show-user "$USER" -p Linger`; disponibilidade depois de boot sem login exige revisar e habilitar linger para a conta instalada. Isso é uma mudança do sistema separada do plano Mia, feita pelo operador, sem alterar serviços de outras contas.
+Antes de criar acesso, espere a versão da revisão escolhida e `configured:false`. No Linux, confira `loginctl show-user "$USER" -p Linger` antes de fechar a sessão; continuar sem login e após boot exige revisar e habilitar linger para a conta instalada. Isso é uma mudança do sistema separada do plano Mia, feita pelo operador, sem alterar serviços de outras contas. Depois feche o Terminal/SSH, abra novamente e repita a verificação: a Mia deve permanecer ativa. No Mac o LaunchAgent inicia depois do login; suspensão torna a instalação indisponível.
 
 ## 6. Acesso do Mac e iPhone ao servidor
 

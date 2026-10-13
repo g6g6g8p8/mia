@@ -17,7 +17,7 @@ Conversas persistem nesta instalação. Contexto recuperado, histórico reautori
 
 O [serviço de usuário e a migração de instalação manual](docs/INSTALL-BACKGROUND.md) permitem uso diário no navegador sem Terminal aberto após a preparação. Há código de launcher/empacotador Mac com runtime próprio, mas ainda falta artefato assinado/notarizado e aceite em Mac limpo; não é um instalador público pronto. Boot Linux e login/suspensão Mac exigem validação na máquina-alvo. Instalação local e servidor continuam escolhas distintas do participante.
 
-O [plano de experiência](docs/EXPERIENCE-PLAN.md) separa implementação, testes sintéticos e aceites com pessoas/fontes reais. Passar um vault sintético não demonstra compatibilidade com qualquer vault ou export nem primeiro valor sem ajuda. A licença específica ainda aguarda decisão do titular; código público não equivale a licença concedida. Economia e release ampla continuam pendentes.
+O [plano de experiência](docs/EXPERIENCE-PLAN.md) separa implementação, testes sintéticos e aceites com pessoas/fontes reais. Passar um vault sintético não demonstra compatibilidade com qualquer vault ou export nem primeiro valor sem ajuda. O código, documentação e assets próprios usam [Apache-2.0](LICENSE), conforme [NOTICE](NOTICE); dependências conservam suas licenças e dados pessoais permanecem privados. Economia e release ampla continuam pendentes.
 
 O [ensaio histórico com DeepSeek via OpenRouter](docs/REAL-MODEL-VALIDATION.md) registrou 17 chamadas sintéticas e US$ 0.0045882598 informados pelo provedor. Não certifica a qualidade geral da nova jornada nem economia. Em Ajustes → IA, verificar conexão consulta apenas o catálogo, sem gerar texto ou enviar fontes; não comprova saldo, ferramentas ou qualidade.
 
@@ -78,6 +78,8 @@ A [operação nativa gerenciada](docs/OPERATIONS.md) oferece versões separadas,
 Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e a escolha aplicada ficam no histórico/exportação; repetir confirmação não cria outra tarefa.
 
 ## Documentação
+- [Roadmap até a instalação limpa e o piloto independente](docs/ROADMAP.md)
+- [Roteiro de limpeza e instalação do zero](docs/CLEAN-INSTALL.md)
 - [Plano de produto e execução](docs/PLAN.md)
 - [Contrato do harness](docs/HARNESS.md)
 - [Ícone e identidade](docs/BRAND.md)
@@ -87,7 +89,7 @@ Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e
 - [Instalação nativa no Mac ou Linux](docs/INSTALL-NATIVE.md)
 - [Uso sem Terminal diário, serviço e migração manual](docs/INSTALL-BACKGROUND.md)
 - [Roteiro do piloto com usuários](docs/PILOT.md)
-- [Opções de licença, aguardando decisão do titular](docs/LICENSE-OPTIONS.md)
+- [Licença Apache-2.0 e escopo](docs/LICENSE-OPTIONS.md)
 - [Dependências e avisos preservados na distribuição](docs/DEPENDENCIES.md)
 - [Onboarding e importação de conhecimento](docs/ONBOARDING.md)
 - [Backup e restauração](docs/BACKUP.md)

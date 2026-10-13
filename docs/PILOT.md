@@ -1,73 +1,47 @@
-# Piloto — 2 a 3 pessoas
+# Piloto independente — 2 a 3 pessoas
 
-## Revisão do próximo piloto — 13/10/2026
+13/10/2026. Roteiro após a jornada a12 e adoção de Apache-2.0. Ainda não há participantes nem resultados reais registrados. Convites serão enviados pelo proprietário; este documento não envia mensagens.
 
-Aplicar o [plano de experiência](EXPERIENCE-PLAN.md), após avaliação 2/10 do proprietário. Antes de orientar, registrar a **preferência de instalação de cada participante**: local ou servidor/conectar à instalação existente. O Linux do proprietário não determina a escolha dos demais. Os resultados e falhas são separados por modalidade; código público ainda depende de decisão de licença para distribuição.
+## Preparar a rodada
 
-Primeiro valor: reconhecer um projeto/assunto em andamento, reencontrar decisão com fonte e revisar uma pendência, sem cadastrar toda a organização para preencher Hoje. O onboarding deve importar vault/exports suportados em grupos e relatar cobertura, sem exigir que a pessoa divida arquivos para vencer o limite atual.
+Concluir [ROADMAP.md](ROADMAP.md), R0–R6, para os caminhos que serão oferecidos. O proprietário pediu limpeza da Mia no MacBook Air e macserver e instalação vazia; acesso Desktop Commander/inventário ainda precisam ser conferidos. O protocolo é [CLEAN-INSTALL.md](CLEAN-INSTALL.md).
 
-Local: instalação sem comandos no caminho básico, fechar Terminal, reiniciar sessão, suspensão/retomada e preservar dados. Servidor: fechar SSH, reiniciar serviço/host, testar HTTPS no Mac/iPhone e acesso externo quando escolhido. Local no próprio computador não exige domínio, VPN ou servidor. Cliente no iPhone conectado ao mesmo backend não comprova sync offline.
+Perguntar a preferência **local ou servidor** antes de orientar cada participante. O Linux do proprietário não determina a escolha dos demais. Um caminho indisponível fica registrado como bloqueado/não executado; não transferir sucesso do servidor para o aceite Mac local.
 
-Selecionar participantes para observar ambos os caminhos quando houver preferência real, sem forçar uma modalidade por conveniência do mantenedor. Onde faltar artefato/infraestrutura, registrar aquele cenário como não executado, sem transferir sucesso da outra modalidade. Não convidar pessoas automaticamente nem coletar vaults/chaves no repositório.
+Mia suporta um proprietário por instalação. Cada participante usa instalação própria, ou instância privada separada com dados, processo, acesso e HTTPS independentes. Não compartilhar biblioteca, chave, sessão ou senha do proprietário. O acesso Mac/iPhone ao mesmo backend usa a mesma instalação, sem sync offline.
 
-O roteiro histórico abaixo continua útil para controles do núcleo, mas não basta para declarar o novo piloto pronto. O template atual pode registrar modalidade/ajuda; será ampliado com cobertura da migração e retomada antes do ensaio redesenhado.
+Antes do convite, identificar revisão/pacote, arquitetura, instruções e limitações. Apache-2.0 cobre arquivos próprios; avisos de dependências permanecem no pacote. Código de launcher não equivale a instalador Mac assinado/notarizado pronto. Piloto técnico acompanhado pode identificar problemas antes, mas não conta como instalação independente sem ajuda.
 
-Status: roteiro preparado. O proprietário realizou testes iniciais no celular e identificou lacuna de onboarding/importação. Piloto com usuários externos ainda não concluído.
+Usar o [rascunho do convite](PILOT-INVITE.md) depois de preparar a opção escolhida. Fontes e credenciais ficam na instalação da pessoa. Não solicitar histórico completo, chave ou acesso ao vault como condição do teste. Modelo é opcional; núcleo sem IA continua sendo cenário válido. O teto anterior de ensaio do proprietário não fornece orçamento aos convidados.
 
-Objetivo: verificar instalação e primeira utilidade com **2–3 pessoas**, cada uma em uma instalação própria no Mac ou Ubuntu e com fontes escolhidas por ela. O responsável prepara o pacote identificado e estas instruções; o convite e a decisão de compartilhar resultados são explícitos. Não há participantes ou resultados registrados neste documento.
+## Sessão de 45–60 minutos
 
-## Antes de convidar
+A pessoa recebe pacote/instruções e opera sem intervenção durante a tarefa medida. Pode interromper a qualquer momento. Registrar a necessidade de ajuda antes de oferecer suporte; concluir com ajuda não vira aprovação do requisito independente.
 
-- Validar um provedor/modelo real com chave e teto de gasto autorizados.
-- Conferir resposta com fonte, pedido ambíguo, data relativa, proposta inválida, falha de rede e orçamento de uso.
-- Definir licença de uso e distribuição; repositório já público por decisão do proprietário.
-- Importação básica e recuperação de fontes do M3 disponíveis (`ONBOARDING.md`). Cada participante escolhe dados próprios na instalação sob seu controle. A validação não depende de histórico do desenvolvedor.
-- Explicar limitações, tratamento de dados e que a versão não deve guardar informação crítica sem backup.
-- Usar pacote/commit identificado, checksum e [avisos](DEPENDENCIES.md) revisados. A licença específica depende do titular: [opções](LICENSE-OPTIONS.md).
-- Separar o núcleo sem IA dos aceites externos. Falta de chave, export real ou rota HTTPS não equivale a teste aprovado; marcar `not_run` e continuar tarefas locais possíveis.
+1. **Entrar do zero:** instalar ou conectar à sua instância privada vazia, compreender onde os dados ficam, criar nome/senha/fuso sem área ou chave obrigatória.
+2. **Trazer contexto:** escolher vault, arquivos/pasta ou exports suportados próprios; conferir grupos, prévias e cobertura. Autorizar conjunto sem selecionar nota por nota. Registrar itens não enviados, ignorados, perdas e falhas separadamente.
+3. **Retomar trabalho:** escolher foco atual e fontes; encontrar um projeto reconhecível, decisão anterior e questão pendente com origem. Abrir o material e conferir autoria/data; registrar tempo até o primeiro resultado que a própria pessoa considera útil. Hoje precisa ser útil sem cadastrar tarefas.
+4. **Conversa opcional:** se a pessoa escolheu IA, conferir destino/modelo, limite/custo e contexto antes de autorizar. Continuar conversa; incluir foco e perfil somente quando escolhidos. Conferir fontes e qualidade. Propostas exigem revisão: recusar uma, editar/aprovar outra e repetir confirmação para verificar um efeito.
+5. **Controle do contexto:** reimportar material, conferir duplicatas/versões e pausar uma fonte; verificar que novos pedidos não a reintroduzem por histórico. Organização e Sobre mim são sugestões opcionais, com evidência/autoria e aprovação editável.
+6. **Continuar depois:** fechar Terminal/navegador ou SSH, voltar e confirmar permanência do serviço e dados. Verificar login/boot Linux e login/suspensão/retomada Mac conforme modalidade; não reiniciar um servidor compartilhado sem janela combinada.
+7. **Recuperar:** criar backup privado, guardar cópia externa e restaurar em instalação separada; conferir login/fonte conhecida. Ensaiar atualização/recuperação com dados de teste antes de depender de dados importantes.
 
-## Sessão curta e critérios definidos antes de começar
+Servidor exige endereço HTTPS real e teste nos dispositivos/rede escolhidos. Local no computador não exige domínio, VPN ou servidor. Tailscale é uma alternativa opcional; seu uso não invalida a opção servidor escolhida. Resultados externos, Safari/iPhone físico e modelos reais exigem os testes correspondentes, sem extrapolar Chromium ou simulador.
 
-Reserve cerca de 45–60 minutos para o primeiro uso. A instalação usa somente README/documentação. Registre ajuda quando necessária e deixe a pessoa operar as próprias fontes e credenciais, sem compartilhamento de tela de segredos. Mac e Ubuntu são os alvos; registrar cada ambiente efetivamente testado, sem extrapolar para outros.
+## Critérios pré-definidos
 
-1. **Núcleo local:** acesso vazio → área → importação/prévia/seleção → busca → abrir a fonte certa → exportação. Medir tempo até o primeiro resultado que a própria pessoa considera útil.
-2. **Revisão:** reimportar uma nota alterada, comparar versões, pausar/reativar; com IA disponível, revisar organização/contexto pessoal e aprovar apenas parte. Conferir que o contexto pessoal não é enviado sem seleção.
-3. **IA autorizada:** cada pessoa escolhe destino/modelo e seus limites, confere a prévia e faz uma consulta com fonte. Recusar uma proposta, editar/aprovar outra, confirmar novamente e verificar um único efeito. O teste de catálogo não substitui geração com provedor direto; resultado simulado não fecha qualidade.
-4. **Operação:** reiniciar, verificar persistência, criar backup e restaurar em instalação separada. Ensaiar atualização/recovery com dados de teste e backup verificável antes de usar dados importantes.
-5. **Independência:** verificar outro dispositivo na LAN sem VPN obrigatória; HTTPS remoto somente com rota/destino controlados pelo participante e autorização específica. Registrar ações fora da Mia, sem alterar rede real só para preencher o roteiro.
+Meta: primeiro resultado útil em até dez minutos após acesso à instalação, com tempo de instalação registrado separadamente. Qualidade e reconhecimento desse resultado são avaliados pela pessoa; não contar apenas documentos/tempo de indexação como utilidade.
 
-O núcleo local pode ser concluído sem chamada paga. Chaves e conteúdo permanecem na instalação da pessoa. O teto já autorizado de US$ 1 para ensaios do proprietário é acumulado e não fornece orçamento automático aos participantes. Para comparar qualidade/custo, usar [BENCHMARK.md](BENCHMARK.md), registrar a configuração e avaliar qualidade antes de calcular diferença. Custo sem evidência é desconhecido; não publicar promessa de economia.
+A rodada fica elegível para revisão do proprietário quando duas pessoas (ou pelo menos duas de três) concluem instalação, importação/revisão, busca/fonte, retomada e continuidade sem intervenção do fundador; pessoas que usam IA entendem destino/contexto, custo e aprovação; recuperação e modalidade oferecida têm evidência.
 
-Critérios de sucesso da rodada: as 2 pessoas (ou pelo menos 2 das 3) concluem instalação, importação, busca/fonte e reinício usando a documentação sem intervenção do fundador; todas as pessoas que fazem IA entendem destino/contexto e revisão antes do efeito; nenhum caso de segurança abaixo fica aberto. Ajuda, tempo e a terceira pessoa bloqueada permanecem no relatório e exigem correção/reteste dos pontos aplicáveis. Esses critérios são uma regra de decisão do piloto, não resultados medidos. Aceites de exports reais, provedor direto e HTTPS exigem os testes correspondentes; falta de execução mantém o marco pendente.
+Registrar todas as falhas, ajuda e cenários não executados, inclusive a terceira pessoa bloqueada. Uma rodada remota não fecha o aceite local; um usuário que preferiu local não deve ser redirecionado silenciosamente para servidor. Critérios são regras de decisão, não resultados já medidos.
 
-**Parada imediata:** perda de dados, efeito duplicado, envio não autorizado de contexto/destino, credencial exposta ou limite configurado excedido. Suspender o cenário, conservar backup/log local minimizado e abrir reprodução sintética; corrigir e repetir o caso antes de avançar ao release. Falha de usabilidade sem impacto em dados pode ser registrada e testada novamente. Decisão de release cabe ao titular depois de revisar os resultados e pendências.
+Parar o cenário se houver perda de dados, efeito duplicado, envio não autorizado, exposição de credenciais ou limite excedido. Preservar backup/log minimizado local, criar reprodução sintética, corrigir e repetir o caso. Falhas de usabilidade geram correção/reteste. Economia, custo mensal fixo e compatibilidade universal não serão anunciados a partir de uma amostra pequena.
 
-## Tarefas do piloto
+## Resultados privados e minimizados
 
-1. Instalar usando só o README e criar o acesso local.
-2. Criar uma área e uma tarefa real, sem importar histórico do desenvolvedor.
-3. Encontrar a tarefa na busca e exportar os dados.
-4. Configurar um modelo próprio; conferir destino e contexto antes de enviar.
-5. Pedir uma análise da área e conferir se ela se sustenta nos dados disponíveis.
-6. Solicitar uma tarefa, revisar a proposta, recusar uma e confirmar outra.
-7. Reiniciar a Mia e confirmar a permanência dos dados.
+Copiar [PILOT-RESULT-TEMPLATE.json](PILOT-RESULT-TEMPLATE.json) para pasta privada fora do Git. Usar códigos P01–P03. null significa não coletado; tarefas usam pass, fail, not_run ou not_applicable. status é pending, completed ou stopped; decisão é pending, retest ou eligible_for_owner_review.
 
-Acrescentar ao fluxo: importar um conjunto pequeno de notas próprias, revisar a seleção, encontrar uma informação, abrir a fonte, consultar esse material com modelo configurado e conferir uma referência. Reimportar uma nota alterada, comparar o original e pausar uma versão; confirmar que ela sai da busca sem ser apagada. Registrar o tempo até o primeiro resultado útil, a necessidade de ajuda e se a pessoa entende o que foi enviado ao provedor.
+Não registrar títulos/conteúdo de notas, prompts/respostas, nomes/emails, caminhos, endereços privados, chaves, cookies, capturas de segredos ou backups no relatório. Coletar modalidade, versão/artefato, formatos/contagens, tempos, pontos de ajuda, compreensão, qualidade e custo conhecido/estimado/desconhecido. Resultado técnico de catálogo não certifica saldo/ferramentas/qualidade.
 
-Para exportações experimentais ChatGPT/Claude, cada participante pode validar o próprio arquivo localmente e informar formato, contagens, erros e resultado. Não pedir upload de históricos completos para o repositório ou para o desenvolvedor. Um relato de problema deve usar reprodução sintética ou trecho explicitamente autorizado e minimizado. Marcar compatibilidade como não validada até existir teste real; isso não bloqueia o piloto de notas e busca sem IA.
-
-## Registrar, sem inventar métricas
-
-Copie [PILOT-RESULT-TEMPLATE.json](PILOT-RESULT-TEMPLATE.json) para um diretório privado **fora do checkout**, por exemplo `~/mia-pilot-results/`, e use códigos `P01`–`P03`, sem nome/email/contato. O template é vazio: `null` significa não coletado, `not_run` significa não executado. Nos resultados de tarefas use `pass`, `fail`, `not_run` ou `not_applicable`; uma dependência indisponível é `not_run`, com categoria de bloqueio. `status` passa a `completed` ou `stopped`; `release_decision` é `pending`, `retest` ou `eligible_for_owner_review`, nunca publicação automática.
-
-Não inserir títulos/conteúdo de notas, conversas, prompts/respostas, caminhos de arquivos, endereços privados, chaves, cookies, capturas de tela ou backup no relatório. Registre formatos/contagens, IDs de tarefas do template, tempos, entendimento, custo conhecido/estimado/desconhecido e um ID de issue já sanitizada quando necessário. O campo de modelo é opcional e somente identificador público; destino é classificado como direto/compatível/local, sem URL privada. O participante mantém as fontes e só compartilha este relatório minimizado com consentimento. Não subir resultados individuais reais ao repositório; publicar apenas síntese revisada, consentida e sem identificação. Apagar cópias compartilhadas quando a revisão terminar ou quando a pessoa retirar a autorização.
-
-Consolidação: quantidade de participantes por OS/método, quantos terminaram cada tarefa, quantos precisaram de ajuda, tempos observados e número de casos interrompidos. Identificar denominadores e `not_run`; nenhum campo ausente vira zero, falha vira aprovação ou amostra pequena vira alegação geral. Os participantes conferem a síntese antes de publicação.
-
-Modelo de relatório por participante (sem dados pessoais): versão/OS; instalou sem ajuda (sim/não e ponto de bloqueio); tipo de fonte escolhida; tempo até primeiro resultado útil; encontrou e abriu a fonte correta; entendeu aprovação e envio ao provedor; reinício/restauração conferidos; custo conhecido/estimado/desconhecido; erro reproduzível minimizado; decisão de continuar. Não coletar o conteúdo da fonte ou a chave. Critérios sintéticos de qualidade/custo estão em [BENCHMARK.md](BENCHMARK.md).
-
-No ensaio de organização, selecionar poucas fontes próprias, conferir a prévia, gerar sugestões, editar um nome/descrição, recusar ou confirmar parte da proposta e verificar o destino das fontes. Reabrir a proposta após reload e editar a área já criada. Registrar se os trechos iniciais bastaram para sugestões úteis; não atribuir ao teste simulado qualidade de um modelo real.
-
-Em Meu contexto, gerar uma sugestão, conferir trechos e autoria, editar e aprovar apenas um campo. Verificar se o objetivo aprovado aparece em Hoje e se o contexto pessoal fica fora da prévia de Inteligência até ser marcado. Editar/limpar o contexto e confirmar que execuções anteriores continuam como histórico. Registrar falsas atribuições ao usuário, material antigo tratado como atual e se a pessoa entende a substituição do objetivo.
-
-Tempo por tarefa, pontos de ajuda, erros, entendimento de confirmação e custos, qualidade da resposta, configuração usada e decisão de continuar ou não. Não coletar chaves, conteúdos pessoais ou telemetria sem consentimento. Usar os achados para corrigir o produto antes de divulgar promessas de economia.
+Compartilhamento é opcional e depende de consentimento. A pessoa conserva suas fontes; relatos de defeito usam reprodução sintética ou recorte explicitamente autorizado/minimizado. Resultados individuais reais não entram no repositório. A síntese informa denominadores/not_run e é revisada pelos participantes antes de publicação; apagar cópias compartilhadas ao fim da revisão ou revogação do consentimento.
