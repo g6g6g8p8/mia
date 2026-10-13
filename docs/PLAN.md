@@ -1,5 +1,5 @@
 # Mia — plano de produto e execução
-Versão 0.16 · 13/10/2026 · Status: 0.2.0a11 é alpha técnica. Avaliação do proprietário: experiência do zero 2/10. O ciclo seguinte prioriza migração de contexto e retomada do trabalho, com caminhos local e servidor sem Terminal diário. Proposta e gates em EXPERIENCE-PLAN.md; evidência anterior e aceites externos preservados em RELEASE-CHECKLIST.md.
+Versão 0.17 · 13/10/2026 · Status: 0.2.0a12 implementa a nova jornada de contexto após avaliação 2/10. Migrações retomáveis, revisão por grupos, Hoje ligado a fontes, conversas e serviço de usuário entram no ciclo E1–E4; aceites com fontes reais, instalações-alvo e participantes continuam abertos. Contrato em EXPERIENCE-PLAN.md; evidência histórica e aceites externos em RELEASE-CHECKLIST.md.
 
 ## Replanejamento de experiência — prioridade do próximo ciclo
 
@@ -7,7 +7,7 @@ O proprietário escolheu retomar projetos, últimas decisões e pendências com 
 
 A ordem de trabalho passa a ser: **E1 jornada/mensagem → E2 instalação e serviço + E3 migração em escala → E4 retomada/Hoje/conversas → E5 atualização das fontes/conectores → E6 pilotos independentes**. M0–M5 continuam existindo, mas M3 e M4 bloqueiam juntos o piloto; a sequência histórica rígida M2 → M3 → M4 não governa o próximo ciclo.
 
-O [contrato de experiência](EXPERIENCE-PLAN.md) especifica inventário e revisão agrupada, jobs retomáveis, formatos/proveniência, recuperação por trechos, Hoje útil sem tarefas, consentimento/custo e instalação sem comandos no caminho básico local. Não corrigir o problema simplesmente elevando 300 entradas nem criar apps com sync antes de validar migração e primeiro valor. O roteiro novo é proposta de trabalho; este replanejamento não alterou o código.
+O [contrato de experiência](EXPERIENCE-PLAN.md) especifica inventário e revisão agrupada, jobs retomáveis, formatos/proveniência, recuperação por trechos, Hoje útil sem tarefas e consentimento/custo. A 0.2.0a12 implementa esse núcleo e a operação em segundo plano. Launcher/empacotador Mac são base técnica; distribuição assinada e instalação sem ajuda continuam gates próprios. Drive recorrente e sincronização offline não foram implementados.
 
 ## 1. Produto
 Mia é um harness de IA pessoal acessado pelo navegador, com contexto, memória, ferramentas, permissões, execução persistente e controle de custos.

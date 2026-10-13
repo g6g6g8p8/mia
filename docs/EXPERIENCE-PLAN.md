@@ -1,6 +1,15 @@
 # Mia — migração de contexto e primeiro valor
 
-13/10/2026 · Replanejamento de produto. **Proposta, não implementação.** Mantém os contratos de identidade, proveniência, aprovação e orçamento existentes. Não muda a instalação pessoal, limites de importação ou interface da 0.2.0a11.
+13/10/2026 · Contrato do ciclo após avaliação 2/10. A 0.2.0a12 implementa a jornada por fontes, jobs retomáveis/revisão por grupos, recuperação por trechos, foco, conversas e serviço de usuário. Mantém identidade, proveniência, aprovação e orçamento. Não atualiza automaticamente a instalação pessoal. Propostas além desse núcleo e aceites externos permanecem abaixo; evidência em [EXPERIENCE-VALIDATION.md](EXPERIENCE-VALIDATION.md).
+
+| Entrega | Estado técnico na a12 | Aceite ainda aberto |
+| --- | --- | --- |
+| E1 | Jornada e taxonomia integradas | Compreensão e primeiro valor com participantes |
+| E2 | Serviço de usuário, migração manual e fundação de launcher/empacotador Mac | Ativação/boot real, assinatura/notarização e Mac limpo sem ajuda |
+| E3 | Importação retomável, grupos, formatos/proveniência e quotas | Vault real representativo e exports autorizados de participantes |
+| E4 | Índice textual, conversas, foco opt-in, trechos em Hoje sem tarefas | Qualidade da retomada real; síntese semântica não é automática |
+| E5 | Reimportação idempotente mantém proveniência; versões ficam separadas | Deltas/remoções revisáveis e Drive recorrente |
+| E6 | Roteiro e ferramentas técnicas | 2–3 participantes e decisão de release |
 
 ## Decisões e evidência
 
@@ -93,7 +102,7 @@ Na primeira entrada, a ação principal é **“O que vamos retomar?”** e o fo
 - **Em andamento:** projetos/assuntos confirmados, com origem e opção de corrigir/arquivar.
 - **Últimas decisões encontradas:** material relacionado ao foco, com data disponível, autoria e link para fonte. “Última encontrada” não significa decisão vigente ou cobertura completa.
 - **Pendências para revisar:** questões extraídas/sugeridas, claramente diferenciadas das tarefas já aprovadas. Sem inventar prazos, urgência ou obrigações a partir do histórico.
-- **Continuar uma conversa ou perguntar:** primeiro pedido com contexto recuperado e referências; threads persistentes entram no escopo da próxima experiência, não são capacidade atual.
+- **Continuar uma conversa ou perguntar:** primeiro pedido com contexto recuperado e referências; threads persistentes e foco explícito estão implementados na a12.
 - **Minha migração:** cobertura, origens, falhas/ignorados e novos grupos disponíveis, sem ocupar a tela principal depois de concluída.
 
 Hoje continua útil com zero tarefas: foco, fontes recentes/relevantes e um caminho de retomada. Sem dados, pede uma origem ou uma pergunta concreta, sem inventar uma rotina pessoal. Datas respeitam fuso e distinguem data da fonte, importação e revisão humana.
@@ -138,7 +147,7 @@ Em instalação remota, um ZIP inteiro recebido pode conter itens que depois ser
 
 Quotas continuam necessárias: armazenamento, bytes recebidos/expandidos, contagem de descritores, razão de expansão, profundidade, CPU/memória e duração. Validar caminhos/links/criptografia e ZIP bombs antes de usar; filtrar lixo conhecido para contar conteúdo útil sem remover as proteções de recursos. Não trocar limites por valores arbitrários sem benchmark.
 
-Hipótese de laboratório para orientar testes: 1k/5k/10k notas, 100 MiB de entrada e 500 MiB de texto elegível, em 2 CPU/4 GiB. Não são novos limites do produto nem promessas de desempenho. Separar corpus, memória máxima, disco necessário, tempo até primeira fonte útil e tempo até conclusão; medir antes de publicar suporte.
+Hipótese de laboratório para orientar testes: 1k/5k/10k notas em 2 CPU/4 GiB. A a12 implementa quotas de 100 MiB de entrada e 500 MiB de texto elegível; elas não são promessas de desempenho ou validação de todos os volumes. Separar corpus, memória máxima, disco necessário, tempo até primeira fonte útil e tempo até conclusão; ensaios em EXPERIENCE-VALIDATION.md.
 
 Antes de implementar E3/E4, pré-registrar corpus e critérios de desempenho. Metas iniciais de laboratório, a revisar antes do ensaio: em 1.000 notas/até 20 MiB de texto elegível e 2 CPU/4 GiB, primeira fonte autorizada pesquisável em até 60 s após recebimento/revisão; índice desse corpus concluído em até 10 min; processo de importação+API com RSS somado até 1 GiB. Medir transferência de rede separadamente, prever disco para staging/originais/índice e impedir início sem capacidade. No teste humano, meta de primeiro resultado útil em até 10 min a partir do acesso, sem assistência; registrar onde o tempo foi gasto e falhar o gate se exigir ajuda. Estes números são metas do teste, não garantia publicada.
 

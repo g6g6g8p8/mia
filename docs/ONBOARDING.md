@@ -1,114 +1,69 @@
-# Onboarding com conhecimento próprio
+# Onboarding com contexto próprio
 
-## Revisão após uso do zero — 13/10/2026
+0.2.0a12 · 13/10/2026. A avaliação 2/10 do uso do zero motivou a nova jornada. Esta implementação é uma alpha: testes sintéticos não substituem fontes reais, compreensão e primeiro resultado de participantes.
 
-O proprietário avaliou a experiência em 2/10 e relatou rejeição de um vault ZIP. O código limita **todas as entradas** a 300 antes de filtrar pastas/metadados/mídia. Importação síncrona pequena, revisão individual e Hoje dependente de tarefas ainda não demonstram migração de contexto de trabalho.
+## Entrar e retomar
 
-O [novo contrato de experiência](EXPERIENCE-PLAN.md) substitui o fluxo proposto como direção do próximo ciclo: escolher onde instalar → trazer origens → inventariar/revisar grupos → importar/indexar progressivamente → confirmar o que é atual → retomar trabalho em Hoje. Instalação local e servidor são escolhas do participante; o servidor é a referência do proprietário. Não exigir área ou chave de IA antes de importar, nem selecionar cada nota para migrar um vault.
+Criar acesso pede nome, senha e fuso. Não exige criar uma área nem configurar modelo. Uma biblioteca inicial interna mantém a autorização; pastas importadas não viram projetos automaticamente.
 
-Este documento mantém abaixo a implementação e o histórico anteriores. Jobs grandes, novos limites, taxonomia, instaladores e Hoje ligado à biblioteca **não foram implementados** por esta revisão. Parsing de exports, recuperação de resposta e qualidade da retomada têm aceites separados.
+A preparação pode ser retomada ou encerrada para começar a usar:
 
-Status: M3 ampliado em 11/10/2026. Objetivo declarado, fluxo retomável, importação revisável, fontes, busca, configuração gráfica de IA, organização assistida em áreas e sugestões revisáveis de contexto pessoal/objetivo disponíveis. Projetos estruturados, sincronização contínua e compatibilidade ampla de exportações continuam planejadas. Qualidade das sugestões com modelos reais ainda não validada.
+1. **Trazer contexto:** confirmar onde a instalação existente está rodando, escolher origem/arquivo/pasta, acompanhar envio e inventário.
+2. **IA opcional:** continuar com busca local ou configurar serviço/modelo próprio; preços e orçamento ficam em opções avançadas. APIs podem cobrar por uso; assinatura de chat não é crédito de API.
+3. **Meu foco:** escolher trabalho atual e fontes de apoio; buscar/paginar toda a biblioteca, conferir originais e confirmar até 20 fontes.
+4. **Retomar:** abrir Hoje, buscar ou começar uma conversa. Importação não cria tarefas nem confirma fatos pessoais.
 
-## Problema e resultado esperado
+A navegação é **Hoje / Conversas / Biblioteca / Ajustes**, com busca transversal. Biblioteca reúne Fontes, Projetos e áreas e Sobre mim. Instalação local e servidor são escolhas igualmente válidas; marcar uma opção informa onde esta instalação já está rodando, sem instalar, mover dados ou abrir acesso remoto.
 
-O onboarding anterior criava proprietário e primeira área. A lacuna de conhecimento próprio motivou o fluxo atual.
+Em servidor, arquivos enviados ficam naquela máquina. Mac e iPhone acessando o mesmo endereço usam a mesma biblioteca; duas instalações não sincronizam seus bancos. GitHub contém código, não recebe automaticamente dados. Uso sem Terminal diário depende da preparação do serviço em [INSTALL-BACKGROUND.md](INSTALL-BACKGROUND.md).
 
-Resultado esperado: a pessoa traz um conjunto de conhecimento próprio, entende o que foi aceito e conclui uma primeira consulta com fontes ou uma ação confirmada. A instalação continua vazia por padrão; o preenchimento ocorre por importação explícita ou pelas respostas da própria pessoa.
+## Origem e cobertura
 
-## Fluxo proposto
-
-| Etapa | Experiência | Resultado persistido |
+| Origem | Entrada atual | Limites de interpretação |
 | --- | --- | --- |
-| 1. Acesso | Nome, senha e fuso; informações opcionais não bloqueiam | Proprietário e sessão |
-| 2. Primeiro objetivo | “Em que você quer ajuda primeiro?”; resposta curta, editável | Objetivo declarado, sem inferência automática |
-| 3. Conhecimento | Importar notas/vault, escolher exportação de conversas, colar conteúdo ou continuar sem importar | Escolha e lote de importação local |
-| 4. Revisão | Mostrar documentos, prévias, exclusões, erros e possíveis duplicatas; selecionar e confirmar | Fontes autorizadas e área escolhida |
-| 5. Inteligência | Configurar modelo próprio ou continuar com busca local; mostrar destino dos dados | Configuração local e permissão de uso |
-| 6. Primeiro resultado | Encontrar informação nas fontes; com IA configurada, responder uma pergunta com referências | Consulta verificável e eventual proposta |
-| 7. Entrada em Hoje | Mostrar fontes adicionadas, objetivo declarado e tarefas realmente confirmadas | Estado inicial útil, sem tarefas inventadas |
+| Obsidian/Markdown | ZIP ou pasta pelo seletor compatível, com grupos e caminhos preservados | Não executa plugins; mídia, arquivos ocultos, caches e metadados são relatados e ignorados |
+| Arquivos avulsos | Markdown, texto e ZIP; pasta agrupa arquivos antes do envio | Pasta escolhida é do dispositivo cliente, não um caminho do servidor |
+| ChatGPT | Lista JSON com conversas mapping/current_node | Preserva ramo atual, papéis user/assistant, IDs e datas disponíveis; informa anexos, ferramentas e outros ramos omitidos |
+| Claude | Lista JSON com chat_messages | Preserva papéis, IDs, datas e partes textuais suportadas; relata omissões |
+| Drive/outros serviços | Arquivos baixados/exportados previamente | .gdoc contém link, não documento; não há OAuth recorrente, leitura de links ou conector vivo |
 
-Todas as etapas podem ser retomadas; o onboarding também pode ser reaberto para adicionar fontes. A pessoa pode revisar uma importação depois de começar a usar. No celular, importar por seletor de arquivos; escolher uma pasta do servidor pertence a uma função administrativa posterior.
+Adaptadores são versionados e reconhecem esquemas específicos. Não exigem login na plataforma de origem. Exportações desconhecidas têm erro explícito; não há promessa de compatibilidade universal. Fonte de assistant permanece registro de uma IA, não declaração confirmada da pessoa.
 
-## Ordem dos formatos
+O seletor de pasta filtra conteúdo não elegível antes de montar o ZIP e informa o que **não foi enviado**. Ao enviar um ZIP pronto, o arquivo inteiro chega à instalação antes do inventário; itens depois ignorados estiveram no staging temporário. Essa diferença aparece antes da transferência.
 
-| Entrega | Entrada | Escopo |
-| --- | --- | --- |
-| A — Base aberta | Markdown e texto, individualmente ou em ZIP | Notas e vaults com estrutura de pastas preservada; colagem de texto como alternativa |
-| B — ChatGPT | Arquivo exportado pelo próprio usuário | Adaptador com formatos reconhecidos, prévia e seleção de conversas |
-| C — Claude | Arquivo exportado pelo próprio usuário | Adaptador com formatos reconhecidos, prévia e seleção de conversas |
-| D — Outros | Novos formatos/exportações e documentos | Priorizar conforme pilotos; formatos desconhecidos têm erro claro e alternativa de texto |
+## Importação retomável e autorizada
 
-Adaptadores experimentais reconhecem listas JSON com `mapping`/`current_node` (ChatGPT) ou `chat_messages` (Claude). A árvore é percorrida apenas pelo ramo atual; usuário e assistente mantêm papel e data disponível no texto. Arquivos de conta e conversas sem estrutura reconhecível recebem erro explícito. Páginas oficiais de exportação foram consultadas, mas não estabelecem um esquema estável; compatibilidade exige amostras reais autorizadas. Testes usam dados sintéticos, sem prometer importação universal.
+Envio em blocos de até 1 MiB, checksum SHA-256 e offset durável permitem selecionar novamente o mesmo arquivo e retomar. Conteúdo em revisão fica no staging privado, fora de documentos, busca e IA. O inventário oferece grupos/pastas, prévia buscável paginada e exceções; não exige checkbox por nota.
 
-Não exigir login em plataformas de origem para importar. Não instalar dependências de sincronização ou enviar o arquivo inteiro a uma API de IA automaticamente. A primeira entrega importa uma cópia, sem sincronização contínua com o vault original. PDF, OCR, anexos, links externos e interpretação de plugins do Obsidian ficam para depois.
+Depois da autorização, o índice publica fontes progressivamente em transações com checkpoints. Reinício retoma o trabalho, e repetição de confirmação não duplica fontes. Cancelar interrompe publicação e informa as fontes já importadas; remover/desfazer lote apaga apenas fontes sem outro lote independente. Originais no dispositivo não são modificados.
 
-## Importação, fontes e memória
+O relatório separa:
 
-- Documento importado: conteúdo do usuário com origem, lote, título, caminho relativo, data disponível e hash. Data de importação não substitui data da informação.
-- Conversa importada: registro com mensagens e papéis preservados. Resposta antiga de uma IA não vira um fato confirmado, nem instrução para a Mia.
-- Índice: derivado, local e reconstruível; aponta para trechos do documento original.
-- Perfil, objetivos, projetos e tarefas sugeridos: propostas separadas do conteúdo original, com fontes e confirmação antes de ativar.
-- Conteúdo histórico pode estar desatualizado. A pessoa confirma prioridades atuais; a Mia apresenta conflitos ou lacunas em vez de mesclar como verdade.
+- **Entradas:** diretórios, arquivos elegíveis, ignorados e erros de leitura.
+- **Documentos/conversas:** reconhecidos, selecionados, não selecionados, importados, duplicados, indexados e erros.
 
-Uma nota pode existir sem gerar tarefa. Importar uma conversa não executa ações discutidas nela. A organização sugerida por IA é opcional, com consentimento e limites de uso explícitos; a base da importação funciona sem IA e sem internet após instalar.
+Um JSON pode gerar muitas conversas. Concluir a seleção não significa cobrir todos os itens da origem. Conteúdo não selecionado, anexos omitidos e formatos desconhecidos continuam explícitos; erros parciais permanecem visíveis em Hoje com acesso à cobertura.
 
-Na última etapa do onboarding e em Fontes, **Organizar minhas fontes** permite selecionar até seis fontes ativas de uma área, ver os trechos enviados e solicitar até quatro áreas sugeridas. A pessoa edita nome/descrição, escolhe áreas e documentos e confirma. Só então áreas são criadas e documentos movidos; os demais permanecem no lugar. Não mescla áreas existentes, não cria tarefas e não altera o objetivo declarado. Detalhes de escopo, custo, confirmação e histórico em `AI.md`. Descrições aprovadas são editáveis depois em Áreas e permanecem mesmo se a fonte original for pausada ou excluída.
+## Quotas e retenção
 
-**Personalizar minha Mia**, no onboarding/Fontes, abre **Meu contexto**, também acessível em Sistema. A geração opcional propõe um resumo do contexto de trabalho/interesses e/ou um objetivo para revisão, usando até seis fontes explicitamente selecionadas. Trechos literais são obrigatórios; o servidor verifica sua presença no material enviado, não a interpretação ou autoria das afirmações. O usuário deve conferir se o conteúdo se refere a ele e continua atual. Respostas antigas de assistentes não são evidência automática sobre o usuário.
+O novo fluxo usa upload de até **100 MiB**, até **500 MiB de texto elegível**, **1 GiB de expansão total**, **50.000 descritores/documentos por migração** e profundidade 32. Notas e conversas individuais têm limite de 8 MiB; exports JSON em lista são processados progressivamente para não exigir dividir o conjunto ao ultrapassar 8 MiB. Há também quotas por proprietário, verificação de disco, razão de expansão, recusa de ZIP64/multipartes, links simbólicos, criptografia e caminhos inválidos.
 
-Contexto e objetivo são editáveis, selecionados e confirmados separadamente. Confirmar o objetivo substitui o objetivo atual exibido em Hoje; não cria tarefas nem modifica áreas. Edições mais recentes bloqueiam a substituição por proposta antiga. Fontes usadas precisam continuar ativas e na mesma área até a aprovação. Após a confirmação, o contexto torna-se uma declaração revisada pelo usuário, independente da fonte original; pode ser editado ou limpo em Meu contexto. Execuções antigas preservam seu registro. Em Inteligência, o contexto pessoal e objetivo só são enviados mediante a opção explícita de incluí-los em cada pedido.
+Esses limites protegem recursos; não certificam desempenho em todos os volumes. A API informa limites e erros. O endpoint antigo /api/imports preserva seu contrato pequeno para compatibilidade; o onboarding novo usa /api/migrations.
 
-## Contrato mínimo da importação
+No fluxo novo, staging bruto e textos não aprovados são removidos ao concluir ou cancelar; importações abandonadas expiram após sete dias. Snapshot operacional, inclusive de migração manual, exclui migration-staging por padrão. O banco preserva metadados de jobs, seleção e progresso, sem os textos em revisão desse fluxo. Importações antigas feitas por /api/imports guardavam a revisão no SQLite e esse conteúdo continua nos seus backups até cancelar/concluir aquele lote. Após restauração sem staging, fontes já aprovadas permanecem; transferências/revisões incompletas exigem reenviar a origem em uma nova migração.
 
-1. Autenticar proprietário e receber arquivo ou texto com limites de tamanho.
-2. Armazenar temporariamente dentro da instalação, separado do código e de fontes ativas.
-3. Identificar formato; validar ZIP, caminhos e tipos sem executar arquivos ou seguir links.
-4. Preparar prévia local, contagens, erros, exclusões e candidatos a duplicação.
-5. Receber a seleção e a área de destino autorizada.
-6. Confirmar uma única vez, persistir documentos e construir índice de busca local.
-7. Apresentar relatório: importado, ignorado, duplicado e falhou; nunca declarar sucesso silencioso com conteúdo perdido.
-8. Permitir excluir um lote; remover seus documentos, índices e elegibilidade para novos contextos, preservando documentos independentes de outros lotes.
+Fontes aprovadas, conteúdo, hashes, vínculos de lotes e proveniência estruturada ficam na biblioteca/exportação. Desfazer não apaga cópias anteriores em backups nem respostas históricas. Versões alteradas ficam separadas; não há sincronização contínua ou resolução automática de conflitos.
 
-Limites iniciais de tamanho total, número de arquivos, profundidade, expansão do ZIP e tempo devem ser definidos e exibidos antes do upload. Rejeitar caminhos absolutos, travessia de diretórios, links simbólicos e arquivos fora do escopo. Conteúdo não autorizado não chega à busca nem ao contexto.
+## Hoje e Conversas
 
-Estados atuais: revisão e concluído, com relatório de erros/exclusões por entrada. Parsing é síncrono e limitado; erro antes da preparação não cria lote. Confirmação é transacional. Reinício não duplica documentos; cancelamento/exclusão remove o staging. Jobs em segundo plano ficam para evolução posterior.
+Hoje funciona com zero tarefas: foco confirmado, trechos literais para conferir, fontes de apoio e conversas para continuar. Datas da origem são distintas da importação; sem data original, a interface informa a lacuna. Trechos escolhidos por pistas textuais não confirmam decisão vigente, pendência atual ou prioridade.
 
-Conteúdo idêntico na mesma área é deduplicado, preservando proveniência de lotes e o estado ativo/pausado da fonte existente. Exclusão não remove documento compartilhado por outro lote. A revisão mostra conteúdo já importado e notas com o mesmo caminho e conteúdo diferente, permitindo abrir o original para comparar. Não detecta versões de conversas por posição na exportação, pois essa posição não é um identificador estável.
+Busca usa índice textual local por trechos, com ordenação e diversidade. Não usa embeddings nem IA para importar. Recuperação semântica completa e síntese automática de toda a biblioteca não são prometidas.
 
-Versões diferentes permanecem separadas. Na lista de fontes, o usuário pode pausar versões antigas e reativá-las depois. Pausa preserva conteúdo, índice, proveniência e exportação, mas exclui a fonte de busca e de novos contextos. Nenhuma versão é selecionada automaticamente; ambas ficam ativas até a escolha do usuário. Execuções anteriores preservam o contexto registrado. A detecção usa caminhos da mesma área, não interpreta equivalência semântica nem acompanha renomeações.
+Conversas têm escopo fixo: biblioteca autorizada para responder ou área escolhida para propostas. Consultar biblioteca não cria ações em área inferida. Cada pedido pede consentimento para o destino mostrado. **Incluir meu foco e fontes confirmados** é separado de **Incluir Sobre mim e objetivo**; ambos são opcionais. Foco explícito permite recuperar fontes escolhidas mesmo quando seu título usa outras palavras.
 
-## Uso do conhecimento no harness
+Histórico enviado é limitado e reautorizado por pedido. Pausa, remoção, alteração ou mudança de área de fontes exclui turnos que poderiam reintroduzir o material; mudanças de perfil/foco e opt-in revogado também impedem reutilização. Histórico continua visível ao proprietário; excluir uma área não amplia silenciosamente seu escopo. Falhas não são reenviadas automaticamente, e identificador repetido não gera outra chamada.
 
-Apenas armazenar arquivos não conclui a entrega. Busca e Inteligência precisam recuperar trechos autorizados relacionados à pergunta, dentro da área escolhida e de um limite de contexto. A primeira versão usa busca textual local, sem exigir embeddings ou serviço externo.
+Organização e personalização assistidas continuam usando fontes escolhidas, evidências literais, limites e aprovação editável. Perfil confirmado pode ser alterado/limpo em Sobre mim. Importar, buscar, confirmar foco e salvar configuração não geram chamada de modelo.
 
-A prévia considera a área e o pedido. Busca e histórico permitem abrir a fonte; o servidor identifica referências válidas/inexistentes e a interface informa as inexistentes. Isso verifica IDs, não a sustentação de cada frase. A consulta atual usa até três trechos de 1.200 caracteres por correspondência textual normalizada, sem embeddings. Qualidade das citações com modelo real permanece pendente.
-
-Excluir ou alterar uma fonte invalida seu índice e remove o conteúdo de novas consultas. Execuções antigas mantêm seu registro como histórico, claramente datado; a interface deve explicar essa diferença.
-
-## Entregas pequenas e aceites
-
-| Fase | Entrega | Aceite |
-| --- | --- | --- |
-| 1 — Importar e revisar | Markdown/texto/ZIP, lotes, prévia, seleção, fontes e relatório | Instalação vazia recebe fontes reais escolhidas; reimportação/reinício não duplica; falhas são visíveis |
-| 2 — Usar fontes | Busca local, trechos autorizados, integração com contexto do M2 e links para evidências | Pessoa encontra uma nota; com modelo configurado, consulta o material e confere a referência original |
-| 3 — Onboarding guiado | Fluxo retomável, objetivo declarado, configuração de modelo na interface, primeira consulta e Hoje | Pessoa chega ao primeiro resultado sem cadastrar todo o conteúdo manualmente |
-| 4 — Conversas e personalização | Adaptadores ChatGPT/Claude, papéis, seleção e sugestões revisáveis de áreas/perfil | Conversa selecionada é recuperável; mensagem da IA não vira fato; nenhuma tarefa surge sem aprovação |
-
-As fases pertencem ao M3, após o trabalho implementável do M2. A configuração gráfica do modelo deve tratar credenciais no servidor e usar os requisitos de orçamento do M2. Não adiar busca/importação sem IA por falta de chave paga; o aceite com modelo real continua separado.
-
-Limites atuais: upload 8 MB (12 MB em JSON codificado), ZIP expandido 20 MB, até 300 entradas e 500 documentos, até 200.000 caracteres por documento e três lotes em revisão. Sem extração do ZIP no sistema. Há colagem de texto; documentos só ficam ativos após seleção explícita. PDF, mídia e anexos são ignorados e informados no relatório.
-
-## Testes relevantes
-
-- Fluxo no celular: arquivo → prévia → seleção → importação → busca → abrir fonte.
-- ZIP inválido, caminho malicioso, arquivo não suportado, conteúdo grande e lote parcialmente legível.
-- Repetir importação/confirmar; interromper e reiniciar; cancelar; excluir lote.
-- Isolamento por proprietário/área e exclusão propagada para busca/contexto.
-- Fonte contendo instrução maliciosa não modifica permissões ou executa ferramenta.
-- Uma conversa com respostas de IA permanece distinguível de afirmações do usuário.
-- Primeira consulta útil com e sem modelo configurado; dados privados nunca aparecem no Git.
-
-## Exemplo da experiência
-
-A pessoa importa notas de um projeto, seleciona três documentos e escolhe uma área. A Mia informa o que entrou e permite buscar um prazo. Com IA configurada, ela pergunta quais decisões continuam em aberto; a resposta referencia trechos selecionados e informa lacunas. Se pedir uma tarefa, a Mia apresenta a proposta e espera confirmação. A experiência começa com conhecimento do próprio usuário, sem fabricar conteúdo para preencher a tela.
+Aceites técnicos e externos estão em [EXPERIENCE-VALIDATION.md](EXPERIENCE-VALIDATION.md) e [EXPERIENCE-PLAN.md](EXPERIENCE-PLAN.md).
