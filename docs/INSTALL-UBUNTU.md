@@ -47,6 +47,8 @@ Requer Docker e Git no host. Cria um contêiner Ubuntu 24.04 com Python/dependê
 
 Se a rede do runner exigir uma CA que não está no Ubuntu novo, forneça explicitamente `MIA_VALIDATION_WHEELHOUSE=/caminho/dos/wheels-verificados`; o runner monta o cache somente leitura e instala sem consultar índice. Inclua pins de `requirements.lock`, pytest 8.3.4, pip 25.0.1, setuptools 75.8.0 e wheel 0.45.1, além das dependências de teste. O cache precisa corresponder à arquitetura/Python do container. Não use `--trusted-host` ou desative TLS para contornar falhas de confiança.
 
+Nesse modo, o runner também executa o lifecycle do gerenciador nativo em instalações temporárias, com falha/recuperação/rollback. Para construir a imagem do produto usando wheels verificados, sem mudar o Dockerfile, use `scripts/build_offline_image.py --help`: o helper prepara um contexto público temporário, confere hashes e instala sem rede. A imagem base ainda precisa estar acessível ou no cache; isso não é publicação de imagem nem instalação de rede/HTTPS.
+
 Isso valida um ambiente de usuário Ubuntu isolado, não uma instalação completa de sistema operacional, systemd, roteador, certificado público ou operação por usuário sem ajuda. O pacote Docker do produto usa a base definida no Dockerfile; o Ubuntu aqui é o ambiente de teste da instalação nativa.
 
 ## Backup do volume
