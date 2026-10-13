@@ -1,4 +1,4 @@
-include README.md requirements.lock THIRD_PARTY_NOTICES.md
+include README.md requirements.lock LICENSE NOTICE THIRD_PARTY_NOTICES.md
 recursive-include THIRD_PARTY_LICENSES *
 recursive-include docs *.md *.json
 recursive-include scripts *.py *.sh

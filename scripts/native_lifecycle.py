@@ -104,7 +104,7 @@ def hostile_inherited_environment(root):
 def public_source(destination):
     """Copy only the public build inputs, never checkout configuration or data."""
     destination.mkdir()
-    for name in ('pyproject.toml', 'requirements.lock', 'README.md', 'MANIFEST.in', 'THIRD_PARTY_NOTICES.md'):
+    for name in ('pyproject.toml', 'requirements.lock', 'README.md', 'MANIFEST.in', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md'):
         path = REPOSITORY / name
         if path.exists():
             check(path.is_file() and not path.is_symlink(), 'Public build input must be a regular file')

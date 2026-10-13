@@ -7,6 +7,7 @@ This checks the recorded scope; it is not a license grant or legal clearance.
 from __future__ import annotations
 
 import argparse
+from email.parser import BytesParser
 import hashlib
 import importlib.metadata
 import json
@@ -14,9 +15,14 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 import tarfile
+import tomllib
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+# Complete canonical text, retrieved over verified HTTPS from Apache's own
+# repository: https://github.com/apache/.github/blob/main/LICENSE
+APACHE_LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+APACHE_CLASSIFIER = "License :: OSI Approved :: Apache Software License"
 FORBIDDEN_PARTS = {
     ".git", ".venv", ".aws", ".ssh", ".codex", ".agents", ".pytest_cache",
     "__pycache__", "node_modules", "data", "backups", "logs", "attachments",
@@ -42,6 +48,17 @@ def preserved_notice(root: Path, notice: dict) -> tuple[str, bytes]:
     return str(relative), content
 
 
+def project_license_files(root: Path = ROOT) -> dict[str, bytes]:
+    """Check Mia's grant separately from the unmodified dependency notices."""
+    project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
+    if project.get("license") != {"file": "LICENSE"} or APACHE_CLASSIFIER not in project.get("classifiers", []):
+        raise ValueError("Mia license metadata differs from the Apache-2.0 grant")
+    content = (root / "LICENSE").read_bytes()
+    if hashlib.sha256(content).hexdigest() != APACHE_LICENSE_SHA256:
+        raise ValueError("Mia LICENSE differs from the complete canonical Apache-2.0 text")
+    return {"LICENSE": content, "NOTICE": (root / "NOTICE").read_bytes()}
+
+
 def inventory_files(root: Path = ROOT, *, installed: bool = False) -> dict[str, bytes]:
     """Fail on lock drift, omitted notices or modified notice bytes."""
     inventory = json.loads((root / "THIRD_PARTY_LICENSES/inventory.json").read_text())
@@ -54,6 +71,7 @@ def inventory_files(root: Path = ROOT, *, installed: bool = False) -> dict[str, 
     if recorded != pinned or len(recorded) != len(inventory["packages"]):
         raise ValueError("Pinned requirements and third-party inventory differ; review notices")
     expected = {
+        **project_license_files(root),
         "THIRD_PARTY_NOTICES.md": (root / "THIRD_PARTY_NOTICES.md").read_bytes(),
         "THIRD_PARTY_LICENSES/inventory.json":
             (root / "THIRD_PARTY_LICENSES/inventory.json").read_bytes(),
@@ -159,6 +177,20 @@ def check_archive(archive: Path, expected: dict[str, bytes]) -> None:
                    or (".dist-info/" in name and name.endswith("/" + filename))]
         if not matches or any(value != content for value in matches):
             raise ValueError(f"Missing or altered notice in {archive.name}: {relative}")
+    metadata_name = "/METADATA" if archive.suffix == ".whl" else "/PKG-INFO"
+    metadata_files = [content for name, content in files.items()
+                      if name.endswith(metadata_name)
+                      and (".dist-info/" in name if archive.suffix == ".whl" else len(PurePosixPath(name).parts) == 2)]
+    if len(metadata_files) != 1:
+        raise ValueError(f"Missing or duplicate project metadata in {archive.name}")
+    metadata = BytesParser().parsebytes(metadata_files[0])
+    if APACHE_CLASSIFIER not in metadata.get_all("Classifier", []):
+        raise ValueError(f"Missing Apache-2.0 classifier in {archive.name}")
+    own_license = expected.get("LICENSE", (ROOT / "LICENSE").read_bytes())
+    if " ".join(metadata.get("License", "").split()) != " ".join(own_license.decode().split()):
+        raise ValueError(f"Package license metadata differs in {archive.name}")
+    if not {"LICENSE", "NOTICE"}.issubset(set(metadata.get_all("License-File", []))):
+        raise ValueError(f"Missing project License-File metadata in {archive.name}")
     required_assets = ["mia/static/index.html", "mia/static/assets/app.js", "mia/static/assets/app.css"]
     if not all(any(name.endswith(asset) for name in files) for asset in required_assets):
         raise ValueError(f"Missing interface assets in {archive.name}")
@@ -177,8 +209,8 @@ def main() -> int:
         expected = inventory_files(installed=args.installed)
         for archive in args.archive:
             check_archive(archive, expected)
-            print(f"PASS: {archive.name}: notices, assets and selected private-file checks")
-        print("PASS: pinned runtime notice inventory and checksums")
+            print(f"PASS: {archive.name}: Apache-2.0 grant, notices, assets and selected private-file checks")
+        print("PASS: Mia Apache-2.0 grant and pinned runtime notice inventory/checksums")
     except (OSError, ValueError, KeyError, importlib.metadata.PackageNotFoundError, tarfile.TarError, zipfile.BadZipFile) as error:
         print(f"FAIL: {error}", file=sys.stderr)
         return 1
