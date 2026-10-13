@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+from contextlib import closing
 
 import pytest
 
@@ -30,7 +31,7 @@ def populate(manager, monkeypatch):
     from mia import db
     from mia.security import iso
     db.initialize()
-    with db.connect() as database:
+    with closing(db.connect()) as database:
         database.execute("INSERT INTO owner(id,name,email,timezone,password_hash,created_at) VALUES(1,'Sintético','synthetic@example.test','UTC','not-a-real-password',?)", (iso(),))
         database.execute("INSERT INTO areas(id,owner_id,name,description,color,created_at,updated_at) VALUES('a',1,'Teste','','slate',?,?)", (iso(), iso()))
         database.execute("INSERT INTO tasks(id,owner_id,area_id,title,notes,priority,status,created_at,updated_at) VALUES('t',1,'a','Preservar','','1','open',?,?)", (iso(), iso()))

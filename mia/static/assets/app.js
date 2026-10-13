@@ -3,6 +3,10 @@ import {guideAI} from './ai-setup.js';
 import {renderAccess} from './access.js';
 import {renderBackups} from './backups.js';
 import {renderOperations} from './operations.js';
+import {migrationPanel} from './migration.js';
+import {renderOnboarding} from './onboarding.js';
+import {renderTodayExperience,locationCard,focusPanel} from './today.js';
+import {renderConversations} from './conversations.js';
 
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
@@ -24,24 +28,27 @@ function showToast(message) {
   window.setTimeout(function () { toast.classList.remove("show"); }, 2400);
 }
 
-async function api(path, options) {
-  options = options || {};
-  const response = await fetch(path, Object.assign({
-    credentials: "same-origin",
-    headers: Object.assign({ "Content-Type": "application/json" }, options.headers || {})
-  }, options));
+async function api(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('Content-Type') && options.body != null) {
+    headers.set('Content-Type', options.body instanceof Blob ? 'application/octet-stream' : 'application/json');
+  }
+  const response = await fetch(path, {...options, credentials:'same-origin', headers});
   if (response.status === 401) {
     renderLogin();
     throw new Error("Entre para continuar");
   }
-  const isJson = (response.headers.get("content-type") || "").includes("json");
+  const isJson = (response.headers.get('content-type') || '').includes('json');
   const data = isJson ? await response.json() : null;
   if (!response.ok) {
-    const detail = data && data.detail;
-    throw new Error(Array.isArray(detail) ? detail.map(item=>item.msg).join('; ') : detail || "Não foi possível concluir");
+    const detail=data?.detail;
+    const message=Array.isArray(detail) ? detail.map(item=>item.msg).join('; ') : typeof detail==='string' ? detail : detail ? JSON.stringify(detail) : 'Não foi possível concluir';
+    const error=new Error(message);error.status=response.status;throw error;
   }
   return data;
 }
+
+function context(){return {state,api,esc,pageHead,errorMessage,navigate,refresh,bindDocuments,aiPanel,taskCard,bindTaskActions,openTaskDialog};}
 
 function errorMessage(error) {
   showToast(error instanceof Error ? error.message : "Não foi possível concluir");
@@ -51,7 +58,7 @@ async function boot() {
   try {
     const status = await api("/api/status");
     if (!status.configured) {
-      renderSetup();
+      await renderSetup();
       return;
     }
     state.owner = await api("/api/me");
@@ -64,20 +71,20 @@ async function boot() {
   }
 }
 
-function renderSetup() {
+async function renderSetup() {
+  const installation=await api("/api/installation");
   app.innerHTML =
     '<main class="auth"><section class="card auth-card">' +
     '<img src="/assets/mia-icon.svg" class="auth-logo" alt="Gatinha da Mia">' +
-    '<p class="kicker">PRIMEIRO ACESSO</p><h1>Sua Mia começa vazia.</h1>' +
-    '<p class="lede">Crie o acesso local e a primeira área. Nenhuma conta externa é necessária.</p>' +
-    '<div class="steps"><span class="step on"></span><span class="step on"></span><span class="step on"></span></div>' +
+    '<p class="kicker">PRIMEIRO ACESSO</p><h1>Seu contexto, reunido na Mia.</h1>' +
+    '<p class="lede">Retome projetos, encontre decisões e avance com fontes. Crie seu acesso nesta instalação; depois traga seu contexto. Nenhuma conta externa é necessária.</p>' +
+    locationCard(installation.location || installation,esc,true) +
     '<form id="setup-form" class="form">' +
     '<div class="grid grid-2"><label>Seu nome<input name="name" required minlength="2" autocomplete="name"></label>' +
     '<label>E-mail opcional<input name="email" type="email" autocomplete="email"></label></div>' +
-    '<label>Fuso horário<input name="timezone" value="America/Sao_Paulo" required></label>' +
-    '<label>Senha local<input name="password" type="password" required minlength="10" autocomplete="new-password"><span class="subtle">Use pelo menos 10 caracteres.</span></label>' +
-    '<label>Primeira área<input name="area_name" required minlength="2" placeholder="Ex.: Trabalho, Clientes, Estudos"></label>' +
-    '<label>O que pertence a essa área?<textarea name="area_description" placeholder="Uma descrição curta ajuda a manter o contexto organizado."></textarea></label>' +
+    '<label>Fuso horário<input name="timezone" value="' + esc(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") + '" required></label>' +
+    '<label>Senha de acesso à Mia<input name="password" type="password" required minlength="10" autocomplete="new-password"><span class="subtle">Use pelo menos 10 caracteres.</span></label>' +
+    '<p class="subtle">O código da Mia é distribuído pelo GitHub. Seus dados ficam nesta instalação; importar não os envia à IA.</p>' +
     '<button class="btn primary" type="submit">Criar minha Mia</button></form></section></main>';
   document.querySelector("#setup-form").addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -89,6 +96,7 @@ function renderSetup() {
 }
 
 function renderLogin() {
+  document.querySelectorAll("dialog").forEach(dialog=>dialog.remove());
   app.innerHTML =
     '<main class="auth"><section class="card auth-card">' +
     '<img src="/assets/mia-icon.svg" class="auth-logo" alt="Gatinha da Mia">' +
@@ -133,14 +141,14 @@ function dialogs() {
 function renderShell() {
   app.innerHTML =
     '<div class="shell"><aside class="sidebar"><div class="brand">' +
-    '<img src="/assets/mia-icon.svg" alt=""><div><div class="brand-name">Mia</div><div class="brand-tag">central de comando</div></div></div>' +
-    '<nav class="nav" aria-label="Principal"><button data-view="today">Hoje</button><button data-view="areas">Áreas</button>' +
-    '<button data-view="search">Busca</button><button data-view="intelligence">Inteligência</button><button data-view="system">Sistema</button></nav>' +
+    '<img src="/assets/mia-icon.svg" alt=""><div><div class="brand-name">Mia</div><div class="brand-tag">seu contexto de trabalho</div></div></div>' +
+    '<nav class="nav" aria-label="Principal"><button data-view="today">Hoje</button><button data-view="conversations">Conversas</button><button data-view="library">Biblioteca</button><button data-view="settings">Ajustes</button></nav><button class="btn ghost sidebar-search" id="global-search">Buscar nas fontes</button>' +
     '<div class="sidebar-foot"><span class="subtle">' + esc(state.owner.name) + '</span><button class="btn ghost" id="logout">Sair</button></div>' +
     '</aside><main class="content" id="content"></main></div>' + dialogs();
   document.querySelectorAll("[data-view]").forEach(function (button) {
     button.addEventListener("click", function () { navigate(button.dataset.view); });
   });
+  document.querySelector("#global-search").onclick=()=>navigate("search");
   document.querySelector("#logout").addEventListener("click", async function () {
     await api("/api/logout", { method: "POST", body: "{}" });
     renderLogin();
@@ -153,24 +161,17 @@ function renderShell() {
   navigate(state.view);
 }
 
-function navigate(view) {
+function navigate(view, selectedId=null, initialMessage='') {
+  view=({knowledge:'library',system:'settings',intelligence:'conversations'})[view] || view;
   state.view = view;
-  document.querySelectorAll("[data-view]").forEach(function (button) {
-    button.classList.toggle("active", button.dataset.view === view);
-  });
-  if (view === "today") renderToday();
-  if (view === "areas") renderAreas();
-  if (view === "search") renderSearch();
-  if (view === "system") renderSystem();
-  if (view === "access") renderAccess({api,esc,pageHead,errorMessage}).catch(errorMessage);
-  if (view === "backups") renderBackups({api,esc,pageHead,errorMessage}).catch(errorMessage);
-  if (view === "operations") renderOperations({api,esc,pageHead,errorMessage}).catch(errorMessage);
-  if (view === "intelligence") renderIntelligence().catch(errorMessage);
-  if (view === "onboarding") renderGuide().catch(errorMessage);
-  if (view === "knowledge") renderKnowledge().catch(errorMessage);
-  if (view === "ai-settings") renderAISettings().catch(errorMessage);
-  if (view === "organization") renderOrganization().catch(errorMessage);
-  if (view === "personalization") renderPersonalization().catch(errorMessage);
+  const section=['areas','organization','personalization','search'].includes(view)?'library':['access','backups','operations','ai-settings','request-history'].includes(view)?'settings':view;
+  document.querySelectorAll('[data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view===section));
+  const routes={today:()=>renderTodayExperience(context()),conversations:()=>renderConversations(context(),selectedId,initialMessage),library:renderLibrary,settings:renderSystem,areas:renderAreas,search:renderSearch,
+    access:()=>renderAccess({api,esc,pageHead,errorMessage}),backups:()=>renderBackups({api,esc,pageHead,errorMessage}),operations:()=>renderOperations({api,esc,pageHead,errorMessage}),
+    onboarding:()=>renderOnboarding(context()),'ai-settings':renderAISettings,organization:renderOrganization,personalization:renderPersonalization,'request-history':renderIntelligence};
+  const content=document.querySelector('#content');
+  if(content)content.innerHTML='<p class="subtle" role="status">Abrindo…</p>';
+  Promise.resolve().then(()=>routes[view]?.()).catch(error=>{errorMessage(error);if(state.view===view && content?.isConnected)content.innerHTML='<section class="card"><h2>Não foi possível abrir esta tela.</h2><p>'+esc(error.message)+'</p><button class="btn" id="retry-view">Tentar novamente</button></section>';content?.querySelector('#retry-view')?.addEventListener('click',()=>navigate(view,selectedId,initialMessage));});
 }
 
 function pageHead(kicker, title, action) {
@@ -219,23 +220,6 @@ function openAreaEditor(id){
 
 function bindAreaActions(){document.querySelectorAll('[data-edit-area]').forEach(button=>button.onclick=()=>openAreaEditor(button.dataset.editArea));}
 
-function renderToday() {
-  const data = state.today;
-  const longDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" }).format(new Date(data.date + "T12:00:00"));
-  document.querySelector("#content").innerHTML =
-    pageHead("AGORA · " + longDate, "Bom dia, " + esc(data.owner.name.split(" ")[0]) + ".", '<button class="btn primary" data-open-task>+ Tarefa</button>') +
-    (state.onboarding?.goal?'<section class="card"><p class="kicker">SEU OBJETIVO DECLARADO</p><p>'+esc(state.onboarding.goal)+'</p></section><div style="height:16px"></div>':'')+
-    '<section class="grid grid-3"><div class="card metric"><strong>' + data.tasks.length + '</strong><span>tarefas em foco</span></div>' +
-    '<div class="card metric"><strong>' + data.due_today + '</strong><span>para hoje</span></div>' +
-    '<div class="card metric"><strong>' + data.overdue + '</strong><span>atrasadas</span></div></section>' +
-    '<section class="section"><div class="section-head"><h2>O que pede atenção</h2><span class="subtle">regras locais · sem IA</span></div><div class="list">' +
-    (data.tasks.length ? data.tasks.map(taskCard).join("") : '<div class="empty">Nada exige atenção agora.<br>Crie uma tarefa quando houver algo concreto.</div>') +
-    '</div></section><section class="section"><div class="section-head"><h2>Áreas</h2></div><div class="grid grid-3">' +
-    data.areas.map(areaCard).join("") + '</div></section>';
-  document.querySelector("[data-open-task]").addEventListener("click", openTaskDialog);
-  bindTaskActions();
-  bindAreaActions();
-}
 
 function renderAreas() {
   document.querySelector("#content").innerHTML =
@@ -252,7 +236,7 @@ function renderAreas() {
 function renderSearch() {
   document.querySelector("#content").innerHTML =
     pageHead("EVIDÊNCIA LOCAL", "Busca") +
-    '<input class="search" id="search-input" placeholder="Busque tarefas e áreas…" autofocus>' +
+    '<input class="search" id="search-input" placeholder="Encontre uma decisão, projeto ou informação…" autofocus>' +
     '<section class="card section" id="results"><div class="empty">Digite pelo menos dois caracteres.</div></section>';
   let timer;
   document.querySelector("#search-input").addEventListener("input", function (event) {
@@ -279,30 +263,26 @@ function renderSearch() {
   });
 }
 
-function renderSystem() {
-  document.querySelector("#content").innerHTML =
-    pageHead("CONTROLE LOCAL", "Sistema") +
-    '<section class="grid grid-2"><article class="card"><p class="kicker">IDENTIDADE</p><h2>' + esc(state.owner.name) + '</h2>' +
-    '<p class="subtle">' + esc(state.owner.email || "Sem e-mail") + " · " + esc(state.owner.timezone) + '</p></article>' +
-    '<article class="card"><p class="kicker">INTELIGÊNCIA</p><h2>IA opcional</h2><p class="subtle">Hoje usa regras locais. Consulte Inteligência para ver o provedor configurado nesta instalação.</p></article>' +
-    '<article class="card"><p class="kicker">DADOS</p><h2>Exportação aberta</h2><p class="subtle">Baixe suas áreas e tarefas em JSON dentro de um ZIP.</p>' +
-    '<a class="btn" style="display:inline-block;margin-top:14px;text-decoration:none" href="/api/export">Exportar dados</a></article>' +
-    '<article class="card"><p class="kicker">CONFIGURAÇÃO</p><h2>Sua instalação</h2><p class="subtle">Retome a preparação, traga fontes ou configure seu modelo.</p><button class="btn" id="resume-guide">Onboarding</button> <button class="btn" id="system-sources">Fontes</button> <button class="btn" id="system-ai">Configurar IA</button></article></section>';
-  document.querySelector('#resume-guide').onclick=()=>navigate('onboarding');
-  document.querySelector('#system-sources').onclick=()=>navigate('knowledge');
-  document.querySelector('#system-ai').onclick=()=>navigate('ai-settings');
-  const backupButton=document.createElement('button');backupButton.className='btn';backupButton.textContent='Backups';backupButton.onclick=()=>navigate('backups');document.querySelector('#system-ai').after(backupButton);
-  const operationButton=document.createElement('button');operationButton.className='btn';operationButton.textContent='Operação e atualização';operationButton.onclick=()=>navigate('operations');document.querySelector('#system-ai').after(operationButton);
-  const accessButton=document.createElement('button');accessButton.className='btn';accessButton.textContent='Acesso à Mia';accessButton.onclick=()=>navigate('access');document.querySelector('#system-ai').after(accessButton);
-  const personal=document.createElement('button');personal.className='btn';personal.textContent='Meu contexto';personal.onclick=()=>navigate('personalization');document.querySelector('#system-ai').after(personal);
+async function renderSystem() {
+  const experience=await api('/api/experience');if(state.view!=='settings')return;
+  document.querySelector('#content').innerHTML=pageHead('ESCOLHAS E CONTROLE','Ajustes')+
+    locationCard(experience.location,esc)+
+    '<section class="grid grid-2 section"><article class="card"><p class="kicker">SEU ACESSO</p><h2>'+esc(state.owner.name)+'</h2><p class="subtle">'+esc(state.owner.email || 'Sem e-mail')+' · '+esc(state.owner.timezone)+'</p><button class="btn" id="system-access">Acesso e disponibilidade</button></article>'+
+    '<article class="card"><p class="kicker">IA E CUSTOS</p><h2>Modelo opcional</h2><p class="subtle">Importe e busque sem IA. Escolha o destino, a autorização e os limites antes de fazer um pedido.</p><button class="btn" id="system-ai">Configurar IA e limites</button></article>'+
+    '<article class="card"><p class="kicker">SEUS DADOS</p><h2>Backup e portabilidade</h2><p class="subtle">Exporte seu contexto ou prepare uma cópia de recuperação desta instalação.</p><div class="actions"><a class="btn" href="/api/export">Exportar dados</a><button class="btn" id="system-backups">Backups</button></div></article>'+
+    '<article class="card"><p class="kicker">CONTINUIDADE</p><h2>Preparação e manutenção</h2><p class="subtle">Reveja sua migração, o serviço que mantém a Mia disponível e as instruções de atualização.</p><div class="actions"><button class="btn" id="resume-guide">Retomar preparação</button><button class="btn" id="system-operations">Serviço e atualização</button><button class="btn ghost" id="system-history">Histórico de pedidos</button></div></article></section>'+
+    '<section class="card section"><h3>Registrar onde esta Mia está instalada</h3><p class="subtle">Esta informação descreve o destino dos arquivos. Não instala serviços, move dados ou abre acesso remoto.</p><form class="form" id="settings-location"><label>Destino<select name="mode"><option value="local" '+(experience.location?.mode==='local'?'selected':'')+'>Neste computador</option><option value="remote" '+(experience.location?.mode==='remote'?'selected':'')+'>No meu servidor</option></select></label><button class="btn" type="submit">Confirmar destino</button></form></section>';
+  const links={'#system-access':'access','#system-ai':'ai-settings','#system-backups':'backups','#resume-guide':'onboarding','#system-operations':'operations','#system-history':'request-history'};
+  Object.entries(links).forEach(([selector,view])=>document.querySelector(selector).onclick=()=>navigate(view));
+  document.querySelector('#settings-location').onsubmit=async event=>{event.preventDefault();try{await api('/api/location',{method:'PUT',body:JSON.stringify({mode:event.currentTarget.elements.mode.value})});await renderSystem();}catch(error){errorMessage(error);}};
 }
 
 async function renderIntelligence() {
   const [settings, runs] = await Promise.all([api("/api/ai/config"), api("/api/runs")]);
-  if (state.view !== "intelligence") return;
+  if (state.view !== "request-history") return;
   const labels = {running:"Em andamento",awaiting_confirmation:"Aguardando confirmação",completed:"Concluída",failed:"Falhou",rejected:"Recusada"};
-  document.querySelector("#content").innerHTML = pageHead("CONTEXTO E AÇÃO", "Inteligência") +
-    '<section class="card"><p class="lede">' + (settings.enabled ? esc(settings.model) + ' · ' + esc(settings.endpoint) : 'IA desativada. Configure seu modelo em Sistema ou continue usando a busca local.') + '</p>' +
+  document.querySelector("#content").innerHTML = pageHead("PEDIDOS ANTERIORES", "Histórico de pedidos") +
+    '<section class="card"><p class="lede">' + (settings.enabled ? esc(settings.model) + ' · ' + esc(settings.endpoint) : 'IA desativada. Configure seu modelo em Ajustes ou continue usando a busca.') + '</p>' +
     '<p class="subtle">Até ' + settings.daily_call_limit + ' chamadas/dia (UTC), 1.000 tokens de saída e 45 segundos. '+(settings.daily_budget_usd?'Orçamento estimado: US$ '+esc(settings.daily_budget_usd)+'/dia.':'Custo desconhecido; nenhum orçamento monetário configurado.')+' Defina também um limite no provedor.</p>' +
     '<form class="form" id="run-form"><label>Área autorizada<select name="area_id">' + state.areas.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('') + '</select></label>' +
     '<label><span><input type="checkbox" name="include_personal_context" style="width:auto"> Incluir meu contexto pessoal e objetivo confirmados nesta consulta</span></label>'+
@@ -312,7 +292,7 @@ async function renderIntelligence() {
     '<p class="subtle">Até 12 tarefas e 3 trechos de fontes da área encontrados pelo seu pedido. Contexto pessoal e objetivo só são incluídos se marcados acima; confira a prévia. Pedidos independentes.</p>' +
     '<button class="btn primary" type="submit" '+(!settings.enabled?'disabled':'')+'>Enviar pedido</button></form></section>' +
     '<section class="section"><h2>Execuções recentes</h2>' + runs.map(r=>{
-      if(r.request.purpose==='organization')return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>Organização de fontes</h3><p>'+esc(r.error||r.answer||'Proposta de áreas com fontes selecionadas.')+'</p><button class="btn" data-open-organization>Revisar organização</button></article>';
+      if(r.request.purpose==='organization')return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>Organização da Biblioteca</h3><p>'+esc(r.error||r.answer||'Proposta de áreas com fontes selecionadas.')+'</p><button class="btn" data-open-organization>Revisar organização</button></article>';
       if(r.request.purpose==='personalization')return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>Contexto e objetivo</h3><p>'+esc(r.error||r.answer||'Sugestões para revisão.')+'</p><button class="btn" data-open-personalization>Revisar personalização</button></article>';
       const p=r.proposal;
       return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><h3>'+esc(r.request.message)+'</h3>' +
@@ -361,66 +341,38 @@ function bindDocuments(){
       const prior=document.querySelector('#source-dialog'); if(prior) prior.remove();
       const dialog=document.createElement('dialog'); dialog.id='source-dialog';dialog.className='dialog';
       dialog.innerHTML='<div class="dialog-body"><h2>'+esc(doc.title)+'</h2><p class="subtle">'+esc(doc.kind)+' · '+esc(doc.path)+' · Importado em '+esc(doc.created_at)+' · '+(doc.active?'Ativa':'Pausada — fora de novas consultas')+'</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(doc.content)+'</pre><button class="btn" id="close-source">Fechar fonte</button></div>';
-      document.body.append(dialog); dialog.showModal(); dialog.querySelector('#close-source').onclick=()=>dialog.close();
+      document.body.append(dialog); dialog.onclose=()=>dialog.remove();dialog.showModal(); dialog.querySelector('#close-source').onclick=()=>dialog.close();
     }catch(error){errorMessage(error);}
   });
 }
 
-async function saveGuide(step,completed=false){
-  state.onboarding=await api('/api/onboarding',{method:'PUT',body:JSON.stringify({goal:state.onboarding.goal,step,completed,expected_goal_revision:state.onboarding.goal_revision})});
-}
-
-async function renderGuide(){
-  state.onboarding=await api('/api/onboarding');
-  if(state.view!=='onboarding')return;
-  const step=state.onboarding.step;
-  const titles=['O que você quer resolver primeiro?','Traga seu conhecimento.','Escolha como usar a IA.','Comece com algo seu.'];
-  document.querySelector('#content').innerHTML=pageHead('PREPARAR SUA MIA · '+(step+1)+' DE 4',titles[step])+ '<section class="card" id="guide-body"></section><div class="section"><button class="btn" id="guide-back" '+(step===0?'disabled':'')+'>Voltar</button> <button class="btn primary" id="guide-next">'+(step===3?'Concluir preparação':'Continuar')+'</button> <button class="btn ghost" id="guide-skip">Ir para Hoje</button></div>';
-  const body=document.querySelector('#guide-body');
-  if(step===0)body.innerHTML='<p class="lede">Conte um objetivo atual. Você pode alterá-lo depois. Nenhuma tarefa será criada automaticamente.</p><label>Seu primeiro objetivo<textarea id="guide-goal" maxlength="1000" placeholder="Ex.: organizar decisões e próximos passos de um projeto.">'+esc(state.onboarding.goal)+'</textarea></label>';
-  if(step===1){body.innerHTML='<p class="lede">Importe notas ou conversas e selecione o que a Mia pode consultar. Também pode continuar sem importar.</p><div id="knowledge-panel"></div>';await knowledgePanel(document.querySelector('#knowledge-panel'));}
-  if(step===2){body.innerHTML='<p class="lede">Use seu provedor e chave ou continue sem IA. Salvar a configuração não faz uma chamada.</p><div id="ai-panel"></div>';await aiPanel(document.querySelector('#ai-panel'));}
-  if(step===3){const docs=(await api('/api/documents')).filter(d=>d.active);body.innerHTML='<p class="lede">'+docs.length+' fontes disponíveis. Seu objetivo: '+esc(state.onboarding.goal||'ainda não informado')+'.</p><p>Use a busca para encontrar uma informação nas suas fontes. Com IA configurada, faça uma pergunta em Inteligência e confira as referências.</p><button class="btn" id="first-search">Buscar nas minhas fontes</button> <button class="btn" id="first-ai">Fazer uma pergunta</button>';body.querySelector('#first-search').onclick=async()=>{await saveGuide(3,true);navigate('search');};body.querySelector('#first-ai').onclick=async()=>{await saveGuide(3,true);navigate('intelligence');};}
-  if(state.view!=='onboarding'||!body.isConnected)return;
-  if(step===3){const organize=document.createElement('button');organize.className='btn';organize.textContent='Organizar minhas fontes';organize.onclick=async()=>{await saveGuide(3);navigate('organization');};body.append(organize);}
-  if(step===3){const personal=document.createElement('button');personal.className='btn';personal.textContent='Personalizar minha Mia';personal.onclick=()=>navigate('personalization');body.append(personal);}
-  document.querySelector('#guide-back').onclick=async()=>{await saveGuide(Math.max(0,step-1));await renderGuide();};
-  document.querySelector('#guide-next').onclick=async()=>{try{if(step===0)state.onboarding.goal=document.querySelector('#guide-goal').value;await saveGuide(Math.min(3,step+1),step===3);if(step===3)navigate('today');else await renderGuide();}catch(error){errorMessage(error);}};
-  document.querySelector('#guide-skip').onclick=async()=>{if(step===0)state.onboarding.goal=document.querySelector('#guide-goal').value;await saveGuide(step,true);navigate('today');};
-}
-
-async function renderKnowledge(){
-  document.querySelector('#content').innerHTML=pageHead('FONTES LOCAIS','Seu conhecimento','<button class="btn" id="organize-sources">Organizar minhas fontes</button>')+'<section class="card" id="knowledge-panel"></section>';
-  document.querySelector('#organize-sources').onclick=()=>navigate('organization');
-  const personal=document.createElement('button');personal.className='btn';personal.textContent='Personalizar minha Mia';personal.onclick=()=>navigate('personalization');document.querySelector('#organize-sources').after(personal);
-  await knowledgePanel(document.querySelector('#knowledge-panel'));
-}
-
-async function knowledgePanel(panel){
-  const [batches,docs]=await Promise.all([api('/api/imports'),api('/api/documents')]);
-  if(!panel.isConnected)return;
-  panel.innerHTML='<p class="subtle">Markdown, texto, ZIP de vault e JSON de conversas reconhecido (experimental). Até 8 MB por upload, 20 MB expandido, 300 entradas e 500 documentos. PDF, mídia, anexos e configurações de conta são ignorados. Nada é enviado a uma IA ao importar.</p>'+
-    '<form id="import-form" class="form"><label>Área de destino<select name="area_id">'+state.areas.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('')+'</select></label><label>Escolher arquivo<input name="file" type="file" accept=".md,.txt,.zip,.json" required></label><button class="btn primary" type="submit">Preparar importação</button></form>'+
-    '<details class="section"><summary>Ou colar uma nota</summary><form id="paste-form" class="form"><label>Título<input name="title" maxlength="150" required></label><label>Conteúdo<textarea name="content" required maxlength="200000"></textarea></label><button class="btn" type="submit">Revisar nota</button></form></details>'+
-    '<section class="section">'+batches.map(batch=>'<article class="card section"><h3>'+esc(batch.name)+'</h3><p>'+esc(batch.state==='review'?'Aguardando sua revisão':'Importação concluída')+'</p>'+
-    (batch.state==='review'?'<form data-batch="'+esc(batch.id)+'"><p>Selecione o que deve ficar disponível. Versões diferentes são mantidas separadamente; pause as antigas na lista de fontes.</p>'+batch.items.map(item=>'<article class="card" style="margin:8px 0"><label><span><input type="checkbox" name="item" value="'+esc(item.id)+'" style="width:auto"> '+esc(item.title)+' · '+esc(item.kind)+'</span><span class="subtle">'+esc(item.path)+' · '+item.characters+' caracteres</span></label>'+(item.duplicates.length?'<p>Conteúdo já importado. Confirmar preserva a fonte existente e seu estado atual.</p>':'')+(item.conflicts.length?'<p>Mesmo caminho, conteúdo diferente. Nenhuma versão será substituída.</p>'+item.conflicts.map(d=>'<button type="button" class="btn" data-document="'+esc(d.id)+'">Comparar com '+esc(d.title)+(d.active?'':' (pausada)')+'</button>').join(''):'')+'<details><summary>Prévia</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(item.preview)+'</pre></details></article>').join('')+'<button class="btn primary" type="submit">Confirmar selecionados</button></form>':'<p>'+esc(batch.report.imported)+' novos · '+esc(batch.report.duplicates)+' duplicados · '+esc(batch.report.not_selected)+' não selecionados</p>')+
-    '<details><summary>Relatório e limitações</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(batch.report,null,2))+'</pre></details><button class="btn ghost" data-remove-import="'+esc(batch.id)+'">'+(batch.state==='review'?'Cancelar lote':'Excluir lote e suas fontes')+'</button></article>').join('')+'</section><section class="section"><h3>Fontes disponíveis ('+docs.filter(d=>d.active).length+')</h3><p class="subtle">Fontes pausadas continuam guardadas e exportáveis, mas não entram na busca nem em novas consultas. Execuções antigas mantêm o contexto registrado.</p>'+docs.map(d=>'<article class="card section"><button class="btn" data-document="'+esc(d.id)+'">'+esc(d.title)+'</button><p class="subtle">'+esc(d.path)+' · '+esc(state.areas.find(a=>a.id===d.area_id)?.name||'')+' · '+esc(d.created_at)+' · '+(d.active?'Ativa':'Pausada')+'</p><button class="btn" data-source-state="'+esc(d.id)+'" data-active="'+(d.active?'false':'true')+'">'+(d.active?'Pausar fonte':'Reativar fonte')+'</button></article>').join('')+'</section>';
-  async function prepare(file){
-    if(file.size>8*1024*1024)throw new Error('Arquivo excede 8 MB');
-    const encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});
-    await api('/api/imports',{method:'POST',body:JSON.stringify({area_id:panel.querySelector('#import-form select').value,filename:file.name,content_base64:encoded})});
-    await knowledgePanel(panel);
+async function renderLibrary(){
+  const [experience,docs,legacy]=await Promise.all([api('/api/experience'),api('/api/documents'),api('/api/imports')]);
+  if(state.view!=='library')return;
+  document.querySelector('#content').innerHTML=pageHead('SEU CONTEXTO E SUAS ORIGENS','Biblioteca','<button class="btn" id="library-search">Buscar</button>')+
+    '<p class="lede">O material que você autorizou a Mia a consultar. Fontes, organização e informações sobre você são coisas diferentes.</p><div class="actions"><button class="btn" id="organize-sources">Organizar fontes</button><button class="btn" id="library-areas">Projetos e áreas</button><button class="btn" id="library-profile">Sobre mim</button></div>'+
+    '<section class="card section" id="migration-panel"></section>'+
+    '<section class="section"><div class="section-head"><h2 id="library-source-count">Fontes ('+Number(experience.library?.active || 0)+' ativas)</h2></div><p class="subtle">Pausar tira uma fonte da busca e dos novos pedidos. A fonte permanece guardada/exportável e o histórico antigo preserva seu registro.</p><label>Filtrar títulos e caminhos<input type="search" id="library-filter" placeholder="Projeto, pasta ou título"></label><div class="list section" id="library-documents"></div><div class="actions section" id="library-pagination"></div></section>'+
+    (legacy.length?'<details class="section"><summary>Importações da experiência anterior ('+legacy.length+')</summary><div class="list" id="legacy-imports"></div></details>':'');
+  document.querySelector('#library-search').onclick=()=>navigate('search');document.querySelector('#organize-sources').onclick=()=>navigate('organization');document.querySelector('#library-areas').onclick=()=>navigate('areas');document.querySelector('#library-profile').onclick=()=>navigate('personalization');
+  let page=0,query='';
+  function sources(){
+    if(state.view!=='library')return;
+    document.querySelector('#library-source-count').textContent='Fontes ('+docs.filter(doc=>doc.active).length+' ativas)';
+    const filtered=docs.filter(doc=>(doc.title+' '+doc.path).toLocaleLowerCase().includes(query.toLocaleLowerCase()));const start=page*20;
+    document.querySelector('#library-documents').innerHTML=filtered.slice(start,start+20).map(doc=>'<article class="card source-row"><div><h3>'+esc(doc.title)+'</h3><p class="subtle">'+esc(doc.path)+' · '+esc(doc.kind)+' · '+(doc.active?'Ativa':'Pausada')+'</p><p class="subtle">Importação: '+esc(doc.created_at)+'. Esta data não confirma que o conteúdo continua atual.</p></div><div class="actions"><button class="btn" data-document="'+esc(doc.id)+'">Abrir fonte</button><button class="btn ghost" data-source-state="'+esc(doc.id)+'">'+(doc.active?'Pausar':'Reativar')+'</button></div></article>').join('') || '<p class="subtle">Nenhuma fonte neste filtro.</p>';
+    document.querySelector('#library-pagination').innerHTML='<button class="btn" id="sources-prev" '+(page===0?'disabled':'')+'>Anteriores</button><span class="subtle">'+filtered.length+' fontes · página '+(page+1)+'</span><button class="btn" id="sources-next" '+(start+20>=filtered.length?'disabled':'')+'>Próximas</button>';
+    document.querySelector('#sources-prev').onclick=()=>{page--;sources();};document.querySelector('#sources-next').onclick=()=>{page++;sources();};
+    document.querySelectorAll('[data-source-state]').forEach(button=>button.onclick=async()=>{const doc=docs.find(d=>d.id===button.dataset.sourceState);button.disabled=true;try{await api('/api/documents/'+doc.id+'/state',{method:'PUT',body:JSON.stringify({active:!doc.active})});doc.active=!doc.active;sources();}catch(error){errorMessage(error);button.disabled=false;}});bindDocuments();
   }
-  panel.querySelector('#import-form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget;const button=form.querySelector('button');button.disabled=true;try{await prepare(form.elements.file.files[0]);}catch(error){errorMessage(error);button.disabled=false;}};
-  panel.querySelector('#paste-form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget;try{await prepare(new File(['# '+form.elements.title.value+'\n\n'+form.elements.content.value],'nota.md',{type:'text/markdown'}));}catch(error){errorMessage(error);}};
-  panel.querySelectorAll('[data-batch]').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const ids=[...form.querySelectorAll('input:checked')].map(input=>input.value);try{if(!ids.length)throw new Error('Selecione pelo menos uma fonte');await api('/api/imports/'+form.dataset.batch+'/confirm',{method:'POST',body:JSON.stringify({item_ids:ids})});await knowledgePanel(panel);}catch(error){errorMessage(error);}});
-  panel.querySelectorAll('[data-remove-import]').forEach(button=>button.onclick=async()=>{if(!window.confirm('Remover este lote? Fontes sem outra importação serão excluídas. Execuções antigas mantêm seu registro.'))return;try{await api('/api/imports/'+button.dataset.removeImport,{method:'DELETE'});await knowledgePanel(panel);}catch(error){errorMessage(error);}});
-  panel.querySelectorAll('[data-source-state]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api('/api/documents/'+button.dataset.sourceState+'/state',{method:'PUT',body:JSON.stringify({active:button.dataset.active==='true'})});await knowledgePanel(panel);}catch(error){errorMessage(error);button.disabled=false;}});
-  bindDocuments();
+  sources();document.querySelector('#library-filter').oninput=event=>{query=event.target.value;page=0;sources();};
+  const legacyPanel=document.querySelector('#legacy-imports');
+  if(legacyPanel){legacyPanel.innerHTML=legacy.map(batch=>'<article class="card"><h3>'+esc(batch.name)+'</h3><p class="subtle">'+(batch.state==='review'?'Aguardando revisão':'Concluída')+'</p>'+(batch.state==='review'?'<form data-legacy-batch="'+esc(batch.id)+'">'+batch.items.map(item=>'<label class="check-label"><input type="checkbox" name="item" value="'+esc(item.id)+'">'+esc(item.title)+'</label>').join('')+'<button type="submit" class="btn">Autorizar selecionados</button></form>':'')+'<details><summary>Relatório</summary><pre class="source-preview">'+esc(JSON.stringify(batch.report,null,2))+'</pre></details><button class="btn ghost" data-remove-import="'+esc(batch.id)+'">Excluir lote</button></article>').join('');legacyPanel.querySelectorAll('[data-legacy-batch]').forEach(form=>form.onsubmit=async event=>{event.preventDefault();try{const item_ids=[...form.querySelectorAll('[name=item]:checked')].map(input=>input.value);if(!item_ids.length)throw new Error('Selecione uma fonte');await api('/api/imports/'+form.dataset.legacyBatch+'/confirm',{method:'POST',body:JSON.stringify({item_ids})});await renderLibrary();}catch(error){errorMessage(error);}});legacyPanel.querySelectorAll('[data-remove-import]').forEach(button=>button.onclick=async()=>{if(!window.confirm('Excluir este lote? Fontes sem outra origem serão removidas; o histórico anterior permanece.'))return;try{await api('/api/imports/'+button.dataset.removeImport,{method:'DELETE'});await renderLibrary();}catch(error){errorMessage(error);}});}
+  await migrationPanel(document.querySelector('#migration-panel'),{...context(),location:experience.location});
 }
 
 async function renderAISettings(){
-  document.querySelector('#content').innerHTML=pageHead('MODELO E ORÇAMENTO','Configurar IA')+'<section class="card" id="ai-panel"></section>';
+  document.querySelector('#content').innerHTML=pageHead('ESCOLHA OPCIONAL','IA e limites')+'<section class="card" id="ai-panel"></section>';
   await aiPanel(document.querySelector('#ai-panel'));
 }
 
@@ -432,13 +384,13 @@ async function renderOrganization(selectedArea){
   const runs=allRuns.filter(r=>r.request.purpose==='organization');
   const labels={running:'Em andamento',awaiting_confirmation:'Aguardando revisão',completed:'Concluída',failed:'Falhou',rejected:'Recusada'};
   document.querySelector('#content').innerHTML=pageHead('PERSONALIZAR SUA MIA','Organizar minhas fontes')+
-    '<section class="card"><p class="lede">Escolha até seis fontes da mesma área. A Mia sugere novas áreas e descrições; você edita e decide o que aplicar.</p><p class="subtle">'+(settings.enabled?esc(settings.model)+' · '+esc(settings.endpoint):'Configure sua IA em Sistema para gerar sugestões.')+' Até '+settings.daily_call_limit+' chamadas/dia (UTC). '+(settings.daily_budget_usd?'Orçamento estimado: US$ '+esc(settings.daily_budget_usd)+'/dia.':'Custo desconhecido; nenhum orçamento monetário configurado.')+'</p>'+
+    '<section class="card"><p class="lede">Escolha até seis fontes da mesma área. A Mia sugere novas áreas e descrições; você edita e decide o que aplicar.</p><p class="subtle">'+(settings.enabled?esc(settings.model)+' · '+esc(settings.endpoint):'Configure sua IA em Ajustes para gerar sugestões.')+' Até '+settings.daily_call_limit+' chamadas/dia (UTC). '+(settings.daily_budget_usd?'Orçamento estimado: US$ '+esc(settings.daily_budget_usd)+'/dia.':'Custo desconhecido; nenhum orçamento monetário configurado.')+'</p>'+
     '<form class="form" id="organization-form"><label>Área das fontes<select name="area_id">'+state.areas.map(a=>'<option value="'+esc(a.id)+'" '+(a.id===areaId?'selected':'')+'>'+esc(a.name)+'</option>').join('')+'</select></label>'+
     (available.length?available.map(d=>'<label><span><input type="checkbox" name="source" value="'+esc(d.id)+'" style="width:auto"> '+esc(d.title)+' · '+esc(d.path)+'</span></label>').join(''):'<p>Nenhuma fonte ativa nesta área. Importe notas em Fontes para começar.</p>')+
     '<label>Como gostaria de organizar? (opcional)<textarea name="message" maxlength="4000" placeholder="Ex.: separar trabalho e estudos."></textarea></label><button class="btn" type="button" id="organization-preview">Ver trechos que serão enviados</button><pre id="organization-context" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>'+
-    '<p class="subtle">Somente o início das fontes selecionadas: até 1.800 bytes de texto por fonte. A proposta pode ser incompleta. Conversas antigas não comprovam prioridades atuais. Gerar usa uma chamada com os mesmos limites de Inteligência.</p>'+
+    '<p class="subtle">Somente o início das fontes selecionadas: até 1.800 bytes de texto por fonte. A proposta pode ser incompleta. Conversas antigas não comprovam prioridades atuais. Gerar usa uma chamada com os mesmos limites dos pedidos de IA.</p>'+
     '<label><span><input type="checkbox" name="consent" required style="width:auto"> Autorizo enviar os trechos selecionados e meu pedido ao provedor acima.</span></label><button type="submit" class="btn primary" '+(!settings.enabled||!available.length?'disabled':'')+'>Gerar sugestões de áreas</button></form></section>'+
-    '<section class="section"><h2>Suas propostas de organização</h2><p class="subtle">Confirmar cria novas áreas e move as fontes selecionadas para elas, preservando conteúdo e origem. Fontes desmarcadas ficam onde estão. Tarefas e objetivo pessoal não são alterados. Edições são salvas ao confirmar.</p><p class="subtle">Descrições aprovadas passam a ser contexto das áreas, mesmo se as fontes forem pausadas ou excluídas depois. Você pode alterá-las em Áreas → Editar área.</p>'+runs.map(r=>{
+    '<section class="section"><h2>Suas propostas de organização</h2><p class="subtle">Confirmar cria novas áreas e move as fontes selecionadas para elas, preservando conteúdo e origem. Fontes desmarcadas ficam onde estão. Tarefas e objetivo pessoal não são alterados. Edições são salvas ao confirmar.</p><p class="subtle">Descrições aprovadas passam a ser contexto das áreas, mesmo se as fontes forem pausadas ou excluídas depois. Você pode alterá-las em Biblioteca → Projetos e áreas → Editar área.</p>'+runs.map(r=>{
       const p=r.proposal;
       return '<article class="card section"><span class="badge">'+esc(labels[r.state]||r.state)+'</span><p style="white-space:pre-wrap">'+esc(r.answer||r.error||'Atualize em alguns instantes.')+'</p>'+
         (p&&r.state==='awaiting_confirmation'?'<form class="form" data-organization-run="'+esc(r.id)+'">'+p.areas.map((a,i)=>'<fieldset data-group="'+i+'"><legend><label><span><input type="checkbox" name="include" style="width:auto"> Aplicar esta área</span></label></legend><label>Nome da área sugerida<input name="area_name" value="'+esc(a.name)+'" minlength="2" maxlength="80" required></label><label>Descrição sugerida<textarea name="description" maxlength="500">'+esc(a.description)+'</textarea></label>'+a.document_ids.map(id=>'<label><span><input type="checkbox" name="document" value="'+esc(id)+'" checked style="width:auto"> '+esc(r.sources.find(s=>s.id===id)?.title||id)+'</span></label><button type="button" class="btn" data-document="'+esc(id)+'">Conferir fonte</button>').join('')+'</fieldset>').join('')+'<button class="btn primary" type="submit">Confirmar organização selecionada</button><button class="btn" type="button" data-reject-organization="'+esc(r.id)+'">Recusar organização</button></form>':'')+
@@ -471,7 +423,7 @@ async function renderPersonalization(selectedArea){
 
 async function aiPanel(panel){
   const s=await api('/api/ai/config');if(!panel.isConnected)return;
-  panel.innerHTML='<form id="ai-form" class="form"><label><span><input name="enabled" type="checkbox" style="width:auto" '+(s.enabled?'checked':'')+'> Ativar IA nesta instalação</span></label><label>Endereço base da API<input name="endpoint" type="url" value="'+esc(s.endpoint)+'" placeholder="https://provedor.example/v1"></label><label>Modelo<input name="model" value="'+esc(s.model)+'"></label><label>Chave própria<input name="api_key" type="password" autocomplete="new-password" placeholder="'+(s.has_key?'Já configurada; deixe vazio para manter no mesmo destino':'Informe sua chave')+'"></label><label>Chamadas por dia (UTC)<input name="daily_call_limit" type="number" min="1" max="1000" value="'+s.daily_call_limit+'" required></label><div class="grid grid-3"><label>Orçamento diário em US$ (opcional)<input name="daily_budget_usd" type="number" step="any" min="0.000001" max="1000" value="'+esc(s.daily_budget_usd)+'"></label><label>US$/milhão de tokens de entrada<input name="input_usd_per_million" type="number" step="any" min="0" max="1000" value="'+esc(s.input_usd_per_million)+'"></label><label>US$/milhão de tokens de saída<input name="output_usd_per_million" type="number" step="any" min="0" max="1000" value="'+esc(s.output_usd_per_million)+'"></label></div><p class="subtle">Preços são informados por você, na mesma moeda. Reserva estimada para até 32.768 tokens de entrada e 1.000 de saída; falhas sem uso conhecido mantêm a reserva. Isso não é confirmação de cobrança. Defina também limite no provedor. Chave salva somente nesta máquina em arquivo protegido, acessível ao administrador.</p><button class="btn primary" type="submit">Salvar configuração</button><p id="ai-saved" role="status"></p></form>';
+  panel.innerHTML='<form id="ai-form" class="form"><label><span><input name="enabled" type="checkbox" style="width:auto" '+(s.enabled?'checked':'')+'> Ativar IA nesta instalação</span></label><label>Endereço base da API<input name="endpoint" type="url" value="'+esc(s.endpoint)+'" placeholder="https://provedor.example/v1"></label><label>Modelo<input name="model" value="'+esc(s.model)+'"></label><label>Chave própria<input name="api_key" type="password" autocomplete="new-password" placeholder="'+(s.has_key?'Já configurada; deixe vazio para manter no mesmo destino':'Informe sua chave')+'"></label><label>Chamadas por dia (UTC)<input name="daily_call_limit" type="number" min="1" max="1000" value="'+s.daily_call_limit+'" required></label><label>Orçamento diário estimado em US$ (opcional)<input name="daily_budget_usd" type="number" step="any" min="0.000001" max="1000" value="'+esc(s.daily_budget_usd)+'"></label><details><summary>Opções avançadas: preços para estimar e limitar o custo</summary><div class="grid grid-2"><label>US$/milhão de tokens de entrada<input name="input_usd_per_million" type="number" step="any" min="0" max="1000" value="'+esc(s.input_usd_per_million)+'"></label><label>US$/milhão de tokens de saída<input name="output_usd_per_million" type="number" step="any" min="0" max="1000" value="'+esc(s.output_usd_per_million)+'"></label></div><p class="subtle">Para aplicar um orçamento estimado, informe os dois preços. Sem preços, o custo continua desconhecido.</p></details><p class="subtle">Preços são informados por você, na mesma moeda. Reserva estimada para até 32.768 tokens de entrada e 1.000 de saída; falhas sem uso conhecido mantêm a reserva. Isso não é confirmação de cobrança. Defina também limite no provedor; assinatura de chat não inclui crédito de API. Chave salva nesta instalação em arquivo protegido, acessível ao administrador.</p><button class="btn primary" type="submit">Salvar configuração</button><p id="ai-saved" role="status"></p></form>';
   guideAI(panel.querySelector('#ai-form'),s,api);
   panel.querySelector('#ai-form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget;const values=Object.fromEntries(new FormData(form));values.enabled=form.elements.enabled.checked;values.daily_call_limit=Number(values.daily_call_limit);values.api_key=values.api_key||null;for(const key of ['daily_budget_usd','input_usd_per_million','output_usd_per_million'])values[key]=values[key]||null;try{const saved=await api('/api/ai/config',{method:'PUT',body:JSON.stringify(values)});form.elements.api_key.value='';form.dispatchEvent(new CustomEvent('ai-saved',{detail:saved}));panel.querySelector('#ai-saved').textContent='Configuração salva. Nenhuma chamada foi feita.';}catch(error){errorMessage(error);}};
 }

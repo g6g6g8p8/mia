@@ -1,12 +1,18 @@
-# Aceites de release — 12/10/2026
+# Aceites de release — 13/10/2026
+
+## Nova jornada na 0.2.0a12
+
+Implementados: preparação por fontes sem área/chave obrigatória, uploads retomáveis, revisão por grupos, indexação progressiva, exports com proveniência, foco, trechos em Hoje, conversas persistentes e serviço de usuário/migração manual. [Evidência e limites](EXPERIENCE-VALIDATION.md) distinguem testes sintéticos, processo Linux e aceites nas máquinas reais.
+
+O novo fluxo não tem o limite antigo de 300 entradas. Quotas e cobertura permanecem explícitas. Launcher/empacotador Mac são fundação técnica: assinatura/notarização, runtime/wheels Mac reais, instalação limpa, login/suspensão e boot real continuam abertos. Drive recorrente, sync offline, qualidade com fontes próprias e primeiro valor sem assistência não foram comprovados. A licença ainda depende do titular.
 
 ## Revisão de experiência — 13/10/2026
 
-No teste do proprietário, o uso do zero recebeu **2/10**. Houve rejeição relatada de vault ZIP; a implementação bloqueia mais de 300 entradas antes de filtrar conteúdo útil. A instalação do Mac precisou de Terminal, correção de pip e orientação para reiniciar vazio. Isso confirma saúde/versionamento/instalação vazia naquele teste, não qualidade de migração ou uso sem ajuda.
+No teste do proprietário da a11, o uso do zero recebeu **2/10**. Houve rejeição relatada de vault ZIP; aquela implementação bloqueava mais de 300 entradas antes de filtrar conteúdo útil. A instalação do Mac precisou de Terminal, correção de pip e orientação para reiniciar vazio. Isso confirma saúde/versionamento/instalação vazia naquele teste, não qualidade de migração ou uso sem ajuda.
 
 O próximo ciclo segue [EXPERIENCE-PLAN.md](EXPERIENCE-PLAN.md). M3 precisa migração representativa/primeiro valor com fontes e Hoje útil; M4 precisa uso diário sem Terminal e aceites distintos para local e servidor; M5 exige participantes com sua preferência de instalação e fontes próprias. O proprietário escolheu servidor Linux e retomada de trabalho; isso não obriga novos participantes a hospedar em servidor. Mockups e 141 testes existentes não fecham esses aceites.
 
-Nenhum novo limite, conector, instalador, app ou sincronização foi entregue por este replanejamento. Licença e alegações de economia continuam pendentes. Evidências históricas permanecem abaixo.
+O replanejamento inicial não alterou o código; a implementação posterior a12 está descrita acima. Licença e alegações de economia continuam pendentes. Evidências históricas permanecem abaixo.
 
 Estado: **alpha técnica, não release final para distribuição ampla**. Esta lista descreve evidência, não promessa.
 
@@ -36,7 +42,7 @@ A 0.2.0a11 fecha a implementação e os ensaios técnicos acima, sem declarar M0
 
 Não divulgar economia percentual, custo fixo, compatibilidade universal de modelos/exports, instalação sem ajuda ou segurança certificada a partir de testes simulados. Falha que perde dados, duplica efeitos, envia contexto não autorizado ou excede limites bloqueia release até correção e novo ensaio do caso.
 
-Conversa contínua, projetos estruturados e conectores adicionais permanecem evolução de produto; não entram como funcionalidades entregues nesta alpha.
+Conversa contínua foi implementada na a12; projetos estruturados e conectores adicionais permanecem evolução de produto. Passar fluxos sintéticos não encerra os gates com participantes.
 
 ## Configuração na 0.2.0a10
 

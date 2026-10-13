@@ -9,22 +9,17 @@ Você pode instalar no próprio computador ou em um servidor e acessar pelo nave
 
 ## Status
 
-**Alpha técnica; a experiência para novos usuários ainda precisa ser redesenhada.** No teste do proprietário em 13/10/2026, a experiência do zero recebeu 2/10 e um vault ZIP foi recusado. Os testes técnicos não demonstram migração representativa, primeiro valor ou instalação sem ajuda. O [novo plano de experiência](docs/EXPERIENCE-PLAN.md) prioriza migração por origens/grupos, retomada com fontes em Hoje e uso sem Terminal diário, mantendo instalação local e servidor como escolhas do participante. Estas melhorias são propostas, não funcionalidades já entregues.
+**0.2.0a12 — alpha com a nova jornada de contexto.** Após a avaliação 2/10 do uso do zero, a entrada passou a começar pelas fontes, com revisão por grupos e importação em segundo plano retomável. Hoje mostra foco confirmado, trechos das fontes e conversas para continuar, mesmo sem tarefas. A navegação é Hoje, Conversas, Biblioteca e Ajustes.
 
-Na 0.2.0a11, o upload continua limitado a 8 MiB, ZIP expandido a 20 MiB e 300 entradas; exports ChatGPT/Claude são experimentais. Não existe instalador Mac para leigos, app iPhone, conector Drive ou sync offline. A licença específica ainda aguarda decisão do titular; código público não equivale a uma licença concedida.
-O M1 é um protótipo executável, validado em Docker sobre Ubuntu e em instalação Python independente no macOS, com fluxo de navegador automatizado. Inclui onboarding local, acesso do proprietário, áreas, tarefas, Hoje, Busca, exportação e persistência SQLite.
+O novo fluxo aceita ZIP, pasta pelo navegador compatível, Markdown/texto e formatos específicos de exports ChatGPT/Claude. Não pede primeira área nem chave de IA para começar. Relatórios distinguem material reconhecido, ignorado, não selecionado, duplicado e com erro. Arquivos do Drive entram depois de baixados/exportados; `.gdoc` é um link, não o conteúdo do documento. Não existe conector recorrente Drive, app nativo iPhone ou sync offline.
 
-O **M2** acrescenta pedidos independentes com contexto de uma área, adaptador opcional Chat Completions, propostas confirmadas, histórico e orçamento estimado com reserva. O **M3 inicial** oferece onboarding retomável, objetivo declarado, importação local com revisão, busca de fontes e configuração de IA pela interface. Markdown, texto e ZIP são suportados; adaptadores de conversas ChatGPT/Claude são experimentais e reconhecem formatos específicos.
+Conversas persistem nesta instalação. Contexto recuperado, histórico reautorizado e foco opcional têm limites; fontes pausadas e material ainda em revisão ficam fora dos novos pedidos. Consultar toda a biblioteca não autoriza criar tarefas em uma área por inferência. Propostas e organização/personalização assistidas continuam exigindo revisão; Sobre mim e objetivo pessoal são opt-in em cada pedido.
 
-A organização assistida do M3 recebe até seis fontes escolhidas, propõe até quatro novas áreas e permite editar, selecionar, recusar ou confirmar. Confirmar cria as áreas e distribui as fontes autorizadas, com registro da proposta original e da escolha aplicada. Nomes e descrições das áreas podem ser editados depois.
+O [serviço de usuário e a migração de instalação manual](docs/INSTALL-BACKGROUND.md) permitem uso diário no navegador sem Terminal aberto após a preparação. Há código de launcher/empacotador Mac com runtime próprio, mas ainda falta artefato assinado/notarizado e aceite em Mac limpo; não é um instalador público pronto. Boot Linux e login/suspensão Mac exigem validação na máquina-alvo. Instalação local e servidor continuam escolhas distintas do participante.
 
-Em **Meu contexto**, o usuário pode solicitar sugestões de resumo pessoal e objetivo a partir de fontes selecionadas. Cada sugestão exige trechos de apoio presentes no material enviado. Campos são editáveis e aprovados separadamente. O contexto confirmado só entra em consultas de Inteligência quando o usuário marca a opção de incluí-lo.
+O [plano de experiência](docs/EXPERIENCE-PLAN.md) separa implementação, testes sintéticos e aceites com pessoas/fontes reais. Passar um vault sintético não demonstra compatibilidade com qualquer vault ou export nem primeiro valor sem ajuda. A licença específica ainda aguarda decisão do titular; código público não equivale a licença concedida. Economia e release ampla continuam pendentes.
 
-A integração tem testes simulados e um [ensaio inicial com DeepSeek via OpenRouter](docs/REAL-MODEL-VALIDATION.md): 17 chamadas com dados sintéticos, incluindo organização, personalização e comparação de contexto; custo total informado de US$ 0.0045882598. A comparação identificou e corrigiu uma falha na ordenação da busca. Isso não certifica qualidade geral nem economia. Há backup SQLite pela interface, rotina local opcional a cada 24 horas com retenção e restauração por comando em instalação vazia, testada do Linux para o Mac. Conversa contínua, conectores, atualização automática e benchmark de economia continuam pendentes.
-
-A primeira versão será validada com poucos usuários piloto. O repositório é público por decisão do proprietário; a licença específica de uso e distribuição ainda está pendente.
-
-Em Sistema → IA, **Verificar conexão salva** consulta apenas o catálogo do serviço com a chave salva. Não gera texto nem envia notas. O resultado distingue catálogo acessível, identificador encontrado e situações inconclusivas; não certifica a chave, saldo, suporte a ferramentas ou qualidade. Funciona também no onboarding e não exige gateway.
+O [ensaio histórico com DeepSeek via OpenRouter](docs/REAL-MODEL-VALIDATION.md) registrou 17 chamadas sintéticas e US$ 0.0045882598 informados pelo provedor. Não certifica a qualidade geral da nova jornada nem economia. Em Ajustes → IA, verificar conexão consulta apenas o catálogo, sem gerar texto ou enviar fontes; não comprova saldo, ferramentas ou qualidade.
 
 ## O que o Mia deve oferecer
 - Onboarding para trazer o próprio contexto, conferir cobertura e chegar a um primeiro resultado útil.
@@ -35,7 +30,7 @@ Em Sistema → IA, **Verificar conexão salva** consulta apenas o catálogo do s
 - Propostas de ação revisadas antes de executar alterações.
 - Escolha de modelos locais ou externos, com credenciais próprias.
 - Limites de uso, estimativas e registros de custo.
-- Experiência alinhada à proposta: Hoje, Conversas, Biblioteca e Ajustes, com busca transversal. Essa taxonomia está planejada; a interface atual ainda usa Áreas, Inteligência e Sistema.
+- Experiência alinhada à proposta: Hoje, Conversas, Biblioteca e Ajustes, com busca transversal.
 
 Exemplo de uso: preparar uma reunião a partir de documentos autorizados, apontar as fontes e sugerir próximos passos; o usuário revisa antes de registrar uma tarefa.
 
@@ -78,7 +73,7 @@ docker compose up -d --build
 
 Por padrão, a interface abre somente em `http://127.0.0.1:8123`.
 
-A 0.2.0a11 acrescenta [operação nativa gerenciada](docs/OPERATIONS.md) para instalações novas: versões separadas, atualização explícita com snapshot e recuperação/retorno em dados novos. O modo manual e Docker continuam disponíveis. Sistema → Operação e atualização mostra versão/estado, sem executar comandos pelo navegador. Sistema → Acesso prepara um plano HTTPS revisável com recuperação local; publicar domínio, rota ou portas continua sendo ação explícita do instalador.
+A [operação nativa gerenciada](docs/OPERATIONS.md) oferece versões separadas, atualização explícita com snapshot e recuperação/retorno em dados novos. O modo manual e Docker continuam disponíveis. Ajustes → Operação e atualização mostra versão/estado; Ajustes → Acesso prepara um plano HTTPS revisável com recuperação local. Ativar serviço e publicar domínio, rota ou portas são passos administrativos explícitos, separados da importação.
 
 Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e a escolha aplicada ficam no histórico/exportação; repetir confirmação não cria outra tarefa.
 
@@ -90,6 +85,7 @@ Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e
 - [Validação do M1](docs/VALIDATION.md)
 - [Configurar IA e limites do M2](docs/AI.md)
 - [Instalação nativa no Mac ou Linux](docs/INSTALL-NATIVE.md)
+- [Uso sem Terminal diário, serviço e migração manual](docs/INSTALL-BACKGROUND.md)
 - [Roteiro do piloto com usuários](docs/PILOT.md)
 - [Opções de licença, aguardando decisão do titular](docs/LICENSE-OPTIONS.md)
 - [Dependências e avisos preservados na distribuição](docs/DEPENDENCIES.md)
