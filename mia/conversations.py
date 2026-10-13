@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 
 from fastapi import HTTPException
@@ -122,9 +123,21 @@ def history_from_db(db, thread_id, owner, area_id, include_personal_context=Fals
     rows = list(db.execute("SELECT * FROM runs WHERE owner_id=? AND thread_id=? AND state IN ('completed','awaiting_confirmation','rejected') ORDER BY created_at DESC,rowid DESC LIMIT 12", (owner['id'], thread_id)))
     turns, sources, skipped, chars = [], {}, 0, 0
     for row in rows:
-        snapshots = json.loads(row['sources_json'])
-        request = json.loads(row['request_json'])
-        if request.get('purpose', 'assistant') != 'assistant' or any(not source_current(db, source, owner, area_id, include_personal_context) for source in snapshots):
+        try:
+            snapshots = json.loads(row['sources_json'])
+            request = json.loads(row['request_json'])
+        except (ValueError,TypeError):
+            skipped += 1
+            continue
+        if not isinstance(snapshots,list) or any(not isinstance(source,dict) for source in snapshots) or not isinstance(request,dict):
+            skipped += 1
+            continue
+        allowed={source.get('source') for source in snapshots}
+        cited=set(re.findall(r'(?:doc|area|task|profile):[A-Za-z0-9-]+',row['answer'] or ''))
+        # Old imports/restores without a complete continuation snapshot cannot
+        # prove which source/profile influenced an answer. Keep them visible,
+        # but do not send them again on the owner's behalf.
+        if not row['continuation_json'] or cited-allowed or request.get('purpose', 'assistant') != 'assistant' or any(not source_current(db, source, owner, area_id, include_personal_context) for source in snapshots):
             skipped += 1
             continue
         if not row['answer']:

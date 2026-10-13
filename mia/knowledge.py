@@ -43,7 +43,7 @@ def normalized(text):
     return ''.join(c for c in unicodedata.normalize('NFKD',text.casefold()) if not unicodedata.combining(c))
 
 
-def chunk_content(text, size=1800, overlap=180):
+def chunk_content(text, size=1800, overlap=180, *, kind=None, messages=None):
     """Bounded, overlapping excerpts that prefer paragraph/message boundaries.
 
     Splitting near a boundary keeps late material in long notes searchable;
@@ -53,6 +53,21 @@ def chunk_content(text, size=1800, overlap=180):
         raise ValueError('Texto inválido')
     if size < 400 or not 0 <= overlap < size // 2:
         raise ValueError('Limites de trecho inválidos')
+    if kind in ('chatgpt','claude') and messages is not None:
+        chunks=[]
+        for message in messages:
+            role=message.get('role')
+            content=message.get('text')
+            if role not in ('user','assistant') or not isinstance(content,str):
+                raise ValueError('Mensagem estruturada inválida para indexação')
+            dates=message.get('dates',{})
+            date=next((dates.get(key) for key in ('created_at','create_time') if dates.get(key) is not None),'data não informada')
+            # Role comes from the structured adapter, never from strings which
+            # an imported user/assistant could put inside their own message.
+            header='['+role+' · '+str(date).replace('\n',' ')[:240]+']\n'
+            for fragment in chunk_content(content,size=size-len(header),overlap=min(overlap,(size-len(header))//3)):
+                chunks.append(header+fragment)
+        return chunks
     chunks = []
     start = 0
     while start < len(text):
@@ -229,7 +244,7 @@ def commit(batch,selection,owner,audit):
             else:
                 doc=str(uuid.uuid4()); imported+=1
                 db.execute('INSERT INTO documents(id,owner_id,area_id,title,path,kind,content,hash,created_at) VALUES(?,?,?,?,?,?,?,?,?)',(doc,owner['id'],row['area_id'],item['title'],item['path'],item['kind'],item['content'],item['hash'],iso()))
-                for n,chunk in enumerate(chunk_content(item['content'])):
+                for n,chunk in enumerate(chunk_content(item['content'],kind=item['kind'])):
                     db.execute('INSERT INTO chunks VALUES(?,?,?,?)',(doc,n,chunk,normalized(chunk)))
             db.execute('INSERT OR IGNORE INTO document_imports VALUES(?,?,?)',(doc,batch,item['path']))
         report=json.loads(row['report_json']); report.update(imported=imported,duplicates=duplicates,not_selected=len(items)-len(selected))

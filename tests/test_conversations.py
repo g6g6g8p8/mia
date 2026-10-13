@@ -175,3 +175,48 @@ def test_many_turns_keep_context_and_dependency_snapshots_bounded(ready,monkeypa
         assert len(result['sources'])<=30
     assert all(len(body)<=24000 for body in seen)
     assert result['included_turn_count']<=4 and result['history_notice']
+
+
+def test_incomplete_legacy_history_and_invalid_citations_stay_out_of_model(ready,monkeypatch):
+    _,area,_,owner=ready
+    thread=conversations.create(conversations.ConversationCreate(area_id=area),owner)
+    seen=[]
+    async def fake(settings,messages,schema):
+        seen.append(json.dumps(messages))
+        return answer('Answer with invalid source doc:unavailable')
+    monkeypatch.setattr(harness,'call_provider',fake)
+    old=invoke(thread,owner)
+    second=invoke(thread,owner,'Continue')
+    assert second['included_turn_count']==0 and second['skipped_history_count']==1
+    with transaction() as db:
+        db.execute('UPDATE runs SET answer=?,continuation_json=NULL,sources_json=? WHERE id=?',('LEGACY_WITHOUT_SNAPSHOT','[]',old['id']))
+    result=invoke(thread,owner,'Outra pergunta')
+    assert 'LEGACY_WITHOUT_SNAPSHOT' not in seen[-1]
+    assert result['included_turn_count']==0 and result['skipped_history_count']==2
+
+
+def test_source_preflight_before_paid_reservation_and_thread_http_access(ready,monkeypatch):
+    browser,area,_,owner=ready
+    created=browser.post('/api/conversations',json={'title':'Projeto','area_id':area})
+    assert created.status_code==201
+    thread=created.json()
+    assert browser.get('/api/conversations').json()[0]['id']==thread['id']
+    assert browser.patch('/api/conversations/'+thread['id'],json={'title':'Renomeada'}).json()['title']=='Renomeada'
+    assert browser.patch('/api/conversations/'+thread['id'],json={'title':'No'},headers={'Origin':'https://wrong.example'}).status_code==403
+    assert TestClient(browser.app).get('/api/conversations/'+thread['id']).status_code==401
+    doc=store(area,'Protocolo âmbar sujeito a revogação.','revoked.md')
+    original=harness.context
+    def changed(*args,**kwargs):
+        sources=original(*args,**kwargs)
+        with transaction() as db:
+            db.execute('UPDATE documents SET active=0 WHERE id=?',(doc,))
+        return sources
+    async def never(*args):
+        pytest.fail('Revoked context must never reach provider')
+    monkeypatch.setattr(harness,'context',changed)
+    monkeypatch.setattr(harness,'call_provider',never)
+    with pytest.raises(Exception) as conflict:
+        invoke(thread,owner)
+    assert conflict.value.status_code==409
+    assert browser.get('/api/runs').json()==[]
+    assert browser.get('/api/conversations/'+thread['id']).json()['runs']==[]
