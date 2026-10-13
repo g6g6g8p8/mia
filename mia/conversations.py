@@ -33,15 +33,18 @@ class ConversationRename(BaseModel):
     _clean = field_validator('title')(ConversationCreate.clean_title.__func__)
 
 
-def thread_from_db(db, thread_id, owner):
+def thread_from_db(db, thread_id, owner, require_scope=True):
     row = db.execute('SELECT * FROM conversations WHERE id=? AND owner_id=?', (thread_id, owner['id'])).fetchone()
     if not row:
         raise HTTPException(404, 'Conversa não encontrada')
     # An area-deletion must not silently broaden a conversation to the library.
-    if row['scope'] == 'area' and (not row['area_id'] or not db.execute('SELECT 1 FROM areas WHERE id=? AND owner_id=?', (row['area_id'], owner['id'])).fetchone()):
+    area=db.execute('SELECT name FROM areas WHERE id=? AND owner_id=?',(row['area_id'],owner['id'])).fetchone() if row['area_id'] else None
+    unavailable=row['scope']=='area' and not area
+    if require_scope and unavailable:
         raise HTTPException(409, 'A área desta conversa não está mais disponível. Crie outra conversa com um escopo autorizado.')
     result = dict(row)
     result.pop('owner_id')
+    result.update(scope_unavailable=bool(unavailable),area_name=area['name'] if area else None)
     return result
 
 
@@ -67,14 +70,14 @@ def create(payload, owner, audit=None):
 
 def listing(owner):
     with connect() as db:
-        rows = db.execute('SELECT c.*,count(r.id) AS run_count FROM conversations c LEFT JOIN runs r ON r.thread_id=c.id AND r.owner_id=c.owner_id WHERE c.owner_id=? GROUP BY c.id ORDER BY c.updated_at DESC,c.id LIMIT 100', (owner['id'],))
-        return [{key:row[key] for key in row.keys() if key != 'owner_id'} for row in rows]
+        rows = list(db.execute('SELECT c.*,count(r.id) AS run_count FROM conversations c LEFT JOIN runs r ON r.thread_id=c.id AND r.owner_id=c.owner_id WHERE c.owner_id=? GROUP BY c.id ORDER BY c.updated_at DESC,c.id LIMIT 100', (owner['id'],)))
+        return [{**thread_from_db(db,row['id'],owner,require_scope=False),'run_count':row['run_count']} for row in rows]
 
 
 def detail(thread_id, owner):
     from .harness import public_run
     with connect() as db:
-        result = thread_from_db(db, thread_id, owner)
+        result = thread_from_db(db, thread_id, owner,require_scope=False)
         # Last 100 requests are returned in chronological order. Older history
         # remains persisted/exportable and is never silently sent to the model.
         rows = list(db.execute('SELECT * FROM runs WHERE owner_id=? AND thread_id=? ORDER BY created_at DESC,rowid DESC LIMIT 100', (owner['id'], thread_id)))
@@ -86,7 +89,7 @@ def detail(thread_id, owner):
 
 def rename(thread_id, payload, owner, audit=None):
     with transaction(immediate=True) as db:
-        thread_from_db(db, thread_id, owner)
+        thread_from_db(db, thread_id, owner,require_scope=False)
         db.execute('UPDATE conversations SET title=?,updated_at=? WHERE id=? AND owner_id=?', (payload.title, iso(), thread_id, owner['id']))
         if audit:
             audit(db, owner['id'], 'conversation.renamed', 'conversation', thread_id)

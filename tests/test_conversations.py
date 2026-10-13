@@ -159,6 +159,10 @@ def test_scope_owner_deleted_area_and_failed_calls_never_replayed(ready,monkeypa
     with pytest.raises(Exception) as missing:
         conversations.scope(thread['id'],owner)
     assert missing.value.status_code==409
+    preserved=conversations.detail(thread['id'],owner)
+    assert preserved['scope_unavailable'] is True and preserved['runs'][0]['id']==first['id']
+    assert conversations.listing(owner)[0]['scope_unavailable'] is True
+    assert conversations.rename(thread['id'],conversations.ConversationRename(title='Histórico preservado'),owner)['title']=='Histórico preservado'
 
 
 def test_many_turns_keep_context_and_dependency_snapshots_bounded(ready,monkeypatch):
