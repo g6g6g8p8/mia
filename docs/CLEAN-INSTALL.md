@@ -1,6 +1,6 @@
 # Recomeçar a Mia com uma instalação vazia
 
-13/10/2026 · procedimento administrativo da alpha 0.2.0a12. O uso diário fica no navegador, com serviço em segundo plano. O instalador Mac assinado e a validação em Mac limpo ainda precisam ser concluídos antes de chamar esse caminho de instalação para público geral.
+13/10/2026 · procedimento administrativo de desenvolvimento/suporte da alpha 0.2.0a12. Não é o onboarding dos convidados da demonstração. A próxima distribuição segue [MAC-DEMO.md](MAC-DEMO.md): aplicativo Mac com instalação/conexão dentro da janela e atualizações integradas; artefato assinado e aceites ainda pendentes. O caminho técnico atual usa navegador e serviço em segundo plano.
 
 O objetivo é tirar instalações anteriores de uso, preservar uma recuperação privada e criar um banco novo. Reinício da experiência não requer apagar o vault, exports, backups ou credenciais de outros produtos. Cada beta-tester instala uma Mia própria; Mac e iPhone acessando o mesmo servidor usam uma instalação compartilhada, enquanto duas instalações não sincronizam seus bancos.
 

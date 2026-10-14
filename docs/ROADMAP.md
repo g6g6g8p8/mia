@@ -1,48 +1,50 @@
-# Roadmap até o piloto independente
+# Roadmap — Mia Demo para Mac, por convite
 
-13/10/2026. Objetivo: começar com uma Mia vazia, trazer contexto próprio, retomar trabalho com fontes e manter a instalação disponível sem Terminal aberto. O proprietário escolheu Linux acessado por Mac/iPhone; participantes futuros escolhem local ou servidor.
+13/10/2026. A próxima entrega é um aplicativo independente para Mac, com convite para a distribuição oficial e instalação própria local ou em servidor preparada no onboarding. O piloto por instalação administrativa/navegador deixa de ser o caminho principal. Contrato, arquitetura e aceites em [MAC-DEMO.md](MAC-DEMO.md).
 
-## Estado atual
+## Estado e prioridade
 
-A a12 implementa importação retomável por grupos, adaptadores versionados, busca por trechos, foco, conversas, Hoje sem tarefas e serviço de usuário. Passou testes técnicos e corpus sintético; não comprova os aceites reais abaixo. Apache-2.0 foi adotada para arquivos próprios, com avisos de terceiros preservados.
+A a12 implementa núcleo de contexto, interface web e operações/recuperação. O launcher atual abre o navegador e pede revisão de JSON; não cumpre o contrato de aplicativo. Janela nativa, assistente remoto, DMG assinado/notarizado, convites e atualizador do app estão planejados. Apache-2.0 continua aplicada; convite controla nossa distribuição oficial, não o direito de compilar o código público.
 
-O proprietário autorizou limpeza das instalações **da Mia** no MacBook Air e macserver e escolheu habilitar Desktop Commander. Nesta sessão a ferramenta ainda não está disponível: inventário, limpeza, instalação e aceites nessas máquinas estão pendentes de conexão, sem execução remota alegada. O cloud não substitui essa conexão.
+O proprietário trouxe um relato de instalação limpa Linux operacional, ainda sem acesso diário no Mac/iPhone. Esta sessão não verificou o host nem a preservação dos outros serviços/vaults. O log de Desktop Commander comprova execuções em outra sessão; as ferramentas continuam ausentes nesta conversa. Isso não bloqueia planejamento/implementação no repositório, mas é requisito para alegar operações verificadas nas máquinas pessoais.
 
-## Ordem de execução e evidência
+## Sequência da entrega
 
 | Etapa | Trabalho concreto | Resultado para avançar | Estado |
 | --- | --- | --- | --- |
-| R0 — Conectar e inventariar | Desktop Commander no Mac; confirmar SSH para macserver; identificar diretórios, versão, dados, processo, serviços e containers Mia | Lista verificável das instalações, com o que será preservado e arquivado; sem conteúdo/chaves no relatório | Bloqueada pelo acesso à ferramenta |
-| R1 — Limpar com recuperação | Parar somente Mia; preservar backup privado e ensaiar restauração; desativar somente registros Mia; arquivar instalações antigas | Nenhuma Mia antiga iniciando/ocupando destino; dados recuperáveis; outros serviços intactos | Pendente de R0 |
-| R2 — Instalação vazia | Instalar revisão fixada em código separado dos dados; validar health, versão e configured=false; ativar serviço de usuário | Jornada do zero acessível; sem perfil, documentos ou configuração pessoal herdados | Pendente de R1 |
-| R3 — Contexto real (item 1) | Importar vault e exports escolhidos na instalação; revisar grupos, perdas e proveniência | Cobertura reconciliada, originais intactos, decisões/pendências localizáveis com autoria/data disponíveis | Pendente de R2 |
-| R4 — Hoje útil (item 2) | Confirmar trabalho atual e fontes; retomar decisão/questão pendente; IA opcional com prévia e teto | Proprietário reconhece resultado útil; pistas antigas e hipóteses não viram fatos/tarefas automaticamente | Pendente de R3 |
-| R5 — Linux/Mac/iPhone (item 3) | Serviço após fechar SSH; linger quando escolhido; HTTPS sem alterar outros serviços; acesso real nos dispositivos; reboot em janela combinada | Login/fontes/conversa persistem; serviço volta após boot; backup externo restaurado | Pendente de R2 e infraestrutura escolhida |
-| R6 — Mac local (item 4) | Launcher com runtime/wheels reais por arquitetura, assinatura/notarização, Mac limpo, login/suspensão/retomada e recuperação | Instalação/uso diário sem exigir Python/Git/Terminal ao participante; evidência local própria | Fundação implementada; artefato e aceites reais pendentes |
-| R7 — Convidar e observar (item 5) | 2–3 participantes, instalação escolhida, fontes próprias, documentação e relatório minimizado | Primeiro valor sem intervenção do fundador; entendimento de armazenamento/IA, continuidade e recuperação comprovados | Pendente dos caminhos que serão oferecidos |
-| R8 — Corrigir e decidir release | Corrigir achados, repetir cenários afetados, revisar artefatos e publicar síntese consentida | Decisão explícita do proprietário baseada em evidência, sem promessa de economia não medida | Pendente de R7 |
+| D0 — Contrato da demo | App como entrada, convite oficial, destino real, primeira utilidade e atualização | Jornada/escopo registrados em MAC-DEMO | Planejamento registrado; app não entregue |
+| D1 — Janela e artefato Mac | SwiftUI/AppKit + WKWebView, menus/seletores, runtime/wheels, build por arquitetura e assinatura/notarização | DMG abre janela própria em Mac limpo sem dependências/comandos do usuário | Fundação anterior reutilizável; nova entrega pendente |
+| D2 — Instalação local | Assistente cria instalação/serviço privado, acesso, retomada e diagnóstico; plano técnico opcional | Onboarding dentro do app; reabre/login/suspensão sem perda | Pendente de D1 e aceite Mac |
+| D3 — Meu servidor | Preflight SSH, identidade do host, artefato Linux, serviço isolado, proprietário pelo canal privado e túnel gerido pelo app; HTTPS existente | Matriz oferecida instala/conecta sem Terminal; reconexão/persistência comprovadas | Assistente não implementado; aceite próprio obrigatório |
+| D4 — Contexto e Hoje | Seletores nativos, fontes próprias, grupos/cobertura, foco e fontes; IA opcional depois | Pessoa reconhece primeiro valor; perdas/cobertura reconciliadas | Núcleo a12 disponível; integração/qualidade reais pendentes |
+| D5 — Convites e canal | Resgate/download individual com prazo, limite de convidados e registros mínimos; sem conta central de contexto | Só convidados recebem distribuição oficial; biblioteca independe do serviço | Pendente de infraestrutura de distribuição |
+| D6 — Atualizar sem recomeçar | Atualizador nativo, feed/pacotes assinados, compatibilidade cliente/bootstrap/runtime/backend e gerenciador transacional | App atualiza preservando fontes/conversas e recupera falhas; servidor tem atualização explícita própria | Operação backend disponível; integração app pendente |
+| D7 — Revisar demonstração | Percurso em Mac limpo e servidor oferecido, fontes reais, continuidade, atualização/restauração externa | Artefato confiável e escolhas realmente prontas; evidência sem dados pessoais no Git | Pendente de D1–D6 para caminhos oferecidos |
+| D8 — Rodada e correções | 2–3 convidados, preferência de instalação, teste sem fundador, relatório minimizado, correções/reteste | Próxima atualização baseada em utilidade, autonomia e continuidade observadas | Pendente de D7 |
 
-R3/R4 e R5 podem avançar após a instalação Linux; R6 avança em paralelo. Um piloto remoto preparado não encerra o aceite Mac local. Se um candidato preferir local e o artefato ainda faltar, registrar esse bloqueio e adiar o cenário local, sem forçar mudança para servidor ou anunciar conclusão de ambos.
+Primeira fatia executável: **DMG → abrir Mia → instalar Neste Mac → importar uma fonte → confirmar foco → Hoje → fechar/reabrir**. D3/D5 podem avançar em paralelo após contratos do cliente; D6 deve existir antes da distribuição para que “depois soltamos atualizações” seja um percurso real. Assinatura/notarização não é substituída por instruções de contorno do Gatekeeper.
 
-## Limpeza e instalação guiada
+Local é a sugestão inicial, não obrigação. Cada opção oferecida precisa de aceite próprio. Não mostrar opção incompleta como pronta, encaminhar silenciosamente a comandos ou forçar modalidade. Informar disponibilidade antes do convite; a demonstração completa mantém os dois caminhos no contrato.
 
-Seguir [CLEAN-INSTALL.md](CLEAN-INSTALL.md), começando pelo inventário somente leitura. Candidatos conhecidos são pontos de partida, não confirmação de uso atual. Arquivar reversivelmente é o padrão da limpeza; exclusão definitiva só após conferir restauração e início vazio. Preservar vaults, backups, Cabeça, listmonk, Drive, certificados e demais serviços. Não usar limpeza global de Docker nem apagar ambientes encontrados apenas pelo nome.
+## Operação pessoal e acesso adicional
 
-No servidor, uma instância Mia tem **um proprietário**. O piloto usa uma instalação privada por participante: computador/servidor da pessoa ou instância separada com dados, processo, autenticação e HTTPS próprios. Não distribuir a senha nem o endereço da biblioteca pessoal do proprietário aos beta testers. Não há multiusuário compartilhado implementado.
+Inventário, backup verificado, arquivamento reversível e instalação vazia seguem [CLEAN-INSTALL.md](CLEAN-INSTALL.md), como procedimento administrativo de desenvolvimento/suporte. Conferir evidências reais antes de declarar limpeza concluída. Preservar vaults, backups, outros aplicativos, certificados e rotas compartilhadas; sem limpeza global Docker/Python.
 
-O convite é preparado em [PILOT-INVITE.md](PILOT-INVITE.md) e enviado pelo proprietário depois de escolher os caminhos realmente prontos. Não pedir históricos completos, credenciais ou backups como condição de participação. Cada pessoa opera sua instalação e escolhe quais resultados minimizados compartilhar.
+Uma instalação tem **um proprietário**. Cada participante usa dados, processo e identidade próprios; não distribuir login/biblioteca do fundador. Convite de distribuição e autenticação da instalação são coisas distintas.
 
-## Evolução depois do núcleo do piloto
+Mac/iPhone podem acessar o mesmo backend com HTTPS preparado/testado. O túnel do app Mac não dá acesso ao iPhone. Essa configuração é opcional para a demo Mac, com evidência própria; não é sync entre bancos ou suporte offline. Reboot de servidor compartilhado exige janela combinada.
+
+## Depois da demonstração
 
 | Trabalho | Benefício | Pré-requisito de aceite |
 | --- | --- | --- |
-| Reimportação incremental com versões/deltas e remoções revisáveis | Manter contexto atualizado | Mudanças, renomeações, conflitos e revogação sem duplicação/perda |
-| Drive recorrente opcional | Atualizar pastas escolhidas sem export manual | OAuth próprio opcional, escopo mínimo, export de arquivos nativos, revogação e teste com origem real |
-| Melhor seleção/síntese do foco | Mais relevância ao retomar decisões e questões | Qualidade com fontes autorizadas, orçamento, autoria, datas e lacunas conferidos |
-| Cliente iPhone além do navegador | Compartilhar arquivos/notificações conforme demanda | Necessidade observada no piloto; o cliente usa instalação escolhida |
-| Sync offline entre instalações | Trabalhar desconectado em mais de um dispositivo | Modelo de conflito, identidade, criptografia/revogação e recuperação antes de anunciar suporte |
-| Outros sistemas operacionais | Ampliar instalação local | Artefato e testes próprios; sucesso Mac/Linux não certifica Windows |
+| Relevância, contexto e UX | Retomada com menos configuração | Resultados reais, fontes/permissões e migrações que preservam dados |
+| Reimportação incremental/deltas | Manter contexto atualizado | Renomeações, conflitos e revogação sem duplicação/perda |
+| Drive recorrente opcional | Atualizar pastas escolhidas | OAuth opcional, escopo mínimo, arquivos nativos e revogação |
+| iPhone: HTTPS e cliente nativo conforme demanda | Contexto do destino escolhido em outro dispositivo | Acesso real seguro e necessidade observada |
+| Sync offline entre instalações | Trabalhar desconectado em vários dispositivos | Identidade, conflitos, criptografia/revogação e recuperação |
+| Mais arquiteturas/OS/servidores | Ampliar instalação própria | Artefatos e aceites próprios; Mac/Ubuntu não certificam outros sistemas |
 
-## Registro de conclusão
+## Registro e convites
 
-Registrar revisão/artefato, modalidade, checks executados, resultado e bloqueio restante. Os relatórios reais e inventários privados ficam fora do Git; este roadmap guarda estados e sínteses sem dados pessoais. Usar [PILOT.md](PILOT.md) e [PILOT-RESULT-TEMPLATE.json](PILOT-RESULT-TEMPLATE.json). Fonte de evidência técnica: [EXPERIENCE-VALIDATION.md](EXPERIENCE-VALIDATION.md).
+Registrar artefato/revisão, canal, modalidade, tempo desde convite e desde instalação acessível, utilidade, ajuda, atualização e recuperação. Inventários/resultados reais ficam fora do Git. [PILOT.md](PILOT.md), [PILOT-RESULT-TEMPLATE.json](PILOT-RESULT-TEMPLATE.json) e [PILOT-INVITE.md](PILOT-INVITE.md) seguem o novo contrato. O proprietário envia convites; não há disparo automático nem resultados de beta alegados.

@@ -1,6 +1,6 @@
 # Mia — migração de contexto e primeiro valor
 
-13/10/2026 · Contrato do ciclo após avaliação 2/10. A 0.2.0a12 implementa a jornada por fontes, jobs retomáveis/revisão por grupos, recuperação por trechos, foco, conversas e serviço de usuário. Mantém identidade, proveniência, aprovação e orçamento. Não atualiza automaticamente a instalação pessoal. Propostas além desse núcleo e aceites externos permanecem abaixo; evidência em [EXPERIENCE-VALIDATION.md](EXPERIENCE-VALIDATION.md).
+13/10/2026 · Contrato do ciclo após avaliação 2/10. A 0.2.0a12 implementa a jornada por fontes, jobs retomáveis/revisão por grupos, recuperação por trechos, foco, conversas e serviço de usuário. Mantém identidade, proveniência, aprovação e orçamento. Não atualiza automaticamente a instalação pessoal. A próxima distribuição segue [MAC-DEMO.md](MAC-DEMO.md): aplicativo Mac independente, por convite, com escolha/preparação de destino no onboarding e atualizações dentro do app. O percurso administrativo/navegador anterior não é o caminho principal da demonstração. O app ainda não foi implementado; evidência do núcleo em [EXPERIENCE-VALIDATION.md](EXPERIENCE-VALIDATION.md).
 
 | Entrega | Estado técnico na a12 | Aceite ainda aberto |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ O proprietário avaliou a experiência do zero em **2/10**. Relatou um vault ZIP
 Escolhas explícitas para o próximo piloto:
 
 - **Resultado inicial:** retomar o trabalho, reconhecendo projetos, últimas decisões e pendências com fontes.
-- **Referência do teste do proprietário:** servidor Linux sempre disponível, acessado pelo Mac e iPhone. Novos participantes escolhem instalação local ou servidor; a escolha do proprietário não se torna requisito para eles.
+- **Referência do teste do proprietário:** servidor Linux sempre disponível, acessado pelo Mac e iPhone. Novos participantes escolhem instalação local ou servidor; a escolha do proprietário não se torna requisito para eles. A distribuição da demo começa no app Mac, com destino escolhido/preparado dentro dele; iPhone tem configuração/aceite adicional.
 - **Objetivo de produto:** contexto próprio portátil e continuidade de trabalho, com custos visíveis. Substituição de assinaturas e economia permanecem hipóteses a medir, não promessas.
 
 A 0.2.0a11 oferece base técnica, mas ainda não oferece migração representativa ou instalação para leigos. Os 141 testes comprovam comportamentos específicos; não contradizem a avaliação de experiência.
@@ -42,7 +42,7 @@ Proposta de mensagem: **“Seu contexto de trabalho, reunido na Mia. Retome proj
 Explicar antes de importar:
 
 1. GitHub distribui o código. Não guarda automaticamente o contexto do usuário nem é uma conta da Mia.
-2. Uma instalação Mia guarda o contexto e executa o serviço. O navegador ou um futuro app é a forma de acessá-la.
+2. Uma instalação Mia guarda o contexto e executa o serviço. O app Mac planejado prepara e acessa essa instalação; o navegador continua como forma alternativa de acesso quando configurado.
 3. Cada participante escolhe onde instalar. No cenário remoto, arquivos enviados pelo Mac/iPhone são copiados para o servidor escolhido; no local, ficam na máquina escolhida. Isso deve ser informado antes da transferência.
 4. Importar/indexar não envia conteúdo a modelos. Consultar/analisar com IA pode enviar trechos autorizados ao destino escolhido, com consentimento e uso visíveis.
 5. API externa pode cobrar por uso; modelo local depende de hardware e energia. Não prometer eliminar gastos ou substituir todos os recursos de Claude/ChatGPT.
@@ -53,13 +53,13 @@ Código, documentação e assets próprios usam Apache-2.0; terceiros conservam 
 
 | Escolha | Dados e execução | Disponibilidade | Papel no plano |
 | --- | --- | --- | --- |
-| No meu servidor | Uma instalação Linux própria, com serviço, HTTPS e backup | Enquanto servidor e rede funcionarem; independente do Mac estar aberto | Referência do proprietário, opcional para participantes |
-| Neste computador | Serviço local no Mac, com inicialização automática e launcher | Depende de Mac ligado/acordado; acesso de outro dispositivo requer rede preparada | Opção de primeira classe no piloto, mesmo produto/backend |
-| Conectar à minha Mia | Cliente aponta para instalação existente | Depende dessa instalação e da rede | Entrada do Mac/iPhone, sem criar outra biblioteca |
+| No meu servidor | Uma instalação Linux própria, com serviço/backup e conexão gerida pelo app; HTTPS para outros clientes | Enquanto servidor e rede funcionarem; app reconecta sem Terminal | Assistente planejado; opcional para participantes |
+| Neste computador | Serviço local no Mac, com inicialização automática e janela do app | Depende de Mac ligado/acordado; outro dispositivo requer rede preparada | Sugestão inicial, mesmo produto/backend; artefato pendente |
+| Conectar à minha Mia | App aponta para instalação existente validada | Depende da instalação e rede | Sem criar outra biblioteca; iPhone exige HTTPS próprio |
 
 ```mermaid
 flowchart LR
-  Mac[Mac — navegador] -->|HTTPS e sessão| Mia[Mia no servidor Linux do usuário]
+  Mac[Mac — aplicativo planejado] -->|SSH gerido ou HTTPS e sessão| Mia[Mia no servidor Linux do usuário]
   Phone[iPhone — navegador ou tela inicial] -->|HTTPS e sessão| Mia
   Mia --> Store[Contexto e banco da mesma instalação]
   Mia -->|Somente trechos autorizados| Model[Modelo local ou API opcional]
@@ -67,17 +67,17 @@ flowchart LR
 
 Mac e iPhone vendo o mesmo servidor têm acesso ao mesmo contexto. Isso não é sincronização entre dois bancos nem uso offline. Não copiar SQLite vivo via iCloud/Drive.
 
-**Primeiro:** experiência web responsiva e dois caminhos de instalação, com serviço que sobreviva a fechamento de Terminal. No servidor, validar reinício real e HTTPS; no Mac, início de sessão e suspensão/retomada. O instalador trata processo, autenticação, origem/HTTPS quando necessários, backup e atualização. O operador configura domínio/rota conscientemente; o usuário diário entra por um endereço. CGNAT exige infraestrutura/rota adicional escolhida, sem fornecedor obrigatório. Nenhum assistente pode afirmar que abriu acesso remoto só por salvar uma preferência.
+**Primeiro:** aplicativo Mac com janela própria, runtime incluído e dois caminhos reais de instalação no onboarding. Reutilizar a interface web dentro do app; não enviar o participante a Terminal/TextEdit/navegador como percurso principal. No servidor, o túnel SSH gerido pelo app permite acesso Mac sem domínio público; testar serviço, reconexão e boot. HTTPS de outros clientes exige rede/rota escolhidas e aceite próprio. No Mac, testar login e suspensão/retomada. Instalação, backup e atualização ficam na interface; nenhum assistente declara destino preparado ao salvar uma preferência. Arquitetura e ordem em [MAC-DEMO.md](MAC-DEMO.md) e [ROADMAP.md](ROADMAP.md).
 
 Fechar navegador ou janela do launcher não encerra o serviço. **Parar Mia** é uma ação explícita, com estado visível e aviso de que outros dispositivos perderão acesso. Sono/desligamento do Mac continua reduzindo disponibilidade; abertura automática não remove essa limitação física.
 
-**Entrada local:** instalador/launcher Mac instala runtime, abre a Mia e mostra status, ou conecta à instalação remota. Esse caminho básico pertence ao piloto local; não depende de implementar outro frontend nativo completo. Usuário não deve precisar instalar Git/Python/pip. A distribuição precisa de origem confiável, assinatura/notarização e atualização testada. O gerenciador atual e templates são base, não esse instalador pronto. Outros sistemas terão distribuição e validação próprias; não serão simulados como suportados.
+**Entrada local:** app Mac instala runtime, mostra estado e usa janela própria, ou configura/conecta a instalação remota. SwiftUI/AppKit + WKWebView reutiliza o produto existente, sem reescrever todo o frontend. Não exigir Git/Python/pip. Distribuição confiável, assinatura/notarização e atualização integrada são requisitos da demonstração. O gerenciador atual/templates são base, não esse app pronto. Outros sistemas exigem distribuição/validação próprias.
 
 Credenciais de assinatura/notarização e infraestrutura de build são pré-requisitos externos do artefato Mac confiável. Se faltarem, continuar implementação e testes independentes, mas registrar distribuição local pendente. Não substituir o aceite em Mac limpo por instruções para ignorar a proteção do sistema.
 
 **iPhone:** começar pelo navegador/tela inicial, com seleção de arquivos, reconexão e indisponibilidade compreensível. App nativo só quando houver necessidade comprovada de recursos como compartilhar arquivos/notificações. Serviço permanente local no iPhone e sincronização offline ficam fora deste piloto. Não anunciar PWA, launcher ou apps como já entregues.
 
-O caminho diário dispensa Terminal; operar um servidor próprio ainda exige instalação inicial e responsabilidade operacional. Se depender do fundador para cada participante, esse aceite falhou. Hospedagem opcional futura não vira infraestrutura obrigatória nem requisito para importar.
+O contrato da demo dispensa Terminal na instalação suportada e no uso diário. Operar servidor próprio exige endereço, credenciais/permissões e responsabilidade operacional, explicados no assistente. Se depender do fundador ou de comandos no percurso oferecido, o aceite independente falhou. Hospedagem opcional futura não vira infraestrutura obrigatória nem requisito para importar.
 
 O recrutamento pergunta a preferência de instalação antes de orientar. Registrar resultados por modalidade; sucesso no servidor não fecha aceite local e vice-versa. Um participante local sem necessidade de iPhone/remoto não deve preparar domínio, VPN ou servidor. O acesso do iPhone a uma Mia no Mac tem uma exigência de rede/disponibilidade adicional, que deve ser escolhida e explicada, não escondida no onboarding.
 
@@ -85,7 +85,7 @@ O recrutamento pergunta a preferência de instalação antes de orientar. Regist
 
 **Chegar → trazer contexto → conferir cobertura → começar a usar → confirmar o que é atual → Hoje.**
 
-1. **Minha Mia:** conectar à instalação existente ou instalar no destino escolhido. Mostrar onde os dados ficam; criar o acesso do proprietário nesta instalação. Nome de área, projeto, API e preços não bloqueiam a entrada.
+1. **Minha Mia:** dentro do app Mac, escolher Neste Mac, No meu servidor ou Conectar à minha Mia. Preparar/conferir o destino real e mostrar onde os dados ficam; criar acesso privado ou entrar. Nome de área, projeto, API e preços não bloqueiam a entrada. O convite libera a distribuição oficial, não o contexto do fundador.
 2. **De onde vem seu trabalho?** Escolher várias origens: Obsidian/pasta Markdown, arquivos avulsos, exportação ChatGPT, exportação Claude, arquivos do Drive/outros serviços. Cada origem informa o que aceita e o que ainda não suporta. Sem pedir login da plataforma apenas para importar um export.
 3. **Conferir o material:** inventário na instalação escolhida. Mostrar árvore/grupos, tipos, datas disponíveis, volume, conversas/notas reconhecidas, ignorados, conflitos e erros. Seleção por pasta, grupo ou intervalo, com exceções e prévia buscável. Nenhum checkbox obrigatório por nota. Não pedir ao usuário que divida um vault para vencer um limite do produto.
 4. **Autorizar a biblioteca:** a pessoa confirma o conjunto que a Mia pode importar e consultar. Guardar proveniência; não alterar originais nem executar plugins, macros, links ou instruções em arquivos. Envio ao modelo continua uma autorização distinta.
@@ -161,20 +161,20 @@ Comparar gasto, qualidade e esforço com as assinaturas que participantes de fat
 
 ## Ordem de execução que altera o próximo ciclo
 
-Preservar M0–M5 e sua evidência, mas deixar de usar uma sequência rígida M2 → M3 → M4 como critério de sucesso. M3 (migração/primeiro valor) e M4 (serviço/acesso) bloqueiam juntos o novo piloto.
+Preservar M0–M5 e a evidência E1–E6 abaixo. Para a próxima distribuição, a sequência executável é D0–D8 de [ROADMAP.md](ROADMAP.md): o aplicativo, a instalação guiada, a primeira utilidade e a atualização integrada bloqueiam juntos a rodada. Estes contratos E descrevem capacidades, não uma autorização para continuar distribuindo o percurso administrativo anterior.
 
 | Entrega | Escopo | Gate para avançar |
 | --- | --- | --- |
 | E1 — Jornada e mensagem | Protótipo da migração até Hoje, nova taxonomia, localização dos dados, corpus de aceitação autorizado/sintético | Usuário identifica seu primeiro resultado e entende o que foi transferido, o que falta e onde fica; nenhuma capacidade planejada se apresenta como pronta |
-| E2 — Entrar sem Terminal diário | Dois caminhos: Linux com serviço/login/HTTPS e Mac local com instalador/launcher/runtime; diagnóstico, atualização/recuperação e mesma UI móvel | Fechar SSH/Terminal não perde serviço/contexto; reinício Linux e login/suspensão Mac validados separadamente; acesso entre dispositivos somente quando escolhido e comprovado |
+| E2 — Entrar pelo app | Mac com janela/runtime e instalação local; servidor por assistente/conexão gerida; diagnóstico, atualização e recuperação | Instalar sem comandos, reabrir/reconectar, serviço/contexto persistentes; login/suspensão Mac e boot Linux separados; iPhone/HTTPS somente se escolhidos |
 | E3 — Migrar em escala | Jobs/transferência retomáveis, revisão agrupada, Obsidian/Markdown e adaptadores de exports, contagens/proveniência | Vault representativo passa sem dividir ou selecionar nota por nota; interrupção/repetição/cancelamento seguros, limites medidos |
 | E4 — Retomar com contexto | Índice por trechos, busca avaliada, threads, foco/projetos confirmados e Hoje ligado a fontes | Primeira pergunta útil e decisão/pendência localizáveis; cobertura parcial/idade/lacunas visíveis; nenhum efeito sem revisão |
-| E5 — Manter contexto e ampliar entrada | Reimportação incremental; conector Drive de leitura quando credenciais/escopo existirem; conveniências de clientes além do launcher básico | Alteração/remoção/conflito controlados, revogação efetiva, artefatos distribuídos e operação real conferidos |
-| E6 — Piloto independente | 2–3 pessoas, fontes próprias, instalação/acesso sem fundador, orçamento/qualidade e backup externo | Primeiro valor real, entendimento e continuidade; somente então decidir release, apps adicionais e alegações de economia |
+| E5 — Manter contexto e ampliar entrada | Reimportação incremental; Drive de leitura opcional; conveniências depois do app básico | Alteração/remoção/conflito e revogação controlados; origem e operação reais conferidas |
+| E6 — Piloto independente | 2–3 convidados, app/canal preparado, fontes próprias, instalação/acesso/atualização sem fundador e backup externo | Primeiro valor, entendimento, continuidade e recuperação; decidir próxima atualização sem extrapolar economia |
 
-E2 e E3 podem avançar em paralelo depois do desenho E1; E4 exige grupos autorizados úteis, não todo conector futuro. Adaptadores de arquivos e exports entram no núcleo da migração. O launcher/instalador local é gate E2; Drive vivo tem gate E5. Nenhum é apresentado como já suportado. iPhone nativo e sync offline não entram para compensar falhas de onboarding.
+E2/E3 podem avançar em paralelo após o desenho; E4 exige grupos autorizados úteis, não todo conector futuro. Na demonstração, o app com instalador local é gate E2 e também exige atualização assinada D6. Drive vivo mantém gate posterior E5. iPhone nativo/sync offline não entram para compensar falhas de onboarding.
 
-E6 pode começar após o núcleo E2–E4 usando arquivos/exports suportados. Não bloquear aprendizado independente pelo OAuth recorrente do Drive ou recursos adicionais E5; registrar esse escopo e a preferência real do participante. Um piloto exclusivamente remoto não fecha aceite local: sem participante/artefato local, ele continua explicitamente pendente.
+E6 começa após D7, usando arquivos/exports suportados e modalidades aprovadas. OAuth recorrente/recursos E5 não bloqueiam a rodada; registrar escopo e preferência real. Um piloto remoto não fecha aceite local, nem o inverso.
 
 ## Critérios de aceitação e revisão
 
@@ -184,8 +184,8 @@ E6 pode começar após o núcleo E2–E4 usando arquivos/exports suportados. Nã
 - Exports ChatGPT/Claude escolhidos preservam autoria/papéis/datas disponíveis e relatam perdas. Compatibilidade específica é registrada por versão/formato, sem generalizar a todas as plataformas.
 - Recuperação de fato/decisão em trecho não inicial, entre pastas, com sinônimos, fontes antigas/conflitantes e ausência de resposta é avaliada separadamente da importação. Fonte aberta sustenta a resposta; a Mia admite lacuna.
 - Hoje oferece retomada ligada ao foco e às fontes, mesmo com zero tarefas/IA. Sugestões não viram tarefas, perfil ou urgência automaticamente; perfis e envio externo têm consentimento próprio.
-- Mac e iPhone acessam a mesma instalação Linux após fechar Terminal e reiniciar o serviço/servidor. HTTPS/origem/sessão e backup externo/restauração são comprovados na infraestrutura escolhida; não por PID, formulário salvo ou ensaio loopback.
-- Participante local instala sem comandos, fecha Terminal, retorna após novo login/suspensão e mantém seu contexto; nunca precisa de servidor/domínio só para usar no próprio Mac. Backup/atualização/retorno são validados também no artefato local. Resultados não são generalizados entre modalidades.
+- No servidor oferecido, o app Mac instala/conecta sem Terminal externo, reconecta e mantém contexto após reinício do serviço/servidor. HTTPS no iPhone é aceite adicional quando escolhido, não requisito da demo Mac; não é comprovado por PID, formulário ou túnel. Backup externo/restauração exige evidência própria.
+- Participante local instala pelo DMG sem comandos, usa janela própria, reabre após login/suspensão e mantém contexto; não precisa de servidor/domínio. Atualização pelo app preserva fonte/conversa e recupera falha; resultado não é generalizado entre modalidades.
 - Participantes explicam onde estão os dados, o que foi importado/ignorado, o que pode chegar ao modelo e como pausar/remover. Registro de tempo até primeiro valor, ajuda, erros e custo sem copiar conteúdo privado ao repositório.
 - O proprietário refaz o onboarding redesenhado e avalia a experiência; 2–3 participantes independentes verificam instalação e primeiro valor. Nenhum marco fecha somente por suíte técnica ou mockup.
 

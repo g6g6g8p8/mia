@@ -5,7 +5,7 @@
 
 Mia é um projeto de IA pessoal para reunir notas, conversas e decisões e ajudar você a retomar o trabalho com fontes. O código é público; seus arquivos e conversas ficam na instalação que você escolhe, separados do repositório.
 
-Você pode instalar no próprio computador ou em um servidor e acessar pelo navegador. Uma instalação no servidor pode atender Mac e iPhone com o mesmo contexto; uma instalação local depende de o computador estar disponível para acesso de outros dispositivos. Modelos locais ou APIs externas são escolhas opcionais, com custos e permissões próprios. O núcleo pode importar e buscar sem IA.
+Você escolhe guardar o contexto no próprio computador ou em um servidor. A próxima entrega será a **Mia Demo: aplicativo Mac por convite**, com instalação/conexão guiadas dentro do app e atualizações que preservam a biblioteca. Esse aplicativo ainda está planejado; a alpha atual usa interface web e instalação técnica. Mac e iPhone podem acessar o mesmo backend quando a rede estiver preparada; instalação local depende do computador disponível. Modelos/APIs são opcionais, com custos/permissões próprios. Importar e buscar funcionam sem IA.
 
 ## Status
 
@@ -15,7 +15,7 @@ O novo fluxo aceita ZIP, pasta pelo navegador compatível, Markdown/texto e form
 
 Conversas persistem nesta instalação. Contexto recuperado, histórico reautorizado e foco opcional têm limites; fontes pausadas e material ainda em revisão ficam fora dos novos pedidos. Consultar toda a biblioteca não autoriza criar tarefas em uma área por inferência. Propostas e organização/personalização assistidas continuam exigindo revisão; Sobre mim e objetivo pessoal são opt-in em cada pedido.
 
-O [serviço de usuário e a migração de instalação manual](docs/INSTALL-BACKGROUND.md) permitem uso diário no navegador sem Terminal aberto após a preparação. Há código de launcher/empacotador Mac com runtime próprio, mas ainda falta artefato assinado/notarizado e aceite em Mac limpo; não é um instalador público pronto. Boot Linux e login/suspensão Mac exigem validação na máquina-alvo. Instalação local e servidor continuam escolhas distintas do participante.
+O [serviço de usuário e a migração manual](docs/INSTALL-BACKGROUND.md) permitem uso no navegador sem Terminal diário após preparação técnica. O launcher atual abre o navegador; não cumpre o novo contrato de app. [MAC-DEMO](docs/MAC-DEMO.md) e [roadmap](docs/ROADMAP.md) definem janela própria, instalador assinado/notarizado, assistente local/servidor, convites oficiais e atualização integrada. Implementação e aceites em Mac limpo/servidor permanecem pendentes.
 
 O [plano de experiência](docs/EXPERIENCE-PLAN.md) separa implementação, testes sintéticos e aceites com pessoas/fontes reais. Passar um vault sintético não demonstra compatibilidade com qualquer vault ou export nem primeiro valor sem ajuda. O código, documentação e assets próprios usam [Apache-2.0](LICENSE), conforme [NOTICE](NOTICE); dependências conservam suas licenças e dados pessoais permanecem privados. Economia e release ampla continuam pendentes.
 
@@ -48,7 +48,7 @@ A meta é custo baixo comprovado em tarefas reais:
 A primeira versão não promete valor mensal fixo. IA local também tem custo de hardware, energia e operação. APIs externas seguem as condições e preços do provedor escolhido.
 
 ## Independência
-A instalação não deve exigir uma conta do projeto, um domínio central, um serviço proprietário de hospedagem ou um provedor específico de IA.
+A instalação não deve exigir uma conta central de contexto, hospedagem proprietária ou provedor específico de IA. O convite da demo controla o download/canal oficial; depois de instalada, a biblioteca não depende do serviço de convites. Apache-2.0 permite compilar e distribuir o código público sem convite.
 
 O núcleo precisa funcionar sem IA e, após instalado, sem internet. Recursos de IA local exigem um motor e modelo compatíveis. Conectores e modelos externos precisam de rede e autorização do usuário.
 
@@ -63,8 +63,8 @@ Assinatura de um aplicativo de chat não será tratada como crédito de API.
 - Backup e restauração testados em outra máquina.
 - Ações com evidência, proveniência e prevenção de duplicação.
 
-## Instalação
-O alvo inicial é Ubuntu em servidor ou computador pessoal. Veja [Instalação no Ubuntu](docs/INSTALL-UBUNTU.md).
+## Instalação técnica atual
+Os passos abaixo são administrativos, para desenvolvimento/suporte da alpha. O percurso dos convidados será o aplicativo descrito em [MAC-DEMO](docs/MAC-DEMO.md), quando seu artefato estiver aprovado. Para a instalação técnica Ubuntu atual, veja [Instalação no Ubuntu](docs/INSTALL-UBUNTU.md).
 
 ```bash
 cp .env.example .env
@@ -78,7 +78,8 @@ A [operação nativa gerenciada](docs/OPERATIONS.md) oferece versões separadas,
 Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e a escolha aplicada ficam no histórico/exportação; repetir confirmação não cria outra tarefa.
 
 ## Documentação
-- [Roadmap até a instalação limpa e o piloto independente](docs/ROADMAP.md)
+- [Contrato da Mia Demo — aplicativo Mac por convite](docs/MAC-DEMO.md)
+- [Roadmap da demonstração e próximas atualizações](docs/ROADMAP.md)
 - [Roteiro de limpeza e instalação do zero](docs/CLEAN-INSTALL.md)
 - [Plano de produto e execução](docs/PLAN.md)
 - [Contrato do harness](docs/HARNESS.md)

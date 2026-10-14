@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "pending",
   "participant_code": null,
   "consent_to_share_minimized_results": null,
@@ -69,7 +69,16 @@
     "iphone_real_https_access": "not_run",
     "external_backup_available": "not_run",
     "backup_restore_in_separate_install": "not_run",
-    "update_and_recovery": "not_run"
+    "update_and_recovery": "not_run",
+    "local_setup_inside_app": "not_run",
+    "remote_setup_inside_app": "not_run",
+    "remote_host_identity_confirmed": "not_run",
+    "remote_reconnection_after_app_restart": "not_run",
+    "sessions_isolated_between_installations": "not_run",
+    "app_signed_update_preserves_context": "not_run",
+    "client_backend_compatibility_understood": "not_run",
+    "interrupted_app_update_recovery": "not_run",
+    "library_available_without_invite_service": "not_run"
   },
   "assistance": {
     "task_ids_requiring_help": [],
@@ -96,5 +105,15 @@
     "would_continue": null,
     "retest_required_task_ids": [],
     "release_decision": "pending"
+  },
+  "delivery": {
+    "channel": null,
+    "app_version": null,
+    "invite_redemption": "not_run",
+    "official_signed_dmg": "not_run",
+    "supported_os_architecture_confirmed": null,
+    "invite_to_first_useful_result_minutes": null,
+    "installed_without_command_line": null,
+    "app_window_instead_of_external_browser": "not_run"
   }
 }
