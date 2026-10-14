@@ -13,6 +13,7 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import platform
+import plistlib
 import re
 import shutil
 import subprocess
@@ -26,7 +27,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts.package_macos import inventory
+from scripts.package_macos import inventory, macho_architecture
 from mia.operations import BOOTSTRAP, OperationError
 
 
@@ -325,30 +326,46 @@ def sign_app(app: Path, identity: str) -> dict:
     identities = subprocess.check_output(["security", "find-identity", "-v", "-p", "codesigning"], text=True)
     if '"' + identity + '"' not in identities:
         raise OperationError("Identidade Developer ID não está disponível no Keychain")
+    resources = app / "Contents/Resources"
+    # The private venv loads native extensions from verified offline PyPI
+    # wheels. They are installed on the participant's machine and cannot be
+    # Developer-ID signed there. Relax library validation only for the bundled
+    # Python executable, retaining hardened runtime for the app and helpers.
+    runtime = (resources / "runtime").resolve(strict=True)
+    python = (runtime / "bin/python3").resolve(strict=True)
+    if not python.is_relative_to(runtime):
+        raise OperationError("Python incluído aponta para fora do runtime")
+    macho_architecture(python)
     magic = {b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xfe\xed\xfa\xce", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca", b"\xca\xfe\xba\xbf", b"\xbf\xba\xfe\xca"}
-    for file in sorted(app.rglob("*"), key=lambda path: len(path.parts), reverse=True):
-        if file.is_symlink() or not file.is_file():
-            continue
-        with file.open("rb") as stream:
-            native = stream.read(4) in magic
-        if native:
-            subprocess.run(["codesign", "--force", "--options", "runtime", "--timestamp", "--preserve-metadata=entitlements", "--sign", identity, str(file)], check=True)
+    with tempfile.TemporaryDirectory(prefix="mia-python-code-signing-") as stage:
+        entitlements = Path(stage) / "python-entitlements.plist"
+        entitlements.write_bytes(plistlib.dumps({"com.apple.security.cs.disable-library-validation": True}))
+        for file in sorted(app.rglob("*"), key=lambda path: len(path.parts), reverse=True):
+            if file.is_symlink() or not file.is_file():
+                continue
+            with file.open("rb") as stream:
+                native = stream.read(4) in magic
+            if native:
+                metadata = ["--entitlements", str(entitlements)] if file.resolve() == python else ["--preserve-metadata=entitlements"]
+                subprocess.run(["codesign", "--force", "--options", "runtime", "--timestamp", *metadata, "--sign", identity, str(file)], check=True)
     for folder in sorted(app.rglob("*"), key=lambda path: len(path.parts), reverse=True):
         if folder.is_symlink() or not folder.is_dir() or folder.suffix not in {".framework", ".app", ".xpc"}:
             continue
         subprocess.run(["codesign", "--force", "--options", "runtime", "--timestamp", "--preserve-metadata=entitlements", "--sign", identity, str(folder)], check=True)
-    resources = app / "Contents/Resources"
     report_path = resources / "build-report.json"
     report = json.loads(report_path.read_text())
     original = report["runtime_provenance"]["files"]
     report["runtime_provenance"]["source_archive_files"] = original
     report["runtime_provenance"]["files"] = inventory(resources / "runtime")
     report["runtime_provenance"]["content_transformation"] = "Developer ID codesign of native runtime executables/libraries"
+    report["runtime_provenance"]["python_entitlements"] = {"com.apple.security.cs.disable-library-validation": True}
     report["signing_requested"] = True
     report["signed"] = False  # Assembly record; external verified receipt is authoritative.
     report["notarized"] = False
     report_path.unlink()
     report["files"] = inventory(app)
+    report["files_scope"] = "assembly after nested signatures, before outer application signature; excludes this report"
+    report["final_bundle_inventory"] = "external DMG verification receipt; outer signing changes the main executable and resource seal"
     report_path.write_text(json.dumps(report, indent=2))
     subprocess.run(["codesign", "--force", "--options", "runtime", "--timestamp", "--sign", identity, str(app)], check=True)
     subprocess.run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", str(app)], check=True)

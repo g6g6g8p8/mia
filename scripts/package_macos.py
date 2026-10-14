@@ -27,6 +27,29 @@ sys.path.insert(0, str(REPOSITORY))
 from mia.operations import OperationError
 
 
+def bundle_version_metadata(version: str) -> dict[str, str]:
+    """Convert supported backend releases to Apple's bundle version grammar.
+
+    CFBundleShortVersionString uses three numeric release components.
+    CFBundleVersion allows a/b/fc prereleases with build numbers 1..255;
+    PEP 440's rc stage therefore becomes Apple's final-candidate fc stage.
+    Numeric component limits follow Apple's Info Property List reference:
+    https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+    """
+    match = re.fullmatch(r"([0-9]{1,4}(?:\.[0-9]{1,2}){0,2})(?:(a|b|rc)([0-9]{1,3}))?", version) if isinstance(version, str) else None
+    if match is None:
+        raise OperationError("Versão do projeto não pode ser representada nos metadados Apple; use até três componentes numéricos e estágio a/b/rc suportado")
+    components = [str(int(value)) for value in match[1].split(".")]
+    short_version = ".".join(components + ["0"] * (3 - len(components)))
+    bundle_version = short_version
+    if match[2] is not None:
+        count = int(match[3])
+        if not 1 <= count <= 255:
+            raise OperationError("Número de pré-lançamento Apple deve estar entre 1 e 255")
+        bundle_version += ("fc" if match[2] == "rc" else match[2]) + str(count)
+    return {"CFBundleShortVersionString": short_version, "CFBundleVersion": bundle_version, "MiaBackendVersion": version}
+
+
 def inventory(directory: Path) -> dict:
     result = {}
     if directory.is_symlink() or not directory.is_dir():
@@ -172,6 +195,11 @@ def macho_architecture(binary: Path, *, maximum_macos: int = 13) -> str:
 
 
 def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path, wheelhouse_manifest: Path, source: Path = REPOSITORY, *, native_binary: Path | None = None, release_channel: Path | None = None, sparkle_framework: Path | None = None, remote_artifact: Path | None = None) -> dict:
+    version_path = source / "pyproject.toml"
+    if version_path.is_symlink() or not version_path.is_file():
+        raise OperationError("Versão do projeto exige pyproject.toml regular na fonte revisada")
+    version = tomllib.loads(version_path.read_text()).get("project", {}).get("version")
+    version_metadata = bundle_version_metadata(version)
     runtime_data = verify(runtime, runtime_manifest, runtime=True)
     wheel_data = verify(wheelhouse, wheelhouse_manifest, runtime=False)
     if wheel_data.get("architecture") != runtime_data["architecture"] or wheel_data.get("python_version") != runtime_data["python_version"] or wheel_data.get("platform") != "macos":
@@ -215,7 +243,7 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
         public = resources / "source"
         copy_public_source(source, public)
         if remote_artifact is not None:
-            if remote_data.get("version") != tomllib.loads((source / "pyproject.toml").read_text())["project"]["version"]:
+            if remote_data.get("version") != version:
                 raise OperationError("Companheiro remoto difere da versão do aplicativo")
             if inventory(remote_artifact / "payload/source") != inventory(public):
                 raise OperationError("Fonte do companheiro remoto difere do código revisado do aplicativo")
@@ -226,7 +254,6 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
             frameworks.mkdir()
             shutil.copytree(sparkle_framework, frameworks / "Sparkle.framework", symlinks=True)
         entry = executable / "Mia"
-        version = tomllib.loads((source / "pyproject.toml").read_text())["project"]["version"]
         if native_binary is not None:
             bridge = source / "scripts/desktop_bridge.py"
             if bridge.is_symlink() or not bridge.is_file():
@@ -247,7 +274,7 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
             channel = json.loads(release_channel.read_text())
             validate_channel(channel)
             (resources / "release-channel.json").write_text(json.dumps(channel, indent=2))
-        info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", "CFBundleVersion": version, "CFBundleShortVersionString": version.split("a")[0], "MiaBackendVersion": version, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
+        info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", **version_metadata, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
         if channel.get("appcast_url") and channel.get("sparkle_public_key"):
             if sparkle_framework is None:
                 raise OperationError("Canal de aplicativo exige Sparkle framework revisado")

@@ -7,6 +7,7 @@ from pathlib import Path
 import plistlib
 import shutil
 import struct
+import subprocess
 import tarfile
 
 import pytest
@@ -258,3 +259,70 @@ def test_remote_companion_must_ship_the_same_reviewed_source_even_at_the_same_ve
     else:
         package_macos.build(output, *inputs, native_binary=binary, remote_artifact=remote)
         assert package_macos.inventory(output / "Contents/Resources/source") == package_macos.inventory(output / "Contents/Resources/remote-runtime/payload/source")
+
+
+def signing_fixture(tmp_path, monkeypatch):
+    inputs = fixtures(tmp_path)
+    thin_macho(inputs[0] / "bin/python3")
+    manifest = json.loads(inputs[1].read_text())
+    manifest["files"] = package_macos.inventory(inputs[0])
+    inputs[1].write_text(json.dumps(manifest))
+    app = tmp_path / "Mia.app"
+    package_macos.build(app, *inputs, native_binary=thin_macho(tmp_path / "Mia"))
+    identity = "Developer ID Application: Synthetic test identity (FIXTURE)"
+    monkeypatch.setattr(prepare_macos_artifacts.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(prepare_macos_artifacts.subprocess, "check_output", lambda *args, **kwargs: '1) "' + identity + '"\n')
+    return app, identity
+
+
+def test_hardened_signing_relaxes_library_validation_only_for_python_and_retains_exact_provenance(tmp_path, monkeypatch):
+    app, identity = signing_fixture(tmp_path, monkeypatch)
+    resources = app / "Contents/Resources"
+    original_runtime = package_macos.inventory(resources / "runtime")
+    calls, grants = [], []
+    def codesign(command, **kwargs):
+        assert command[0] == "codesign" and kwargs.get("check") is True
+        calls.append(command)
+        if "--verify" in command:
+            return
+        target = Path(command[-1])
+        assert command[command.index("--options") + 1] == "runtime"
+        if "--entitlements" in command:
+            grants.append((target.resolve(), plistlib.loads(Path(command[command.index("--entitlements") + 1]).read_bytes())))
+        if target.is_file():
+            target.write_bytes(target.read_bytes() + b"synthetic nested signature; never executable")
+        elif target == app:
+            main = app / "Contents/MacOS/Mia"
+            main.write_bytes(main.read_bytes() + b"synthetic outer signature; never executable")
+            seal = app / "Contents/_CodeSignature"
+            seal.mkdir()
+            (seal / "CodeResources").write_bytes(b"synthetic resource seal")
+    monkeypatch.setattr(prepare_macos_artifacts.subprocess, "run", codesign)
+    result = prepare_macos_artifacts.sign_app(app, identity)
+    assert grants == [((resources / "runtime/bin/python3").resolve(), {"com.apple.security.cs.disable-library-validation": True})]
+    assert calls[-1][1:4] == ["--verify", "--deep", "--strict"]
+    report = json.loads((resources / "build-report.json").read_text())
+    assert report["runtime_provenance"]["source_archive_files"] == original_runtime
+    assert report["runtime_provenance"]["files"] == package_macos.inventory(resources / "runtime")
+    assert report["runtime_provenance"]["files"] != original_runtime
+    for folder, key in (("source", "Contents/Resources/source/"), ("wheelhouse", "Contents/Resources/wheelhouse/")):
+        assert {name.removeprefix(key): value for name, value in report["files"].items() if name.startswith(key)} == package_macos.inventory(resources / folder)
+    assert "before outer application signature" in report["files_scope"]
+    assert report["files"]["Contents/MacOS/Mia"] != package_macos.inventory(app)["Contents/MacOS/Mia"]
+    assert "external DMG verification receipt" in report["final_bundle_inventory"]
+    assert result["signed"] and not result["notarized"]
+    assert not report["signed"] and not report["notarized"]
+
+
+def test_native_signing_failure_remains_fatal_before_outer_bundle_receipt(tmp_path, monkeypatch):
+    app, identity = signing_fixture(tmp_path, monkeypatch)
+    calls = []
+    def failing_signer(command, **kwargs):
+        calls.append(command)
+        raise subprocess.CalledProcessError(42, command)
+    monkeypatch.setattr(prepare_macos_artifacts.subprocess, "run", failing_signer)
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        prepare_macos_artifacts.sign_app(app, identity)
+    assert error.value.returncode == 42
+    assert len(calls) == 1
+    assert not json.loads((app / "Contents/Resources/build-report.json").read_text())["signed"]

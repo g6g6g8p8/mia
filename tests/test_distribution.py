@@ -2,11 +2,15 @@
 import importlib.util
 import json
 from pathlib import Path
+import plistlib
 import shutil
 import tarfile
 import zipfile
 
 import pytest
+
+from mia.operations import OperationError
+from scripts import package_macos
 
 
 spec = importlib.util.spec_from_file_location(
@@ -149,3 +153,67 @@ def test_sdist_never_follows_links(tmp_path):
         sdist.addfile(link)
     with pytest.raises(ValueError, match="Nonregular member"):
         distribution.archive_files(archive)
+
+
+@pytest.mark.parametrize("backend,short,bundle", [
+    ("0.2.0a13", "0.2.0", "0.2.0a13"),
+    ("1.2.3b1", "1.2.3", "1.2.3b1"),
+    ("1.2.3rc255", "1.2.3", "1.2.3fc255"),
+    ("1.2.3", "1.2.3", "1.2.3"),
+    ("1", "1.0.0", "1.0.0"),
+    ("1.2rc1", "1.2.0", "1.2.0fc1"),
+    ("9999.99.99a255", "9999.99.99", "9999.99.99a255"),
+])
+def test_backend_release_has_valid_apple_versions_and_retains_original(backend, short, bundle):
+    assert package_macos.bundle_version_metadata(backend) == {
+        "CFBundleShortVersionString": short,
+        "CFBundleVersion": bundle,
+        "MiaBackendVersion": backend,
+    }
+
+
+@pytest.mark.parametrize("backend", [
+    "1.2.3a0", "1.2.3b256", "1.2.3rc999", "1.2.3rc", "1.2.3fc1",
+    "1.2.3.dev1", "1.2.3.post1", "1.2.3+local", "1!1.2.3", "1.2.3preview1",
+    "1.2.3.4", "10000.1.1", "1.100.1", "1.1.100", "１.2.3", "", None,
+])
+def test_unsupported_apple_version_metadata_is_rejected(backend):
+    with pytest.raises(OperationError):
+        package_macos.bundle_version_metadata(backend)
+
+
+def test_invalid_apple_version_is_refused_before_any_artifact_is_written(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "pyproject.toml").write_text('[project]\nversion="1.2.3.post1"\n')
+    output = tmp_path / "Mia.app"
+    monkeypatch.setattr(package_macos, "verify", lambda *_args, **_kwargs: pytest.fail("invalid release must be rejected before reading packaging inputs"))
+    with pytest.raises(OperationError, match="metadados Apple"):
+        package_macos.build(output, *(tmp_path / name for name in ("runtime", "runtime.json", "wheelhouse", "wheelhouse.json")), source=source)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("backend,bundle", [("0.2.0a13", "0.2.0a13"), ("0.2.0b1", "0.2.0b1"), ("0.2.0rc1", "0.2.0fc1"), ("0.2.0", "0.2.0")])
+def test_packaged_info_plist_uses_apple_versions_without_changing_backend_version(tmp_path, backend, bundle):
+    # Synthetic bytes exercise metadata assembly, never runtime execution or
+    # installation; this test does not claim the fixture is a real Mac build.
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "pyproject.toml").write_text(f'[project]\nversion="{backend}"\n')
+    runtime = tmp_path / "runtime"
+    (runtime / "bin").mkdir(parents=True)
+    (runtime / "bin/python3").write_bytes(b"synthetic; never executed")
+    (runtime / "bin/python3").chmod(0o755)
+    wheels = tmp_path / "wheelhouse"
+    wheels.mkdir()
+    (wheels / "fixture-1.0-py3-none-any.whl").write_bytes(b"synthetic; never installed")
+    runtime_manifest, wheel_manifest = tmp_path / "runtime.json", tmp_path / "wheelhouse.json"
+    metadata = {"format": 1, "platform": "macos", "architecture": "arm64", "python_version": "3.12"}
+    runtime_manifest.write_text(json.dumps({**metadata, "source_url": "https://github.com/astral-sh/python-build-standalone/releases/download/reviewed/runtime.tar.gz", "files": package_macos.inventory(runtime)}))
+    wheel_manifest.write_text(json.dumps({**metadata, "source_url": "https://pypi.org/simple/", "files": package_macos.inventory(wheels)}))
+    output = tmp_path / "Mia.app"
+    result = package_macos.build(output, runtime, runtime_manifest, wheels, wheel_manifest, source=source)
+    info = plistlib.loads((output / "Contents/Info.plist").read_bytes())
+    assert info["CFBundleShortVersionString"] == "0.2.0"
+    assert info["CFBundleVersion"] == bundle
+    assert info["MiaBackendVersion"] == result["app_version"] == backend

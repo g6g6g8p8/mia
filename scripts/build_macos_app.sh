@@ -136,10 +136,12 @@ if [ -n "$task_channel" ]; then task_args+=(--release-channel "$task_channel"); 
 task_stage='assembling verified native app bundle'
 python3 "$task_repo/scripts/package_macos.py" "${task_args[@]}"
 
-# Perform an actual offline backend install/start/health/stop on this Mac using
-# synthetic empty data. No LaunchAgent is activated by the build pipeline.
-task_stage='testing offline backend and private first-owner setup'
-python3 - "$task_repo" "$task_output/Mia.app" <<'PY'
+# Exercise the final runtime after any Developer ID signing. Native extensions
+# installed from verified wheels must load under the actual hardened runtime.
+# Synthetic empty data only; no LaunchAgent is activated by the build pipeline.
+test_backend_runtime() {
+  task_stage='testing final runtime and private first-owner setup'
+  python3 - "$task_repo" "$task_output/Mia.app" <<'PY'
 from pathlib import Path
 import json, secrets, socket, sys, tempfile, urllib.error, urllib.request
 sys.path.insert(0, sys.argv[1])
@@ -187,6 +189,7 @@ with tempfile.TemporaryDirectory(prefix='mia-mac-build-smoke-') as stage:
 assert inventory(resources / 'runtime') == runtime_before, 'Bundled runtime mutated during native offline smoke'
 print('PASS: actual native-Mac offline backend install/health/private first-owner setup; graphical/OS lifecycle acceptance remains separate')
 PY
+}
 
 task_version=$(python3 - "$task_repo/pyproject.toml" <<'PY'
 import sys,tomllib
@@ -201,6 +204,7 @@ else
   task_stage='signing native app bundle'
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --sign-app "$task_output/Mia.app" --sign-identity "$task_identity"
 fi
+test_backend_runtime
 task_stage='staging disk-image contents'
 echo 'Mia Mac build: staging disk-image contents.'
 mkdir "$task_output/dmg-root"
@@ -209,8 +213,6 @@ ln -s /Applications "$task_output/dmg-root/Applications"
 task_stage='creating compressed disk image'
 echo 'Mia Mac build: creating compressed disk image.'
 hdiutil create -volname Mia -srcfolder "$task_output/dmg-root" -format UDZO -o "$task_output/$task_name.dmg"
-task_stage='verifying disk-image integrity'
-hdiutil verify "$task_output/$task_name.dmg"
 if [ "$task_unsigned" = false ]; then
   task_stage='signing and notarizing disk image'
   codesign --force --timestamp --sign "$task_identity" "$task_output/$task_name.dmg"
@@ -224,13 +226,20 @@ PY
   xcrun stapler validate "$task_output/$task_name.dmg"
   spctl --assess --type open --context context:primary-signature --verbose "$task_output/$task_name.dmg"
 fi
+task_stage='verifying final disk-image integrity'
+hdiutil verify "$task_output/$task_name.dmg"
 task_stage='writing artifact digest and verification receipt'
-python3 - "$task_output/$task_name.dmg" "$task_unsigned" <<'PY'
+python3 - "$task_output/$task_name.dmg" "$task_unsigned" "$task_repo" "$task_output/Mia.app" "$task_output/dmg-root/Mia.app" <<'PY'
 from pathlib import Path
 import hashlib,json,sys
+sys.path.insert(0,sys.argv[3])
+from scripts.package_macos import inventory
 p=Path(sys.argv[1])
 with p.open('rb') as f: sha=hashlib.file_digest(f,'sha256').hexdigest()
+app_files=inventory(Path(sys.argv[4]))
+assert app_files==inventory(Path(sys.argv[5])), 'Staged app must match the final tested app bytes'
+app_digest=hashlib.sha256(json.dumps(app_files,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 Path(str(p)+'.sha256').write_text(sha+'  '+p.name+'\n')
-Path(str(p)+'.verification.json').write_text(json.dumps({'artifact':p.name,'sha256':sha,'disk_image_integrity_verified':True,'signed':sys.argv[2]=='false','notarized':sys.argv[2]=='false','native_backend_smoke_passed':True,'clean_mac_ui_acceptance':False,'consumer_distribution_ready':False},indent=2))
+Path(str(p)+'.verification.json').write_text(json.dumps({'artifact':p.name,'sha256':sha,'disk_image_integrity_verified':True,'signed':sys.argv[2]=='false','notarized':sys.argv[2]=='false','native_backend_smoke_passed':True,'native_backend_smoke_scope':'final app runtime after code signing' if sys.argv[2]=='false' else 'unsigned development app runtime','app_files':app_files,'app_inventory_sha256':app_digest,'clean_mac_ui_acceptance':False,'consumer_distribution_ready':False},indent=2))
 PY
 echo "Built: $task_output/$task_name.dmg"
