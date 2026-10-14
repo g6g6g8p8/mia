@@ -72,14 +72,22 @@ def download(url: str, destination: Path, expected: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def extract_runtime(archive: Path, output: Path) -> None:
-    """Even trusted archives must have bounded, safe filesystem members."""
+def extract_runtime(archive: Path, output: Path, *, omit_linux_terminfo: bool = False) -> list[dict]:
+    """Extract bounded upstream bytes, recording the one reviewed Linux trim.
+
+    Mia has no interactive terminal interface. The optional Linux terminfo
+    database contains case-distinct aliases that become self-referential links
+    on ordinary Mac volumes. Omit that exact directory *before* extraction on
+    every host; all Python executables/libraries and license notices remain.
+    Verification repeats this same transform against the pinned original tar.
+    """
     if output.exists() or output.is_symlink():
         raise OperationError("Runtime exige diretório novo")
     stage = output.with_name(output.name + "-extracting")
     if stage.exists() or stage.is_symlink():
         raise OperationError("Extração interrompida existe")
     stage.mkdir()
+    transformations = []
     try:
         with tarfile.open(archive, "r:gz") as stream:
             entries = stream.getmembers()
@@ -93,11 +101,34 @@ def extract_runtime(archive: Path, output: Path) -> None:
                 seen.add(member.name)
                 if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
                     raise OperationError("Arquivo especial no runtime")
+            if omit_linux_terminfo:
+                excluded, retained = {}, []
+                for member in entries:
+                    if member.name == "python/share/terminfo" or member.name.startswith("python/share/terminfo/"):
+                        kind = "file" if member.isfile() else "directory" if member.isdir() else "symlink" if member.issym() else "hardlink"
+                        item = {"size": member.size, "mode": member.mode, "kind": kind, "linkname": member.linkname}
+                        if member.isfile():
+                            with stream.extractfile(member) as incoming:
+                                item["sha256"] = hashlib.file_digest(incoming, "sha256").hexdigest()
+                        excluded[member.name] = item
+                    else:
+                        retained.append(member)
+                if excluded:
+                    transformations.append({
+                        "kind": "omit_optional_linux_terminal_database",
+                        "archive_prefix": "python/share/terminfo",
+                        "reason": "Mia exposes no terminal interface; Linux terminal aliases collide on case-insensitive Mac volumes",
+                        "excluded_member_count": len(excluded),
+                        "excluded_file_bytes": sum(item["size"] for item in excluded.values() if item["kind"] == "file"),
+                        "excluded_member_index_sha256": hashlib.sha256(json.dumps(excluded, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+                    })
+                entries = retained
             stream.extractall(stage, members=entries, filter="data")
         (stage / "python").rename(output)
         inventory(output)  # Reject any escaping/dangling links before execution.
     finally:
         shutil.rmtree(stage)
+    return transformations
 
 
 def preserve_runtime_notices(archive: Path, runtime: Path, triple: str, *, supplemental: list[tuple[dict, Path]] | None = None) -> dict:
@@ -220,7 +251,7 @@ def verify_prepared(runtime: Path, wheelhouse: Path, target_platform: str, archi
         supplements.append((entry, path))
     with tempfile.TemporaryDirectory(prefix="mia-runtime-origin-verification-") as stage:
         expected_runtime = Path(stage) / "runtime"
-        extract_runtime(cache / target["archive"], expected_runtime)
+        extract_runtime(cache / target["archive"], expected_runtime, omit_linux_terminfo=target_platform == "linux")
         preserve_runtime_notices(cache / target["license_archive"], expected_runtime, target["triple"], supplemental=supplements)
         if inventory(runtime) != inventory(expected_runtime):
             raise OperationError("Runtime preparado não corresponde aos bytes oficiais fixados")
@@ -248,7 +279,7 @@ def prepare(output: Path, target_platform: str, architecture: str, cache: Path, 
         download(entry["source_url"], destination, entry["archive_sha256"])
         supplements.append((entry, destination))
     runtime = output / "runtime"
-    extract_runtime(cache / target["archive"], runtime)
+    transformations = extract_runtime(cache / target["archive"], runtime, omit_linux_terminfo=target_platform == "linux")
     notices = preserve_runtime_notices(cache / target["license_archive"], runtime, target["triple"], supplemental=supplements)
     if target_platform == "macos" and tuple(map(int, notices["minimum_macos"].split("."))) > (13, 0):
         raise OperationError("Runtime não suporta macOS mínimo da demo")
@@ -260,7 +291,7 @@ def prepare(output: Path, target_platform: str, architecture: str, cache: Path, 
     subprocess.run([str(runtime / "bin/python3"), "-I", "-B", "-m", "pip", "download", "--only-binary=:all:", "--no-cache-dir", "--disable-pip-version-check", "--index-url", "https://pypi.org/simple/", "--dest", str(wheelhouse), "-r", str(requirement_file)], check=True)
     wheels = wheel_provenance(wheelhouse, pins)
     common = {"format": 1, "platform": target_platform, "architecture": architecture, "python_version": lock["python_version"]}
-    runtime_manifest = {**common, "source_url": base + urllib.parse.quote(target["archive"]), "archive_sha256": target["sha256"], "official_checksum_source": lock["checksum_source"], "license_archive_url": base + urllib.parse.quote(target["license_archive"]), "license_archive_sha256": target["license_archive_sha256"], "notices": notices, "files": inventory(runtime)}
+    runtime_manifest = {**common, "source_url": base + urllib.parse.quote(target["archive"]), "archive_sha256": target["sha256"], "official_checksum_source": lock["checksum_source"], "content_transformations": transformations, "license_archive_url": base + urllib.parse.quote(target["license_archive"]), "license_archive_sha256": target["license_archive_sha256"], "notices": notices, "files": inventory(runtime)}
     wheel_manifest = {**common, "source_url": "https://pypi.org/simple/", "artifacts": wheels, "files": inventory(wheelhouse)}
     (output / "runtime-manifest.json").write_text(json.dumps(runtime_manifest, indent=2))
     (output / "wheelhouse-manifest.json").write_text(json.dumps(wheel_manifest, indent=2))

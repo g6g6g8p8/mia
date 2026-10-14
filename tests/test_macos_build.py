@@ -119,6 +119,56 @@ def test_runtime_extraction_refuses_traversal_without_touching_destination(tmp_p
     assert not (tmp_path / "runtime-extracting").exists()
 
 
+def test_linux_terminal_alias_trim_happens_before_case_insensitive_extraction_and_preserves_python(tmp_path, monkeypatch):
+    archive = tmp_path / "linux-runtime.tar.gz"
+    python_bytes, terminfo_bytes = b"synthetic Python executable; never run", b"optional terminal metadata"
+    with tarfile.open(archive, "w:gz") as stream:
+        for name in ("python", "python/bin", "python/share", "python/share/terminfo", "python/share/terminfo/N", "python/share/terminfo/n"):
+            member = tarfile.TarInfo(name)
+            member.type = tarfile.DIRTYPE
+            stream.addfile(member)
+        for name, content in (("python/bin/python3", python_bytes), ("python/share/terminfo/n/ncr260vt300wpp", terminfo_bytes)):
+            member = tarfile.TarInfo(name)
+            member.size, member.mode = len(content), 0o755
+            stream.addfile(member, io.BytesIO(content))
+        alias = tarfile.TarInfo("python/share/terminfo/N/NCR260VT300WPP")
+        alias.type, alias.linkname = tarfile.SYMTYPE, "../n/ncr260vt300wpp"
+        stream.addfile(alias)
+    original_extractall = tarfile.TarFile.extractall
+    def case_insensitive_extractall(self, path, *, members, filter):
+        names = [member.name.casefold() for member in members]
+        if len(set(names)) != len(names):
+            raise OSError(62, "Too many levels of symbolic links on a case-insensitive fixture")
+        return original_extractall(self, path, members=members, filter=filter)
+    monkeypatch.setattr(tarfile.TarFile, "extractall", case_insensitive_extractall)
+    with pytest.raises(OSError, match="symbolic links"):
+        prepare_macos_artifacts.extract_runtime(archive, tmp_path / "untrimmed")
+    transformation = prepare_macos_artifacts.extract_runtime(archive, tmp_path / "normalized", omit_linux_terminfo=True)
+    assert (tmp_path / "normalized/bin/python3").read_bytes() == python_bytes
+    assert not (tmp_path / "normalized/share/terminfo").exists()
+    assert transformation[0]["archive_prefix"] == "python/share/terminfo"
+    assert transformation[0]["excluded_member_count"] == 5
+    assert transformation[0]["excluded_file_bytes"] == len(terminfo_bytes)
+    assert len(transformation[0]["excluded_member_index_sha256"]) == 64
+    # Independently extracting for origin verification yields identical bytes
+    # and the same original-member index, regardless of host case sensitivity.
+    repeated = prepare_macos_artifacts.extract_runtime(archive, tmp_path / "verification", omit_linux_terminfo=True)
+    assert repeated == transformation
+    assert package_macos.inventory(tmp_path / "verification") == package_macos.inventory(tmp_path / "normalized")
+
+
+def test_linux_optional_trim_does_not_hide_archive_traversal(tmp_path):
+    archive = tmp_path / "unsafe-terminal-path.tar.gz"
+    with tarfile.open(archive, "w:gz") as stream:
+        member = tarfile.TarInfo("python/share/terminfo/../../../../outside")
+        member.size = 7
+        stream.addfile(member, io.BytesIO(b"private"))
+    with pytest.raises(OperationError, match="Caminho"):
+        prepare_macos_artifacts.extract_runtime(archive, tmp_path / "runtime", omit_linux_terminfo=True)
+    assert not (tmp_path / "outside").exists()
+    assert not (tmp_path / "runtime").exists()
+
+
 def test_download_does_not_replace_mutated_cached_payload_or_trust_fresh_checksum(tmp_path, monkeypatch):
     artifact = tmp_path / "python.tar.gz"
     artifact.write_bytes(b"mutated cached payload")

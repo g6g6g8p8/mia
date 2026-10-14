@@ -130,6 +130,10 @@ def inventory_files(root: Path = ROOT, *, installed: bool = False) -> dict[str, 
                 declaration = re.compile(r'\.package\(url:\s*"' + re.escape(package["swift_package_url"]) + r'",\s*exact:\s*"' + re.escape(package["version"]) + r'"\)')
                 if not declaration.search(source):
                     raise ValueError("Native package declaration differs from reviewed version")
+                resolved = json.loads((package_manifest.parent / "Package.resolved").read_text())
+                matches = [pin for pin in resolved.get("pins", []) if pin.get("identity") == package["name"].lower()]
+                if len(matches) != 1 or matches[0].get("location") != package["swift_package_url"] or matches[0].get("state") != {"version": package["version"], "revision": package["source_revision"]}:
+                    raise ValueError("Native resolved dependency differs from reviewed source revision")
             for notice in package["files"]:
                 relative, content = preserved_notice(root, notice)
                 expected[relative] = content

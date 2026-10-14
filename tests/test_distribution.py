@@ -43,6 +43,23 @@ def test_current_lock_keeps_original_notice_inventory():
     assert "THIRD_PARTY_LICENSES/rust-inventory.json" in expected
 
 
+def test_native_dependency_same_version_cannot_change_reviewed_revision(tmp_path):
+    shutil.copytree(distribution.ROOT / "THIRD_PARTY_LICENSES", tmp_path / "THIRD_PARTY_LICENSES")
+    for name in ["THIRD_PARTY_NOTICES.md", "requirements.lock", "pyproject.toml", "LICENSE", "NOTICE"]:
+        shutil.copyfile(distribution.ROOT / name, tmp_path / name)
+    native = tmp_path / "macos/Mia"
+    native.mkdir(parents=True)
+    for name in ("Package.swift", "Package.resolved"):
+        shutil.copyfile(distribution.ROOT / "macos/Mia" / name, native / name)
+    distribution.inventory_files(tmp_path)
+    path = native / "Package.resolved"
+    pins = json.loads(path.read_text())
+    pins["pins"][0]["state"]["revision"] = "0" * 40
+    path.write_text(json.dumps(pins))
+    with pytest.raises(ValueError, match="resolved dependency"):
+        distribution.inventory_files(tmp_path)
+
+
 @pytest.mark.parametrize("failure", ["runtime_version", "notice_bytes", "unknown_file"])
 def test_rust_supplement_rejects_drift_and_unreviewed_files(tmp_path, failure):
     shutil.copytree(distribution.ROOT / "THIRD_PARTY_LICENSES", tmp_path / "THIRD_PARTY_LICENSES")
