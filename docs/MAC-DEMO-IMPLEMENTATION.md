@@ -18,9 +18,9 @@ A primeira entrega da atualização local mantém o runtime/bootstrap compatíve
 
 O CI nativo compila e executa 21 testes Swift em macOS 15 arm64 e Intel. Os testes incluem contratos/limites do subprocesso, origem, cookie privado e estado de aprovação/reconexão. Isso não é um teste visual de instalação em Mac limpo nem de login/suspensão.
 
-Na revisão `6d67578`, o [CI nativo](https://github.com/g6g6g8p8/mia/actions/runs/38592491512) gerou os DMGs internos arm64 e Intel e verificou sua integridade com `hdiutil verify`. O companion Linux e os dois jobs de compilação/testes também passaram. Os recibos registram o inventário final do app e conferem a cópia usada no DMG. Esses artefatos não foram assinados nem notarizados.
+Na revisão `585d2d2`, o [CI nativo](https://github.com/g6g6g8p8/mia/actions/runs/38593655406) gerou os DMGs internos arm64 e Intel e verificou sua integridade com `hdiutil verify`. O companion Linux e os dois jobs de compilação/testes também passaram. Os recibos registram o inventário final do app e conferem a cópia usada no DMG. Esses artefatos não foram assinados nem notarizados.
 
-A suíte Python passou com **508 testes** na revisão `585d2d2`, com um aviso de depreciação do Starlette. O ícone nativo reutiliza a identidade SVG existente; o pacote-fonte conserva os assets e a revisão fixada do Sparkle. O resultado dos DMGs deve ser conferido no PR/CI da revisão escolhida.
+A suíte Python passou com **528 testes** na revisão `238eaf1`, com um aviso de depreciação do Starlette. Inclui 20 casos de falha do empacotador DMG após o erro intermitente descrito abaixo. O ícone nativo reutiliza a identidade SVG existente; o pacote-fonte conserva os assets e a revisão fixada do Sparkle. O resultado dos DMGs deve ser conferido no PR/CI da revisão escolhida.
 
 O ensaio de pacotes a11 → a13 passou instalação offline, atualização com dados preservados, falha de inicialização, interrupção do journal, recuperação explícita, rollback em dados novos e encerramento abrupto do supervisor. Usou processos Linux, HTTP loopback e dados sintéticos; não certifica launchd/systemd, boot ou suspensão de um dispositivo real.
 
