@@ -65,7 +65,7 @@ public struct BridgeRunner: BridgeCalling, Sendable {
             do { try input.fileHandleForWriting.write(contentsOf: encoded) }
             catch { if process.isRunning { process.terminate() } }
         }
-        let timeout: TimeInterval = testDeadline ?? (["local_install", "remote_install", "updates_prepare", "updates_apply", "local_recover", "updates_recover", "local_bundle_update"].contains(request.action) ? 900 : 90)
+        let timeout: TimeInterval = testDeadline ?? (["local_install", "remote_install", "local_snapshot", "updates_prepare", "updates_apply", "local_recover", "updates_recover", "local_bundle_update"].contains(request.action) ? 900 : 90)
         if terminated.wait(timeout: .now() + timeout) == .timedOut {
             if process.isRunning { process.terminate() }
             if terminated.wait(timeout: .now() + 3) == .timedOut && process.isRunning { kill(process.processIdentifier, SIGKILL); _ = terminated.wait(timeout: .now() + 3) }

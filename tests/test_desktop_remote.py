@@ -12,6 +12,7 @@ import threading
 import tarfile
 from types import SimpleNamespace
 import uuid
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -60,9 +61,10 @@ class FixtureSSH:
 
     def install(self, config, pin, manifest, directory, identity):
         self.calls.append("install")
+        self.server["installation"]["installation_id"] = identity
         self.probe_result.update(port_available=False, backend=self.server)
         self.http_server = self.server
-        return {"ok": True, "version": manifest["version"], "root_id": identity, "installation_id": IDENTITY, "service_activated": True}
+        return {"ok": True, "version": manifest["version"], "root_id": identity, "installation_id": identity, "service_activated": True}
 
     def spawn(self, state, resources):
         self.calls.append("spawn")
@@ -116,6 +118,40 @@ def add_artifact(resources):
 
 def approved(**extra):
     return {**HOST, "approved_host_fingerprint": FINGERPRINT, **extra}
+
+
+@contextmanager
+def public_backend(server_backend):
+    """Actual loopback transport with public metadata and no bootstrap nonce."""
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            key = {"/health": "health", "/api/status": "status", "/api/installation": "installation"}.get(self.path)
+            self.send_response(200 if key else 404)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(server_backend.get(key, {})).encode())
+        def log_message(self, *_args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server.server_port
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def managed_bootstrap(home, identity, port):
+    root = home / ".local/share/mia-demo/installations" / identity
+    root.mkdir(mode=0o700, parents=True)
+    (home / ".local/share/mia-demo").chmod(0o700)
+    _write(root / "installation.json", {"installation_id": identity, "private_bootstrap": True, "host": "127.0.0.1", "port": port})
+    token = root / "bootstrap-token"
+    token.write_text(BOOTSTRAP_TOKEN + "\n")
+    token.chmod(0o600)
+    return root
 
 
 def test_unknown_host_never_sends_authenticated_command(controller):
@@ -180,19 +216,200 @@ def test_full_install_uses_approved_exact_artifact_then_checks_identity(controll
     assert stable_plan["plan_sha256"] == plan["plan_sha256"]
     result = controller.handle("remote_install", approved(approve_sha256=plan["plan_sha256"]))
     assert result["mode"] == "ssh" and result["running"] is True
-    assert result["installation_id"] == IDENTITY and result["configured"] is False
+    assert result["installation_id"] == json.loads(next(controller.base.glob("*.plan.json")).read_text())["identity"] and result["configured"] is False
     assert result["bootstrap_token"] == BOOTSTRAP_TOKEN
     assert BOOTSTRAP_TOKEN not in json.dumps(controller.connections())
     assert BOOTSTRAP_TOKEN not in (controller.base / result["connection_id"] / "connection.json").read_text()
     assert controller.adapter.calls.count("install") == 1
     assert controller.adapter.calls.count("spawn") == 1
-    # One short-lived bridge can be replaced by another without creating a new
-    # backend, session identity or tunnel when the verified process is alive.
+    # One short-lived bridge can be replaced without creating a new backend,
+    # session identity or tunnel when the verified process is alive.
     replacement = RemoteController(controller.resources, controller.home, adapter=controller.adapter)
     connected = replacement.handle("remote_connect", approved())
     assert connected["connection_id"] == result["connection_id"] and connected["url"] == result["url"]
     assert connected["bootstrap_token"] == BOOTSTRAP_TOKEN
     assert controller.adapter.calls.count("spawn") == 1
+
+
+def test_compiled_remote_installer_enables_private_owner_creation_before_activation(tmp_path, monkeypatch, capsys):
+    """Execute the embedded SSH program, intercepting OS activation only.
+
+    Manager.install runs its actual private-root/config/token creation. A fake
+    release replaces package installation; this does not attest macOS/Linux
+    runtime artifacts or a real systemd boot.
+    """
+    from mia import desktop_remote
+    from mia.operations import Manager
+    import platform
+    import shutil
+
+    home = tmp_path / "server-home"
+    home.mkdir(mode=0o700)
+    resources = tmp_path / "resources"
+    resources.mkdir()
+    artifact_root, payload = add_artifact(resources)
+    manifest = json.loads((artifact_root / "manifest.json").read_text())
+    identity = str(uuid.uuid4())
+    with socket.socket() as available:
+        available.bind(("127.0.0.1", 0))
+        port = available.getsockname()[1]
+    incoming = io.BytesIO()
+    incoming.write(json.dumps({"manifest": manifest, "identity": identity, "remote_port": port}).encode() + b"\n")
+    with tarfile.open(fileobj=incoming, mode="w") as archive:
+        for name in sorted(manifest["files"]):
+            archive.add(payload / name, arcname=name, recursive=False)
+    incoming.seek(0)
+    read_text, is_file = Path.read_text, Path.is_file
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setattr(Path, "read_text", lambda path, *args, **kwargs: 'ID="ubuntu"\nVERSION_ID="24.04"\n' if str(path) == "/etc/os-release" else read_text(path, *args, **kwargs))
+    monkeypatch.setattr(Path, "is_file", lambda path: True if str(path).startswith("/var/lib/systemd/linger/") else is_file(path))
+    monkeypatch.setattr(platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(shutil, "disk_usage", lambda path: SimpleNamespace(free=10 * 1024**3))
+    calls = []
+    def release(manager, source, wheelhouse=None, offline=False):
+        assert offline and wheelhouse is not None
+        (manager.root / "releases/synthetic").mkdir(mode=0o700)
+        return {"release": "releases/synthetic", "version": manifest["version"]}
+    monkeypatch.setattr(Manager, "_release", release)
+    def run(command, **kwargs):
+        if command[:2] == ["/usr/bin/systemctl", "--user"]:
+            return subprocess.CompletedProcess(command, 0)
+        if "install" in command:
+            assert "--private-bootstrap" in command
+            root = Path(command[command.index("--root") + 1])
+            calls.append("install")
+            Manager(root).install(Path(command[command.index("--source") + 1]), port=port,
+                                  env_file=Path(command[command.index("--env-file") + 1]),
+                                  wheelhouse=Path(command[command.index("--wheelhouse") + 1]), offline=True,
+                                  installation_id=command[command.index("--installation-id") + 1], private_bootstrap=True)
+        else:
+            assert "apply_service_plan" in command[3]
+            root = Path(command[-1])
+            assert json.loads((root / "installation.json").read_text())["private_bootstrap"] is True
+            assert (root / "machine.env").read_text().endswith("MIA_SETUP_REQUIRE_TOKEN=true\n")
+            assert len((root / "bootstrap-token").read_bytes()) == 44
+            assert (root / "bootstrap-token").stat().st_mode & 0o777 == 0o600
+            calls.append("activate")
+        return subprocess.CompletedProcess(command, 0)
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(sys, "stdin", SimpleNamespace(buffer=incoming))
+    exec(compile(desktop_remote._INSTALL, "<private-remote-installer>", "exec"), {})
+    output = capsys.readouterr().out
+    result = json.loads(output)
+    assert result["ok"] is True and result["service_activated"] is True
+    assert result["installation_id"] == identity and calls == ["install", "activate"]
+    root = home / ".local/share/mia-demo/installations" / identity
+    token = (root / "bootstrap-token").read_text().strip()
+    assert "bootstrap_token" not in result and token not in output
+    with public_backend(backend(identity=identity)) as server_port:
+        configuration = json.loads((root / "installation.json").read_text())
+        configuration["port"] = server_port
+        _write(root / "installation.json", configuration)
+        monkeypatch.setattr(sys, "stdin", SimpleNamespace(buffer=io.BytesIO(json.dumps({"remote_port": server_port}).encode() + b"\n")))
+        exec(compile(desktop_remote._PROBE, "<private-remote-probe>", "exec"), {})
+        private_result = json.loads(capsys.readouterr().out)
+        assert private_result["bootstrap_token"] == token
+        assert token not in json.dumps(private_result["backend"])
+
+
+@pytest.mark.parametrize("mutation", [None, "missing", "malformed", "extra_newline", "shared", "symlink", "wrong_id", "unprotected", "wrong_port", "public_bind", "configured"])
+def test_private_ssh_probe_attests_exact_empty_installation_token(tmp_path, mutation):
+    from mia.desktop_remote import _PROBE
+    server_backend = backend()
+    with public_backend(server_backend) as port:
+        root = managed_bootstrap(tmp_path, IDENTITY, port)
+        token = root / "bootstrap-token"
+        if mutation == "missing":
+            token.unlink()
+        elif mutation == "malformed":
+            token.write_bytes(b"invalid authorization\n")
+        elif mutation == "extra_newline":
+            token.write_text(BOOTSTRAP_TOKEN + "\n\n")
+        elif mutation == "shared":
+            token.chmod(0o644)
+        elif mutation == "symlink":
+            outside = tmp_path / "retain-private-token"
+            token.rename(outside)
+            token.symlink_to(outside)
+        elif mutation == "configured":
+            server_backend["status"]["configured"] = True
+        elif mutation:
+            configuration = json.loads((root / "installation.json").read_text())
+            field, value = {"wrong_id": ("installation_id", str(uuid.uuid4())), "unprotected": ("private_bootstrap", False), "wrong_port": ("port", port + 1), "public_bind": ("host", "0.0.0.0")}[mutation]
+            configuration[field] = value
+            _write(root / "installation.json", configuration)
+        process = subprocess.run([sys.executable, "-I", "-c", _PROBE], input=json.dumps({"remote_port": port}), text=True, capture_output=True, timeout=15, env={**os.environ, "HOME": str(tmp_path)})
+        assert process.returncode == 0, process.stderr
+        private_result = json.loads(process.stdout)
+        assert private_result["bootstrap_token"] == (BOOTSTRAP_TOKEN if mutation is None else None)
+        assert BOOTSTRAP_TOKEN not in json.dumps(private_result["backend"])
+
+
+@pytest.mark.parametrize("token", [None, "", "short", "A" * 42, "A" * 44, "A" * 42 + "!", "A" * 42 + "\n"])
+def test_empty_remote_connect_without_valid_private_handoff_does_not_open_page(controller, token):
+    controller.adapter.probe_result.update(port_available=False, backend=backend(), bootstrap_token=token)
+    with pytest.raises(RemoteError) as error:
+        controller.handle("remote_connect", approved())
+    assert error.value.code == "bootstrap_unavailable"
+    assert "spawn" not in controller.adapter.calls
+    assert controller.connections() == []
+
+
+def test_legacy_empty_remote_is_not_claimed_and_https_never_authorizes_first_owner(controller):
+    controller.adapter.probe_result.update(port_available=False, backend=backend(protected=False))
+    with pytest.raises(RemoteError) as error:
+        controller.handle("remote_connect", approved())
+    assert error.value.code == "bootstrap_unprotected"
+    controller.adapter.http_server = backend()
+    with pytest.raises(RemoteError) as error:
+        controller.handle("https_connect", {"url": "https://mia.example/"})
+    assert error.value.code == "bootstrap_requires_private_connection"
+    assert controller.connections() == [] and "spawn" not in controller.adapter.calls
+
+
+def test_reconnect_delivers_ephemeral_authority_only_until_first_owner_exists(controller):
+    empty = backend()
+    controller.adapter.probe_result.update(port_available=False, backend=empty)
+    controller.adapter.http_server = empty
+    first = controller.handle("remote_connect", approved())
+    assert first["bootstrap_token"] == BOOTSTRAP_TOKEN
+    state_path = controller.base / first["connection_id"] / "connection.json"
+    assert BOOTSTRAP_TOKEN not in state_path.read_text()
+    assert BOOTSTRAP_TOKEN not in json.dumps(controller.connections())
+    again = controller.handle("remote_connect", {"connection_id": first["connection_id"]})
+    assert again["bootstrap_token"] == BOOTSTRAP_TOKEN and controller.adapter.calls.count("spawn") == 1
+    # A private connection record from an older client may have cached the
+    # nonce. Reconnecting to an initialized owner removes that obsolete cache.
+    stored = json.loads(state_path.read_text())
+    stored["bootstrap_token"] = BOOTSTRAP_TOKEN
+    _write(state_path, stored)
+    empty["status"]["configured"] = True
+    configured = controller.handle("remote_connect", {"connection_id": first["connection_id"]})
+    assert "bootstrap_token" not in configured and BOOTSTRAP_TOKEN not in json.dumps(configured)
+    assert BOOTSTRAP_TOKEN not in state_path.read_text()
+
+
+@pytest.mark.parametrize("change", ["https_policy", "bootstrap_disabled"])
+def test_existing_tunnel_policy_change_is_rejected_before_private_handoff(controller, change):
+    controller.adapter.probe_result.update(port_available=False, backend=backend())
+    controller.adapter.http_server = backend()
+    first = controller.handle("remote_connect", approved())
+    controller.adapter.http_server = backend(secure=change == "https_policy", protected=change != "bootstrap_disabled")
+    with pytest.raises(RemoteError) as error:
+        controller.handle("remote_connect", {"connection_id": first["connection_id"]})
+    assert error.value.code == "installation_changed" and BOOTSTRAP_TOKEN not in str(error.value)
+    assert controller.adapter.liveness == {}
+
+
+@pytest.mark.parametrize("section,field,value", [("installation", "desktop_protocol", True), ("installation", "desktop_protocol", 1.0), ("installation", "cookie_secure", 1), ("installation", "bootstrap_protected", 1), ("status", "configured", 0)])
+def test_protocol_fields_reject_bool_or_numeric_coercion_before_token_handoff(controller, section, field, value):
+    invalid = backend()
+    invalid[section][field] = value
+    controller.adapter.probe_result.update(port_available=False, backend=invalid)
+    with pytest.raises(RemoteError) as error:
+        controller.handle("remote_connect", approved())
+    assert error.value.code == "protocol_unsupported"
+    assert BOOTSTRAP_TOKEN not in str(error.value) and "spawn" not in controller.adapter.calls
 
 
 def test_artifact_mutation_after_approval_stops_before_remote_install(controller):
@@ -333,6 +550,21 @@ def test_failed_remote_install_retains_plan_and_never_opens_backend(controller, 
     assert error.value.code == "recovery_required"
     assert next(controller.base.glob("*.plan.json")).exists()
     assert "spawn" not in controller.adapter.calls
+
+
+def test_remote_install_cannot_substitute_another_identity_for_approved_empty_root(controller, monkeypatch):
+    add_artifact(controller.resources)
+    plan = controller.handle("remote_preflight", approved())
+    install = controller.adapter.install
+    def changed(*args):
+        result = install(*args)
+        result["installation_id"] = str(uuid.uuid4())
+        return result
+    monkeypatch.setattr(controller.adapter, "install", changed)
+    with pytest.raises(RemoteError) as error:
+        controller.handle("remote_install", approved(approve_sha256=plan["plan_sha256"]))
+    assert error.value.code == "recovery_required" and "spawn" not in controller.adapter.calls
+    assert next(controller.base.glob("*.plan.json")).exists()
 
 
 def test_live_loopback_preflight_returns_only_public_metadata(tmp_path):

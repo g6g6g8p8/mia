@@ -198,7 +198,7 @@ def test_bootstrap_secret_only_reaches_native_ipc_for_verified_empty_instance(bu
     initial = controller.handle("local_install", {"approve_sha256": plan["sha256"]})
     assert "bootstrap_token" not in initial  # No verified ready process yet.
     configuration = json.loads((controller.root / "installation.json").read_text())
-    state = {"configured": False, "version": __version__, "installation_id": configuration["installation_id"], "bootstrap_protected": True, "redirect": False}
+    state = {"configured": False, "version": __version__, "installation_id": configuration["installation_id"], "bootstrap_protected": True, "desktop_protocol": 1, "cookie_secure": False, "transport_policy": "private_connection_only", "redirect": False}
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if state["redirect"]:
@@ -206,9 +206,10 @@ def test_bootstrap_secret_only_reaches_native_ipc_for_verified_empty_instance(bu
                 self.send_header("Location", "https://example.invalid/")
                 self.end_headers()
                 return
-            value = {"configured": state["configured"], "version": state["version"]} if self.path == "/api/status" else {"installation_id": state["installation_id"], "bootstrap_protected": state["bootstrap_protected"]}
+            value = {"configured": state["configured"], "version": state["version"]} if self.path == "/api/status" else {key: state[key] for key in ("installation_id", "bootstrap_protected", "desktop_protocol", "version", "cookie_secure", "transport_policy")}
             payload = json.dumps(value).encode()
             self.send_response(200)
+            self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
@@ -223,7 +224,7 @@ def test_bootstrap_secret_only_reaches_native_ipc_for_verified_empty_instance(bu
         monkeypatch.setattr(Manager, "_record", lambda _: {"ready": True})
         token = (controller.root / "bootstrap-token").read_text().strip()
         assert controller.handle("status", {})["local"]["bootstrap_token"] == token
-        for change in ({"configured": True}, {"installation_id": str(uuid.uuid4())}, {"bootstrap_protected": False}, {"version": "0.0.0"}, {"redirect": True}):
+        for change in ({"configured": True}, {"installation_id": str(uuid.uuid4())}, {"bootstrap_protected": False}, {"version": "0.0.0"}, {"redirect": True}, {"desktop_protocol": True}, {"desktop_protocol": 1.0}, {"cookie_secure": True}, {"transport_policy": "https_required"}):
             before = dict(state)
             state.update(change)
             response = controller.handle("status", {})
@@ -238,6 +239,35 @@ def test_bootstrap_secret_only_reaches_native_ipc_for_verified_empty_instance(bu
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "short", "extra_newline", "unicode", "shared", "symlink", "fifo"])
+def test_native_bootstrap_file_reader_refuses_invalid_state_without_disclosing_it(tmp_path, mutation):
+    token = tmp_path / "bootstrap-token"
+    raw = b"A" * 43 + b"\n"
+    token.write_bytes(raw)
+    token.chmod(0o600)
+    if mutation == "missing":
+        token.unlink()
+    elif mutation == "short":
+        token.write_bytes(b"untrusted private input\n")
+    elif mutation == "extra_newline":
+        token.write_bytes(raw + b"\n")
+    elif mutation == "unicode":
+        token.write_bytes(b"A" * 41 + b"\xc3\xa1\n")
+    elif mutation == "shared":
+        token.chmod(0o644)
+    elif mutation == "symlink":
+        retained = tmp_path / "retain-token"
+        token.rename(retained)
+        token.symlink_to(retained)
+    elif mutation == "fifo":
+        token.unlink()
+        os.mkfifo(token, mode=0o600)
+    with pytest.raises(DesktopError) as error:
+        desktop._private_bootstrap_token(token)
+    assert error.value.code in ("bootstrap_unavailable", "unsafe_path")
+    assert "A" * 43 not in str(error.value) and "untrusted private input" not in str(error.value)
 
 
 def test_subprocess_does_not_inherit_secrets_or_python_pip_settings(bundle, monkeypatch):

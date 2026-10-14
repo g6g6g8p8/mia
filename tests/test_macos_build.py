@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import plistlib
+import shutil
 import struct
 import tarfile
 
@@ -179,3 +180,31 @@ def test_prepared_runtime_is_checked_against_pinned_origin_even_with_self_consis
     monkeypatch.setattr(prepare_macos_artifacts.subprocess, "run", lambda *args, **kwargs: pytest.fail("artifact was executed during verification"))
     with pytest.raises(OperationError, match="bytes oficiais"):
         prepare_macos_artifacts.verify_prepared(runtime, wheels, "linux", "x86_64", tmp_path / "cache", source=source)
+
+
+@pytest.mark.parametrize("source_drift", [False, True])
+def test_remote_companion_must_ship_the_same_reviewed_source_even_at_the_same_version(tmp_path, source_drift):
+    inputs = fixtures(tmp_path)
+    binary = thin_macho(tmp_path / "Mia")
+    remote = tmp_path / "remote-runtime"
+    payload = remote / "payload"
+    payload.mkdir(parents=True)
+    shutil.copytree(inputs[0], payload / "runtime")
+    shutil.copytree(inputs[2], payload / "wheelhouse")
+    package_macos.copy_public_source(package_macos.REPOSITORY, payload / "source")
+    if source_drift:
+        with (payload / "source/mia/operations.py").open("a") as target:
+            target.write("\n# Same-version source drift; never executed.\n")
+    common = {"format": 1, "platform": "linux", "architecture": "x86_64", "python_version": "3.12"}
+    manifest = {"format": 1, "platform": "ubuntu24.04", "architecture": "amd64", "python_version": "3.12", "version": package_macos.tomllib.loads((payload / "source/pyproject.toml").read_text())["project"]["version"], "files": package_macos.inventory(payload)}
+    for folder, origin in (("runtime", "https://github.com/astral-sh/python-build-standalone/releases/download/reviewed/fixture.tar.gz"), ("wheelhouse", "https://pypi.org/simple/")):
+        manifest[folder + "_provenance"] = {**common, "source_url": origin, "files": package_macos.inventory(payload / folder)}
+    (remote / "manifest.json").write_text(json.dumps(manifest))
+    output = tmp_path / "Mia.app"
+    if source_drift:
+        with pytest.raises(OperationError, match="Fonte do companheiro remoto"):
+            package_macos.build(output, *inputs, native_binary=binary, remote_artifact=remote)
+        assert not output.exists()
+    else:
+        package_macos.build(output, *inputs, native_binary=binary, remote_artifact=remote)
+        assert package_macos.inventory(output / "Contents/Resources/source") == package_macos.inventory(output / "Contents/Resources/remote-runtime/payload/source")

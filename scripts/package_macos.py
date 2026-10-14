@@ -217,6 +217,8 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
         if remote_artifact is not None:
             if remote_data.get("version") != tomllib.loads((source / "pyproject.toml").read_text())["project"]["version"]:
                 raise OperationError("Companheiro remoto difere da versão do aplicativo")
+            if inventory(remote_artifact / "payload/source") != inventory(public):
+                raise OperationError("Fonte do companheiro remoto difere do código revisado do aplicativo")
             shutil.copytree(remote_artifact, resources / "remote-runtime", symlinks=True)
             validate_remote_artifact(resources / "remote-runtime")
         if sparkle_framework is not None:

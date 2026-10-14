@@ -135,7 +135,7 @@ class DesktopController:
                 return None
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
         with opener.open(origin.rstrip("/") + path, timeout=1) as response:
-            if response.status != 200:
+            if response.status != 200 or response.headers.get_content_type() != "application/json":
                 raise ValueError("unexpected response")
             raw = response.read(16 * 1024 + 1)
         if len(raw) > 16 * 1024:
@@ -157,7 +157,7 @@ class DesktopController:
             if status.get("configured") is not False or status.get("version") != local["version"]:
                 return None
             info = self._http_json(local["url"], "/api/installation")
-            if info.get("installation_id") != local["installation_id"] or info.get("bootstrap_protected") is not True:
+            if info.get("installation_id") != local["installation_id"] or info.get("bootstrap_protected") is not True or info.get("version") != local["version"] or type(info.get("desktop_protocol")) is not int or info["desktop_protocol"] != 1 or info.get("cookie_secure") is not False or info.get("transport_policy") != "private_connection_only":
                 return None
         except (OSError, ValueError, UnicodeError, RecursionError):
             return None
@@ -603,7 +603,7 @@ def _resume_empty_install(controller: DesktopController, state: dict, source: Pa
 def _private_bootstrap_token(path: Path) -> str:
     _no_links(path)
     try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(descriptor, "rb") as incoming:
             metadata = os.fstat(incoming.fileno())
             if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_mode & 0o777 != 0o600 or metadata.st_size != 44:
