@@ -1,16 +1,18 @@
 # Mia Demo — piloto independente com 2 a 3 convidados
 
-13/10/2026. Roteiro da distribuição Mac por convite, conforme [MAC-DEMO.md](MAC-DEMO.md), reutilizando o núcleo a12/Apache-2.0. O aplicativo ainda está planejado; não há participantes/resultados reais registrados. O proprietário enviará convites; este documento não envia mensagens.
+14/10/2026. Roteiro da distribuição Mac por convite, conforme [MAC-DEMO.md](MAC-DEMO.md), com aplicativo e infraestrutura a13 implementados sobre o núcleo a12/Apache-2.0. Assinatura/notarização, publicação de convites/canais e aceites em máquinas reais permanecem abertos; [evidência](MAC-DEMO-IMPLEMENTATION.md). Não há participantes/resultados reais registrados. O proprietário enviará convites após os aceites; este documento não envia mensagens.
 
 ## Preparar a rodada
 
-Concluir [ROADMAP.md](ROADMAP.md), D1–D7, para os caminhos oferecidos: artefato assinado/notarizado, app com janela própria, instalação local/servidor na interface, contexto útil, convites e atualização testada. [CLEAN-INSTALL.md](CLEAN-INSTALL.md) é procedimento administrativo de desenvolvimento/suporte, não onboarding do participante.
+Concluir os aceites de [ROADMAP.md](ROADMAP.md), D1–D7, para os caminhos oferecidos: artefato assinado/notarizado, app com janela própria, instalação local/servidor na interface, contexto útil, convites publicados e atualização assinada testada. Artefatos `UNSIGNED-INTERNAL` do CI servem à revisão técnica e não à rodada. [CLEAN-INSTALL.md](CLEAN-INSTALL.md) é procedimento administrativo de desenvolvimento/suporte, não onboarding do participante.
+
+O assistente remoto a13 exige servidor Ubuntu 24.04 amd64 previamente acessível por SSH por chave/agente, serviço systemd de usuário e linger habilitado. Não provisiona esses pré-requisitos com sudo. Informá-los no recrutamento e validar o destino antes de anunciar essa opção como pronta. O app atualiza seu cliente e o backend local; atualização remota do backend pela interface ainda está aberta. Se a rodada oferecer servidor, resolver o percurso de atualização independente ou registrar o bloqueio e adiar essa modalidade.
 
 Informar antes do convite as modalidades aprovadas. Cada participante escolhe **local ou servidor** no onboarding; Neste Mac é sugestão inicial, não obrigação. O Linux do proprietário não determina a escolha dos demais. Se a preferência não estiver disponível, registrar bloqueio/não executado e adiar; não forçar mudança nem transferir sucesso entre modalidades.
 
 Mia suporta um proprietário por instalação. Cada participante usa instalação própria, ou instância privada separada com dados, processo, identidade e conexão validados. HTTPS tem rota própria quando oferecido; o túnel privado do app pode ser o acesso Mac escolhido. Não compartilhar biblioteca, chave, sessão ou senha do proprietário. Mac/iPhone no mesmo backend usam a mesma instalação quando o acesso estiver preparado, sem sync offline.
 
-Antes do convite, identificar versão do app/backend, revisão/pacote, arquitetura/OS aprovados e limitações. Apache-2.0 cobre arquivos próprios; preservar avisos. Convite libera download/canal oficial, não senha/dados nem restrição sobre compilar o código. O serviço de convites não controla uso da biblioteca instalada. Ensaio interno acompanhado não conta como piloto independente.
+Antes do convite, identificar versão do app/backend, revisão/pacote, arquitetura/OS aprovados e limitações. Apache-2.0 cobre arquivos próprios; preservar avisos. Convite libera a distribuição oficial inicial, não senha/dados nem restrição sobre compilar ou redistribuir o código. O serviço de convites não controla uso da biblioteca instalada. A configuração e publicação do canal de atualização são aceites separados do resgate de convite. Ensaio interno acompanhado não conta como piloto independente.
 
 Usar o [rascunho do convite](PILOT-INVITE.md) depois de preparar a opção escolhida. Fontes e credenciais ficam na instalação da pessoa. Não solicitar histórico completo, chave ou acesso ao vault como condição do teste. Modelo é opcional; núcleo sem IA continua sendo cenário válido. O teto anterior de ensaio do proprietário não fornece orçamento aos convidados.
 

@@ -5,17 +5,17 @@
 
 Mia é um projeto de IA pessoal para reunir notas, conversas e decisões e ajudar você a retomar o trabalho com fontes. O código é público; seus arquivos e conversas ficam na instalação que você escolhe, separados do repositório.
 
-Você escolhe guardar o contexto no próprio computador ou em um servidor. A próxima entrega será a **Mia Demo: aplicativo Mac por convite**, com instalação/conexão guiadas dentro do app e atualizações que preservam a biblioteca. Esse aplicativo ainda está planejado; a alpha atual usa interface web e instalação técnica. Mac e iPhone podem acessar o mesmo backend quando a rede estiver preparada; instalação local depende do computador disponível. Modelos/APIs são opcionais, com custos/permissões próprios. Importar e buscar funcionam sem IA.
+Você escolhe guardar o contexto no próprio computador ou em um servidor. A **Mia Demo para Mac** tem janela própria, instalação/conexão guiadas e infraestrutura de convites/atualizações. O código a13 já compila no macOS; a distribuição para convidados aguarda assinatura/notarização e aceites reais. Mac e iPhone podem acessar o mesmo backend quando a rede estiver preparada; instalação local depende do computador disponível. Modelos/APIs são opcionais. Importar e buscar funcionam sem IA.
 
 ## Status
 
-**0.2.0a12 — alpha com a nova jornada de contexto.** Após a avaliação 2/10 do uso do zero, a entrada passou a começar pelas fontes, com revisão por grupos e importação em segundo plano retomável. Hoje mostra foco confirmado, trechos das fontes e conversas para continuar, mesmo sem tarefas. A navegação é Hoje, Conversas, Biblioteca e Ajustes.
+**0.2.0a13 — cliente Mac e infraestrutura da demonstração.** O app usa SwiftUI/AppKit + WKWebView, runtime incluído, destinos próprios local/SSH/HTTPS e atualização do cliente via Sparkle. O onboarding dentro da janela começa pelas fontes, segue para foco confirmado e Hoje; IA é opcional. A navegação é Hoje, Conversas, Biblioteca e Ajustes. [Implementação, evidência e limites](docs/MAC-DEMO-IMPLEMENTATION.md).
 
 O novo fluxo aceita ZIP, pasta pelo navegador compatível, Markdown/texto e formatos específicos de exports ChatGPT/Claude. Não pede primeira área nem chave de IA para começar. Relatórios distinguem material reconhecido, ignorado, não selecionado, duplicado e com erro. Arquivos do Drive entram depois de baixados/exportados; `.gdoc` é um link, não o conteúdo do documento. Não existe conector recorrente Drive, app nativo iPhone ou sync offline.
 
 Conversas persistem nesta instalação. Contexto recuperado, histórico reautorizado e foco opcional têm limites; fontes pausadas e material ainda em revisão ficam fora dos novos pedidos. Consultar toda a biblioteca não autoriza criar tarefas em uma área por inferência. Propostas e organização/personalização assistidas continuam exigindo revisão; Sobre mim e objetivo pessoal são opt-in em cada pedido.
 
-O [serviço de usuário e a migração manual](docs/INSTALL-BACKGROUND.md) permitem uso no navegador sem Terminal diário após preparação técnica. O launcher atual abre o navegador; não cumpre o novo contrato de app. [MAC-DEMO](docs/MAC-DEMO.md) e [roadmap](docs/ROADMAP.md) definem janela própria, instalador assinado/notarizado, assistente local/servidor, convites oficiais e atualização integrada. Implementação e aceites em Mac limpo/servidor permanecem pendentes.
+O cliente nativo cria instalação local com serviço de usuário e protege a criação do primeiro proprietário por autorização privada. No servidor, o assistente exige Ubuntu 24.04 amd64 com SSH/serviço persistente preparados e inclui o runtime Linux verificado; conecta por túnel gerido ou HTTPS existente. O launcher antigo de navegador e a [instalação administrativa](docs/INSTALL-BACKGROUND.md) continuam para desenvolvimento/suporte. [Roadmap](docs/ROADMAP.md) separa código implementado de assinatura, publicação e testes reais ainda pendentes.
 
 O [plano de experiência](docs/EXPERIENCE-PLAN.md) separa implementação, testes sintéticos e aceites com pessoas/fontes reais. Passar um vault sintético não demonstra compatibilidade com qualquer vault ou export nem primeiro valor sem ajuda. O código, documentação e assets próprios usam [Apache-2.0](LICENSE), conforme [NOTICE](NOTICE); dependências conservam suas licenças e dados pessoais permanecem privados. Economia e release ampla continuam pendentes.
 
@@ -79,6 +79,7 @@ Propostas de tarefa podem ser editadas antes de confirmar. A proposta original e
 
 ## Documentação
 - [Contrato da Mia Demo — aplicativo Mac por convite](docs/MAC-DEMO.md)
+- [Implementação a13, build e aceites da distribuição](docs/MAC-DEMO-IMPLEMENTATION.md)
 - [Roadmap da demonstração e próximas atualizações](docs/ROADMAP.md)
 - [Roteiro de limpeza e instalação do zero](docs/CLEAN-INSTALL.md)
 - [Plano de produto e execução](docs/PLAN.md)

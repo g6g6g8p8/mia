@@ -1,6 +1,6 @@
 # Mia Demo — aplicativo Mac por convite
 
-13/10/2026. Direção do proprietário: aplicativo independente para Mac, por convite, com onboarding que prepara uma instalação própria no computador ou servidor. A demonstração precisa ter qualidade de produto; atualizações posteriores ampliam o que foi entregue. Este é um contrato de implementação, não um anúncio de app disponível.
+Direção de 13/10/2026, implementação iniciada em 14/10: aplicativo independente para Mac, por convite, com onboarding que prepara uma instalação própria no computador ou servidor. A demonstração precisa ter qualidade de produto; atualizações ampliam a entrega. Cliente/controladores/distribuição a13 estão implementados e o cliente compila no Mac; isso ainda não é liberação para convidados. [Estado e evidência](MAC-DEMO-IMPLEMENTATION.md).
 
 ## Entrega e mensagem
 
@@ -52,17 +52,17 @@ Validar HTTPS, versão e identidade da instância antes do login. O contexto per
 
 Depois de instalado, o núcleo local não depende de consulta periódica ao serviço de convites. Revogação encerra novos downloads quando aplicável; não desativa biblioteca, exportação ou recuperação. Convite não substitui autenticação da instância nem exige uma conta global de contexto.
 
-Apache-2.0 permanece no código próprio: compilar/modificar/distribuir o código público não exige convite. Controle refere-se à nossa distribuição/canal e participação na rodada; não promete impedir cópias do código aberto. Voucher apenas offline não garante resgate único. Infraestrutura de distribuição ainda não implementada; nenhum convite foi emitido por este plano.
+Apache-2.0 permanece no código próprio: compilar/modificar/distribuir o código público não exige convite. Controle refere-se à nossa distribuição/canal e participação na rodada; não promete impedir cópias do código aberto. Voucher apenas offline não garante resgate único. Infraestrutura de distribuição implementada na a13, com publicação ainda pendente; nenhum convite real foi emitido nesta execução.
 
 ## Arquitetura e atualização
 
-Direção: **SwiftUI/AppKit + WKWebView**, com janela, menus, seletores e operações nativas, reutilizando backend Python e interface de contexto. Não reescrever importadores/busca/aprovação. Views nativas controlam instalação/conexão; conteúdo web remoto não recebe bridge de execução privilegiada, arquivos livres ou credenciais.
+Implementação a13: **SwiftUI/AppKit + WKWebView**, com janela, menus, seletores e operações nativas, reutilizando backend Python e interface de contexto. Não reescrever importadores/busca/aprovação. Views nativas controlam instalação/conexão; conteúdo web remoto não recebe bridge de execução privilegiada, arquivos livres ou credenciais.
 
 Runtime/wheels macOS reais por arquitetura e OS mínimo comprovado no artefato. Credenciais de acesso do cliente ficam no Keychain/agente autorizado, sem segredos em argumentos/logs; credenciais de IA continuam no destino escolhido sob sua política. Dados pessoais e chaves de distribuição ficam fora dos artefatos/Git.
 
 Túnel com argumentos estruturados, chave do host confirmada, bind loopback e identidade de processo; sem desativar SSH/TLS. WKWebView tem armazenamento de sessão separado por instalação: portas diferentes em localhost não isolam cookies. Conferir origem, uploads e reconexão. Cookie Secure de instância HTTPS não pode ser reduzido automaticamente para permitir túnel HTTP; preservar política ou usar HTTPS.
 
-Atualização aparece no app com versão, notas e **Atualizar**. Avaliar **Sparkle 2**, integrado ao gerenciador transacional. Feed/artefatos exigem autenticidade por assinatura; checksum sozinho não autentica origem. Revisar licença/avisos de qualquer componente novo antes de distribuir.
+Atualização aparece no app com versão, notas e **Atualizar**. **Sparkle 2.10.0** substitui o app assinado; o gerenciador transacional atualiza o backend com confirmação separada. Feed/artefatos exigem autenticidade por assinatura; checksum sozinho não autentica origem. Revisar licença/avisos de qualquer componente novo antes de distribuir.
 
 Declarar compatibilidade cliente, bootstrap/gerenciador, runtime e backend. Local: coordenar troca do app/backend, lock, snapshot, health e recuperação em dados novos; não abrir código antigo sobre banco migrado. Remoto: atualizar cliente não atualiza servidor; mostrar as duas versões e atualizar o destino com confirmação/backup próprios. O bootstrap atual não recebe capacidades novas por atualização comum do backend; sua migração faz parte da entrega.
 
@@ -72,16 +72,16 @@ Ensaiar download interrompido, pacote/assinatura inválidos, falha de inicializa
 
 | Componente | Evidência atual | Trabalho da demo |
 | --- | --- | --- |
-| Importação, Biblioteca, foco, Hoje, conversas | Núcleo a12 implementado/ensaiado tecnicamente | Janela integrada, fontes reais e primeiro valor |
-| Operação/serviço | Gerenciador transacional, planos e recuperação testados | Assistente gráfico, bootstrap/runtime atualizáveis, OS real |
-| Launcher/empacotador Mac | AppleScript, navegador e bundle unsigned com proveniência | Janela própria, build Mac, DMG assinado/notarizado e Mac limpo |
-| Servidor | Instalação administrativa e código para conectar a endereço HTTPS | Preflight, instalação, túnel/pareamento pela interface; acesso real precisa de aceite |
-| Convites | Rascunho e protocolo de piloto | Resgate/download controlados e limite da rodada |
-| Atualização do app | Atualização de backend disponível | Canal assinado, compatibilidade e recuperação integrada |
+| Importação, Biblioteca, foco, Hoje, conversas | Núcleo integrado à janela a13; navegador sintético passou | WKWebView real, fontes próprias e primeiro valor |
+| Operação/serviço | Assistente gráfico, planos/recuperação e bootstrap privado implementados/testados | Launchd real, login/suspensão, atualização de runtime/gerenciador e OS real |
+| Cliente/empacotador Mac | Janela nativa compila/testa em arm64/Intel; pipeline de artefatos implementado | DMGs aprovados, assinatura/notarização e Mac limpo |
+| Servidor | Preflight/instalador/túnel/HTTPS implementados; instalador/probe e runtime exercitados em isolamento | SSH/systemd/boot reais na matriz preparada; assistente não habilita linger |
+| Convites | Portal/resgate/download controlados implementados e testados | Publicação HTTPS e emissão real após aceites |
+| Atualização do app | Sparkle integrado e atualização local do backend autenticada com recuperação | Publicador/chaves, atualização assinada real; atualização remota do backend pendente |
 
 ## Prontidão antes dos convites
 
-1. Mac limpo da arquitetura oferecida: convite, DMG confiável e janela Mia sem Git/Python/Terminal ou fundador. Build Mac, assinatura/notarização e credenciais de distribuição são requisitos externos não atendidos nesta sessão.
+1. Mac limpo da arquitetura oferecida: convite, DMG confiável e janela Mia sem Git/Python/Terminal ou fundador. Compilação e testes Mac já passaram no CI; assinatura/notarização, credenciais de distribuição e esse aceite real ainda estão pendentes.
 2. Local: criar acesso, importar fonte própria, conferir cobertura e Hoje útil; reabrir/login/suspensão/retomada sem perda. Medir tempo total desde convite e meta separada de primeiro valor em até dez minutos após instalação acessível.
 3. Servidor, se oferecido: mesmo percurso pelo assistente, reconexão, fechamento do SSH externo, boot em janela autorizada, isolamento e backup. Local não aprova remoto, nem o inverso.
 4. Atualizar pelo app e ensaiar falha/recuperação com dados de teste. Conferir fonte/conversa preservadas; restaurar backup externo em instalação separada.

@@ -1,6 +1,6 @@
 # Convite para a Mia Demo — rascunho
 
-Enviar pelo proprietário depois de aprovar o app/artefato e modalidades disponíveis conforme [MAC-DEMO.md](MAC-DEMO.md). Preencher o link individual fora do Git. O aplicativo ainda está planejado; este documento não envia mensagens ou emite convites.
+Enviar pelo proprietário depois de aprovar o app/artefato e modalidades disponíveis conforme [MAC-DEMO.md](MAC-DEMO.md). Preencher o link individual fora do Git. O aplicativo a13 e o portal estão implementados; assinatura/notarização, publicação e aceites reais ainda estão abertos. Artefatos internos não assinados não servem para este convite. Este documento não envia mensagens ou emite convites.
 
 > Você está convidado para experimentar a Mia, um aplicativo para Mac que reúne suas notas e conversas para ajudar a retomar trabalho com fontes. O código é open source; esta rodada da demonstração é por convite.
 >
@@ -12,4 +12,4 @@ Enviar pelo proprietário depois de aprovar o app/artefato e modalidades dispon�
 >
 > Com sua autorização, registraremos tempo até o primeiro resultado útil, pontos que exigiram ajuda e um relato de qualidade/entendimento. Os resultados compartilhados serão minimizados; você poderá revisar a síntese antes de publicação.
 
-Antes de enviar, preencher **link individual, versão/revisão, OS/arquitetura, modalidades aprovadas, horário e canal de retorno** fora do repositório. Texto sobre app/atualização só pode ser usado depois dos aceites. Não prometer economia ou suporte universal. Um bloqueio de modalidade deve ser informado antes do convite; não substituir instalação simples por orientação de Terminal.
+Antes de enviar, preencher **link individual, versão/revisão, OS/arquitetura, modalidades aprovadas, horário e canal de retorno** fora do repositório. Texto sobre app/atualização só pode ser usado depois dos aceites. O canal precisa estar publicado e uma atualização assinada validada. Se oferecer servidor, informar os pré-requisitos Ubuntu 24.04 amd64/SSH/systemd de usuário/linger e fechar o percurso de atualização remota: a interface a13 ainda não atualiza esse backend. Não prometer economia ou suporte universal. Um bloqueio de modalidade deve ser informado antes do convite; não substituir instalação simples por orientação de Terminal.
