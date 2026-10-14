@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import plistlib
 import shutil
+import struct
 import tarfile
 import zipfile
 
@@ -217,3 +218,25 @@ def test_packaged_info_plist_uses_apple_versions_without_changing_backend_versio
     assert info["CFBundleShortVersionString"] == "0.2.0"
     assert info["CFBundleVersion"] == bundle
     assert info["MiaBackendVersion"] == result["app_version"] == backend
+    assert info["CFBundleIconFile"] == "mia-icon.icns"
+    assert (output / "Contents/Resources/mia-icon.icns").read_bytes() == (package_macos.REPOSITORY / "assets/mia-icon.icns").read_bytes()
+
+
+def test_reviewed_mac_icon_contains_native_and_retina_png_sizes():
+    data = (package_macos.REPOSITORY / "assets/mia-icon.icns").read_bytes()
+    assert data[:4] == b"icns" and struct.unpack(">I", data[4:8])[0] == len(data)
+    sizes, offset = {}, 8
+    while offset < len(data):
+        kind, length = struct.unpack(">4sI", data[offset:offset + 8])
+        assert length > 8 and offset + length <= len(data)
+        png = data[offset + 8:offset + length]
+        assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[12:16] == b"IHDR"
+        assert png[25] == 6  # RGBA preserves the original SVG's transparent corners.
+        sizes[kind] = struct.unpack(">2I", png[16:24])
+        offset += length
+    assert offset == len(data)
+    assert sizes == {
+        b"icp4": (16, 16), b"icp5": (32, 32), b"icp6": (64, 64), b"ic07": (128, 128),
+        b"ic08": (256, 256), b"ic09": (512, 512), b"ic10": (1024, 1024),
+        b"ic11": (32, 32), b"ic12": (64, 64), b"ic13": (256, 256), b"ic14": (512, 512),
+    }

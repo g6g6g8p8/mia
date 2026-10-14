@@ -200,6 +200,16 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
         raise OperationError("Versão do projeto exige pyproject.toml regular na fonte revisada")
     version = tomllib.loads(version_path.read_text()).get("project", {}).get("version")
     version_metadata = bundle_version_metadata(version)
+    # The app's brand belongs to this reviewed packager; an explicit source
+    # selects backend code and does not replace native application assets.
+    icon = REPOSITORY / "assets/mia-icon.icns"
+    if icon.is_symlink() or not icon.is_file() or not 8 <= icon.stat().st_size <= 1024 * 1024:
+        raise OperationError("Ícone do aplicativo deve ser um arquivo ICNS regular revisado")
+    icon_data = icon.read_bytes()
+    if icon_data[:4] != b"icns" or struct.unpack(">I", icon_data[4:8])[0] != len(icon_data):
+        raise OperationError("Ícone ICNS do aplicativo está inválido")
+    from scripts.check_distribution import safe_member
+    safe_member("assets/mia-icon.icns", icon_data)
     runtime_data = verify(runtime, runtime_manifest, runtime=True)
     wheel_data = verify(wheelhouse, wheelhouse_manifest, runtime=False)
     if wheel_data.get("architecture") != runtime_data["architecture"] or wheel_data.get("python_version") != runtime_data["python_version"] or wheel_data.get("platform") != "macos":
@@ -238,6 +248,7 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
     resources.mkdir(parents=True)
     executable.mkdir()
     try:
+        (resources / "mia-icon.icns").write_bytes(icon_data)
         shutil.copytree(runtime, resources / "runtime", symlinks=True)
         shutil.copytree(wheelhouse, resources / "wheelhouse")
         public = resources / "source"
@@ -274,7 +285,7 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
             channel = json.loads(release_channel.read_text())
             validate_channel(channel)
             (resources / "release-channel.json").write_text(json.dumps(channel, indent=2))
-        info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", **version_metadata, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
+        info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", "CFBundleIconFile": "mia-icon.icns", **version_metadata, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
         if channel.get("appcast_url") and channel.get("sparkle_public_key"):
             if sparkle_framework is None:
                 raise OperationError("Canal de aplicativo exige Sparkle framework revisado")

@@ -3,6 +3,7 @@ recursive-include THIRD_PARTY_LICENSES *
 recursive-include docs *.md *.json
 recursive-include scripts *.py *.sh
 recursive-include macos *.swift *.json *.md Package.resolved
+recursive-include assets *.svg *.icns
 prune data
 prune backups
 prune logs
