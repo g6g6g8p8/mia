@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "release": "20261013",
+  "python_version": "3.12",
+  "exact_python_version": "3.12.15",
+  "upstream_commit": "9e40cba825ca0997a01cab9f60a0b15ffb976af2",
+  "checksum_source": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/SHA256SUMS",
+  "checksum_source_sha256": "6f1da4ab940bfca4471b0816828f16942a149de31e7ac4745e90902d5e7d3ebd",
+  "supplemental_notices": [
+    {
+      "reason": "Official PYTHON.json references LICENSE.zlib-ng.txt but the full archive omits it; preserve the exact source-dependency notice without weakening closure checks.",
+      "recorded_source": "https://github.com/astral-sh/python-build-standalone/blob/9e40cba825ca0997a01cab9f60a0b15ffb976af2/pythonbuild/downloads.json",
+      "source_url": "https://github.com/python/cpython-source-deps/archive/refs/tags/zlib-ng-2.2.4.tar.gz",
+      "archive_name": "zlib-ng-2.2.4.tar.gz",
+      "archive_sha256": "00bbd88709bc416cb96160ab61d3e1c8f76e106799af7328d0fe434dc7dd5004",
+      "member": "cpython-source-deps-zlib-ng-2.2.4/LICENSE.md",
+      "destination": "LICENSE.zlib-ng.txt",
+      "notice_sha256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee"
+    }
+  ],
+  "targets": {
+    "macos-arm64": {
+      "triple": "aarch64-apple-darwin",
+      "archive": "cpython-3.12.15+20261013-aarch64-apple-darwin-install_only.tar.gz",
+      "sha256": "ba32036ad8f4c434d97a1ee7feef8b7edc0fac16777639b97e39c74a108e4440",
+      "license_archive": "cpython-3.12.15+20261013-aarch64-apple-darwin-pgo+lto-full.tar.zst",
+      "license_archive_sha256": "8c7ac5f091c64111247e595c9fc8fecc38453e94a60323a3b66dbfca3c01414a"
+    },
+    "macos-x86_64": {
+      "triple": "x86_64-apple-darwin",
+      "archive": "cpython-3.12.15+20261013-x86_64-apple-darwin-install_only.tar.gz",
+      "sha256": "9686ddd8639b855905447ea4a16eb54a804a9ef12afbe7c9ecb1412d9c1fbc98",
+      "license_archive": "cpython-3.12.15+20261013-x86_64-apple-darwin-pgo+lto-full.tar.zst",
+      "license_archive_sha256": "7b24fd8362742c471989a4491770beb377f0127c8671778a223d6c6b6c10a578"
+    },
+    "linux-x86_64": {
+      "triple": "x86_64-unknown-linux-gnu",
+      "archive": "cpython-3.12.15+20261013-x86_64-unknown-linux-gnu-install_only.tar.gz",
+      "sha256": "5d546fc004fc2435fa142eb8f42ed8de5eb4725963dc22f7e6671014a80eb560",
+      "license_archive": "cpython-3.12.15+20261013-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
+      "license_archive_sha256": "dfb784f8d467e0c64c16d67a151c9145e64a0a11caa0ff699bc92899898cbb52"
+    }
+  }
+}

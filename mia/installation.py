@@ -6,10 +6,53 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import plistlib
+import re
 import subprocess
 import sys
 
 from mia.operations import Manager, OperationError, _read, _write
+
+
+def _loaded_launchd(plan: dict) -> bool:
+    """Recognize this exact loaded job before an idempotent bootstrap retry.
+
+    A matching label alone is insufficient: loaded program, full argument list
+    and origin plist must agree with the reviewed plan. Captured output is never
+    surfaced or logged; unsupported output fails closed before any host edits.
+    """
+    plist = plistlib.loads(plan["content"].encode())
+    label = plist["Label"]
+    command = ["launchctl", "print", "gui/" + str(os.getuid()) + "/" + label]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.SubprocessError):
+        raise OperationError("Não foi possível verificar o serviço do usuário. Nenhum serviço foi alterado") from None
+    if len(result.stdout) > 256 * 1024 or len(result.stderr) > 256 * 1024:
+        raise OperationError("A identidade do serviço não pôde ser verificada. Nenhum serviço foi alterado")
+    if result.returncode:
+        if "Could not find service" in result.stderr and label in result.stderr:
+            return False
+        raise OperationError("A sessão do serviço não pôde ser verificada. Nenhum serviço foi alterado")
+    lines = result.stdout.splitlines()
+    def field(name: str) -> str:
+        values = [match[1] for line in lines if (match := re.fullmatch(r"\s*" + name + r" = (.+)", line))]
+        if len(values) != 1:
+            raise OperationError("A identidade do serviço não pôde ser verificada. Nenhum serviço foi alterado")
+        return values[0]
+    blocks = [index for index, line in enumerate(lines) if line.strip() == "arguments = {"]
+    if len(blocks) != 1:
+        raise OperationError("Os argumentos do serviço não puderam ser verificados. Nenhum serviço foi alterado")
+    arguments = []
+    for line in lines[blocks[0] + 1:]:
+        if line.strip() == "}":
+            break
+        arguments.append(line.strip())
+    else:
+        raise OperationError("Os argumentos do serviço não puderam ser verificados. Nenhum serviço foi alterado")
+    if field("path") != plan["destination"] or field("program") != plist["ProgramArguments"][0] or arguments != plist["ProgramArguments"]:
+        raise OperationError("O serviço carregado pertence a outra configuração. Nenhum serviço foi alterado")
+    return True
 
 
 def service_plan(manager: Manager, kind: str, *, home: Path | None = None) -> dict:
@@ -50,19 +93,23 @@ def apply_service_plan(manager: Manager, plan: dict, *, approve_sha256: str, hom
     for parent in (destination, *destination.parents):
         if parent.is_symlink():
             raise OperationError("Caminho de serviço não pode conter link simbólico")
-    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if destination.exists():
         if not destination.is_file() or destination.read_text() != plan["content"]:
             raise OperationError("Arquivo de serviço existente difere; não foi substituído")
-    else:
+    loaded = _loaded_launchd(plan) if plan["kind"] == "launchd" else False
+    # Reject foreign loaded jobs and pending recovery before writing the plist.
+    manager._pending()
+    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not destination.exists():
         descriptor = os.open(destination, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, "w") as file:
             file.write(plan["content"])
             file.flush()
             os.fsync(file.fileno())
     # Explicit apply resumes a paused installation. No implicit recover/rollback.
-    manager._pending()
     for command in plan["commands"]:
+        if loaded and command[:2] == ["launchctl", "bootstrap"]:
+            continue
         subprocess.run(command, check=True)
     _write(manager.root / "service-registration.json", {"kind": plan["kind"], "destination": str(destination), "sha256": plan["sha256"]})
     return {"applied": True, "availability": plan["availability"], "status": manager.status()}

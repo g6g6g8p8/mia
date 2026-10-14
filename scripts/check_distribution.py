@@ -115,6 +115,24 @@ def inventory_files(root: Path = ROOT, *, installed: bool = False) -> dict[str, 
         for notice in package["files"]:
             relative, content = preserved_notice(root, notice)
             expected[relative] = content
+    native_path = root / "THIRD_PARTY_LICENSES/native-inventory.json"
+    if native_path.exists():
+        native = json.loads(native_path.read_text())
+        if native.get("format") != 1:
+            raise ValueError("Unsupported native dependency inventory")
+        expected["THIRD_PARTY_LICENSES/native-inventory.json"] = native_path.read_bytes()
+        package_manifest = root / "macos/Mia/Package.swift"
+        source = package_manifest.read_text() if package_manifest.exists() else None
+        for package in native["packages"]:
+            if not package.get("files") or not re.fullmatch(r"[0-9a-f]{64}", package["source_archive"]["sha256"]):
+                raise ValueError("Native dependency lacks notices or source provenance")
+            if source is not None:
+                declaration = re.compile(r'\.package\(url:\s*"' + re.escape(package["swift_package_url"]) + r'",\s*exact:\s*"' + re.escape(package["version"]) + r'"\)')
+                if not declaration.search(source):
+                    raise ValueError("Native package declaration differs from reviewed version")
+            for notice in package["files"]:
+                relative, content = preserved_notice(root, notice)
+                expected[relative] = content
     actual_paths = {str(path.relative_to(root)) for path in (root / "THIRD_PARTY_LICENSES").rglob("*") if path.is_file()}
     recorded_paths = {path for path in expected if path.startswith("THIRD_PARTY_LICENSES/")}
     if actual_paths != recorded_paths:

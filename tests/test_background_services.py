@@ -14,6 +14,7 @@ import time
 import pytest
 
 from mia import operations
+from mia import installation
 from mia.installation import apply_service_plan, service_plan
 from mia.operations import Manager, OperationError
 from test_operations import managed, populate
@@ -47,6 +48,71 @@ def test_launchd_plan_is_distinct_and_has_one_bounded_retry_controller(managed, 
     assert plist["ProgramArguments"][-1] == "service-run"
     assert plist["Label"] in plan["destination"]
     assert plan["commands"][-1][0:2] == ["launchctl", "bootstrap"]
+
+
+def launchd_print(plan, *, destination=None, arguments=None):
+    plist = plistlib.loads(plan["content"].encode())
+    values = arguments or plist["ProgramArguments"]
+    return "gui/job = {\n\tpath = " + (destination or plan["destination"]) + "\n\tprogram = " + values[0] + "\n\targuments = {\n" + "\n".join("\t\t" + value for value in values) + "\n\t}\n}\n"
+
+
+def test_launchd_retry_recognizes_exact_loaded_job_after_registration_interruption(managed, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    home = tmp_path / "home"
+    plan = service_plan(managed, "launchd", home=home)
+    loaded = False
+    commands = []
+    def run(command, **kwargs):
+        nonlocal loaded
+        commands.append(command)
+        if command[:2] == ["launchctl", "print"]:
+            if loaded:
+                return subprocess.CompletedProcess(command, 0, launchd_print(plan), "")
+            return subprocess.CompletedProcess(command, 113, "", 'Could not find service "' + plistlib.loads(plan["content"].encode())["Label"] + '" in domain for user gui')
+        if command[:2] == ["launchctl", "bootstrap"]:
+            assert not loaded, "must not bootstrap an already verified loaded job"
+            loaded = True
+        return subprocess.CompletedProcess(command, 0, "", "")
+    monkeypatch.setattr(subprocess, "run", run)
+    write = installation._write
+    def interrupted(path, value):
+        if path.name == "service-registration.json":
+            raise KeyboardInterrupt("synthetic interruption after bootstrap")
+        write(path, value)
+    monkeypatch.setattr(installation, "_write", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        apply_service_plan(managed, plan, approve_sha256=plan["sha256"], home=home)
+    assert loaded and not (managed.root / "service-registration.json").exists()
+    monkeypatch.setattr(installation, "_write", write)
+    result = apply_service_plan(managed, plan, approve_sha256=plan["sha256"], home=home)
+    assert result["applied"] and (managed.root / "service-registration.json").exists()
+    assert sum(command[:2] == ["launchctl", "bootstrap"] for command in commands) == 1
+    assert sum(command == plan["commands"][0] for command in commands) == 2
+
+
+@pytest.mark.parametrize("changed", ["path", "arguments", "unparseable", "unavailable"])
+def test_launchd_foreign_or_unverifiable_job_blocks_before_host_mutation(managed, tmp_path, monkeypatch, changed):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    home = tmp_path / "home"
+    plan = service_plan(managed, "launchd", home=home)
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        if changed == "path":
+            output = launchd_print(plan, destination="/tmp/foreign.plist")
+        elif changed == "arguments":
+            output = launchd_print(plan, arguments=["/tmp/foreign-python", "--other-app"])
+        elif changed == "unparseable":
+            output = "unsupported launchctl output; synthetic-secret must never be logged"
+        else:
+            return subprocess.CompletedProcess(command, 1, "", "Could not find domain for current user")
+        return subprocess.CompletedProcess(command, 0, output, "")
+    monkeypatch.setattr(subprocess, "run", run)
+    with pytest.raises(OperationError) as error:
+        apply_service_plan(managed, plan, approve_sha256=plan["sha256"], home=home)
+    assert "synthetic-secret" not in str(error.value)
+    assert len(calls) == 1 and calls[0][:2] == ["launchctl", "print"]
+    assert not home.exists() and not (managed.root / "service-registration.json").exists()
 
 
 def test_old_managed_bootstrap_cannot_receive_unsupported_service_plan(managed, tmp_path):

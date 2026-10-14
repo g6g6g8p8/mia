@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
+from . import identity
 from .db import connect, data_dir, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
@@ -324,7 +325,7 @@ def me(owner: Owner) -> dict:
 
 @app.get('/api/installation')
 def installation_info(request: Request) -> JSONResponse:
-    return JSONResponse({'version':__version__, **experience.location(address=str(request.base_url).rstrip('/'))}, headers={'Cache-Control':'no-store'})
+    return JSONResponse({'version':__version__, **identity.public_info(), **experience.location(address=str(request.base_url).rstrip('/'))}, headers={'Cache-Control':'no-store'})
 
 
 @app.get('/api/experience')
