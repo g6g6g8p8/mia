@@ -26,7 +26,7 @@ def require_owner_creation(request: Request) -> None:
     try:
         if any(part.is_symlink() for part in (path, *path.parents)):
             raise ValueError
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(descriptor, "rb") as incoming:
             metadata = os.fstat(incoming.fileno())
             if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_mode & 0o077 or metadata.st_size > 256:

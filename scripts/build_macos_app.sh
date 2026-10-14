@@ -1,6 +1,22 @@
 #!/bin/bash
 # Developer build pipeline. Participant installations do not run this script.
-set -euo pipefail
+set -Eeuo pipefail
+
+task_stage='argument and host checks'
+build_failed() {
+  task_failure_status=$?
+  trap - ERR
+  printf 'Mia Mac build failed during %s (exit %s).\n' "$task_stage" "$task_failure_status" >&2
+  # Report packaging capacity only, never expand commands containing signing
+  # identities or Keychain profile names. The original failure remains fatal.
+  if [ -n "${task_output:-}" ] && [ -d "$task_output" ]; then
+    df -h "$task_output" >&2 || true
+    if [ -d "$task_output/Mia.app" ]; then du -sh "$task_output/Mia.app" >&2 || true; fi
+    if [ -d "$task_output/dmg-root" ]; then du -sh "$task_output/dmg-root" >&2 || true; fi
+  fi
+  exit "$task_failure_status"
+}
+trap build_failed ERR
 
 usage() {
   cat <<'HELP'
@@ -91,14 +107,18 @@ mkdir -p "$task_output"
 task_output=$(CDPATH= cd -- "$task_output" && pwd)
 if [ -z "$task_cache" ]; then task_cache="$task_output/download-cache"; fi
 if [ -z "$task_prepared" ]; then
+  task_stage='preparing pinned Mac runtime and wheels'
   task_prepared="$task_output/prepared"
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --output "$task_prepared" --cache "$task_cache" --platform macos --architecture "$task_arch"
 fi
+task_stage='verifying pinned runtime provenance'
 python3 "$task_repo/scripts/prepare_macos_artifacts.py" --verify-prepared "$task_prepared" --cache "$task_cache" --platform macos --architecture "$task_arch"
 if [ -n "$task_remote" ]; then
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --verify-prepared "$task_remote/payload" --cache "$task_cache" --platform linux --architecture x86_64
 fi
+task_stage='running native Swift tests'
 swift test --package-path "$task_repo/macos/Mia" --force-resolved-versions
+task_stage='compiling native release executable'
 swift build --package-path "$task_repo/macos/Mia" -c release --force-resolved-versions
 task_bin=$(swift build --package-path "$task_repo/macos/Mia" -c release --show-bin-path --force-resolved-versions)
 task_framework=$(python3 - "$task_repo/macos/Mia/.build/artifacts" <<'PY'
@@ -113,10 +133,12 @@ PY
 task_args=(--output "$task_output/Mia.app" --runtime "$task_prepared/runtime" --runtime-manifest "$task_prepared/runtime-manifest.json" --wheelhouse "$task_prepared/wheelhouse" --wheelhouse-manifest "$task_prepared/wheelhouse-manifest.json" --native-binary "$task_bin/Mia" --sparkle-framework "$task_framework")
 if [ -n "$task_remote" ]; then task_args+=(--remote-artifact "$task_remote"); fi
 if [ -n "$task_channel" ]; then task_args+=(--release-channel "$task_channel"); fi
+task_stage='assembling verified native app bundle'
 python3 "$task_repo/scripts/package_macos.py" "${task_args[@]}"
 
 # Perform an actual offline backend install/start/health/stop on this Mac using
 # synthetic empty data. No LaunchAgent is activated by the build pipeline.
+task_stage='testing offline backend and private first-owner setup'
 python3 - "$task_repo" "$task_output/Mia.app" <<'PY'
 from pathlib import Path
 import json, secrets, socket, sys, tempfile, urllib.error, urllib.request
@@ -176,13 +198,21 @@ if [ "$task_unsigned" = true ]; then
   echo "Unsigned internal artifact: signing, notarization and clean-Mac UI acceptance remain required."
 else
   task_name="Mia-$task_version-$task_arch"
+  task_stage='signing native app bundle'
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --sign-app "$task_output/Mia.app" --sign-identity "$task_identity"
 fi
+task_stage='staging disk-image contents'
+echo 'Mia Mac build: staging disk-image contents.'
 mkdir "$task_output/dmg-root"
 ditto "$task_output/Mia.app" "$task_output/dmg-root/Mia.app"
 ln -s /Applications "$task_output/dmg-root/Applications"
-hdiutil create -quiet -volname Mia -srcfolder "$task_output/dmg-root" -format UDZO -o "$task_output/$task_name.dmg"
+task_stage='creating compressed disk image'
+echo 'Mia Mac build: creating compressed disk image.'
+hdiutil create -volname Mia -srcfolder "$task_output/dmg-root" -format UDZO -o "$task_output/$task_name.dmg"
+task_stage='verifying disk-image integrity'
+hdiutil verify "$task_output/$task_name.dmg"
 if [ "$task_unsigned" = false ]; then
+  task_stage='signing and notarizing disk image'
   codesign --force --timestamp --sign "$task_identity" "$task_output/$task_name.dmg"
   xcrun notarytool submit "$task_output/$task_name.dmg" --keychain-profile "$task_notary" --wait --output-format json > "$task_output/notarization-result.json"
   python3 - "$task_output/notarization-result.json" <<'PY'
@@ -194,12 +224,13 @@ PY
   xcrun stapler validate "$task_output/$task_name.dmg"
   spctl --assess --type open --context context:primary-signature --verbose "$task_output/$task_name.dmg"
 fi
+task_stage='writing artifact digest and verification receipt'
 python3 - "$task_output/$task_name.dmg" "$task_unsigned" <<'PY'
 from pathlib import Path
 import hashlib,json,sys
 p=Path(sys.argv[1])
 with p.open('rb') as f: sha=hashlib.file_digest(f,'sha256').hexdigest()
 Path(str(p)+'.sha256').write_text(sha+'  '+p.name+'\n')
-Path(str(p)+'.verification.json').write_text(json.dumps({'artifact':p.name,'sha256':sha,'signed':sys.argv[2]=='false','notarized':sys.argv[2]=='false','native_backend_smoke_passed':True,'clean_mac_ui_acceptance':False,'consumer_distribution_ready':False},indent=2))
+Path(str(p)+'.verification.json').write_text(json.dumps({'artifact':p.name,'sha256':sha,'disk_image_integrity_verified':True,'signed':sys.argv[2]=='false','notarized':sys.argv[2]=='false','native_backend_smoke_passed':True,'clean_mac_ui_acceptance':False,'consumer_distribution_ready':False},indent=2))
 PY
 echo "Built: $task_output/$task_name.dmg"

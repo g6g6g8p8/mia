@@ -1,5 +1,6 @@
 """Other local OS users cannot claim a fresh native installation over TCP."""
 import json
+import os
 import secrets
 
 import pytest
@@ -45,7 +46,7 @@ def test_native_first_owner_requires_private_cookie_and_does_not_publish_token(c
     assert browser.post("/api/login", json={"password": setup_payload()["password"]}).status_code == 200
 
 
-@pytest.mark.parametrize("failure", ["missing", "permissions", "symlink", "oversized"])
+@pytest.mark.parametrize("failure", ["missing", "permissions", "symlink", "oversized", "fifo"])
 def test_damaged_bootstrap_requires_recovery_without_creating_owner(client, monkeypatch, failure):
     browser, root, token = protected(client, monkeypatch)
     path = root / "bootstrap-token"
@@ -56,6 +57,9 @@ def test_damaged_bootstrap_requires_recovery_without_creating_owner(client, monk
     elif failure == "symlink":
         path.rename(root / "original")
         path.symlink_to(root / "original")
+    elif failure == "fifo":
+        path.unlink()
+        os.mkfifo(path, mode=0o600)
     else:
         path.write_bytes(b"synthetic" * 100)
     browser.cookies.set("mia_bootstrap", token)
