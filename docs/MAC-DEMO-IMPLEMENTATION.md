@@ -43,6 +43,8 @@ scripts/build_macos_app.sh --output /destino/novo --remote-artifact /companion/r
 
 O script inclui os runtimes/avisos, verifica novamente bytes upstream e wheels, roda testes Swift e instala/inicia o backend offline com dados sintéticos. O aceite de runtime não executa código de outra arquitetura.
 
+A criação do DMG repete somente o erro nativo exato `Resource busy`, observado intermitentemente no runner Intel, em no máximo três tentativas. A limpeza entre tentativas aceita apenas o arquivo parcial regular, pertencente ao usuário e sem outros links dentro do diretório de build controlado. Outros erros e o esgotamento das tentativas continuam fatais; a verificação de integridade do DMG final permanece obrigatória.
+
 Para produção, usar uma identidade **Developer ID Application** e perfil de notarização que já existam no Keychain do Mac de build. O modo assinado exige ambos, verifica códigos aninhados, aguarda aceitação da notarização e confere o ticket; não há instrução de contorno do Gatekeeper. Somente o executável Python recebe a permissão para carregar bibliotecas sem Developer ID, necessária às extensões dos wheels verificados; o app e os helpers mantêm o hardened runtime. O ensaio offline roda depois da assinatura, e o recibo externo registra os bytes finais do app e verifica a integridade do DMG após notarização/ticket. Esses passos assinados ainda não foram executados com credenciais reais.
 
 Metadados Apple usam versão numérica de três componentes e sufixos a/b/fc; a versão original do backend permanece separada. O canal público de atualização entra em `--release-channel` com URL e chave pública revisadas; chaves privadas/certificados/senhas ficam fora do Git, do bundle e do chat.

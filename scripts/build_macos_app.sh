@@ -212,7 +212,7 @@ ditto "$task_output/Mia.app" "$task_output/dmg-root/Mia.app"
 ln -s /Applications "$task_output/dmg-root/Applications"
 task_stage='creating compressed disk image'
 echo 'Mia Mac build: creating compressed disk image.'
-hdiutil create -volname Mia -srcfolder "$task_output/dmg-root" -format UDZO -o "$task_output/$task_name.dmg"
+python3 "$task_repo/scripts/create_macos_dmg.py" --source "$task_output/dmg-root" --output "$task_output/$task_name.dmg"
 if [ "$task_unsigned" = false ]; then
   task_stage='signing and notarizing disk image'
   codesign --force --timestamp --sign "$task_identity" "$task_output/$task_name.dmg"
