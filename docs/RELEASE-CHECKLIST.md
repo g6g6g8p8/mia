@@ -1,5 +1,11 @@
 # Aceites de release — 13/10/2026
 
+## Próxima distribuição: Mia Demo para Mac
+
+O contrato de [MAC-DEMO.md](MAC-DEMO.md) e as etapas D0–D8 de [ROADMAP.md](ROADMAP.md) orientam a demonstração por convite. Exigir janela própria, DMG assinado/notarizado, instalação suportada sem comandos, destino real no onboarding, importação/Hoje útil, reabertura e atualização pelo app com recuperação. Convites controlam distribuição oficial; instalações/dados continuam próprios e código Apache permanece público. Aceites locais/servidor são separados; iPhone é preparação adicional.
+
+O launcher atual, os testes do backend e uma instalação administrativa funcional não fecham esses aceites. App, assistente remoto, distribuição por convite e atualizador do cliente ainda não estão implementados. Evidências históricas abaixo continuam válidas dentro do seu escopo.
+
 ## Nova jornada na 0.2.0a12
 
 Implementados: preparação por fontes sem área/chave obrigatória, uploads retomáveis, revisão por grupos, indexação progressiva, exports com proveniência, foco, trechos em Hoje, conversas persistentes e serviço de usuário/migração manual. [Evidência e limites](EXPERIENCE-VALIDATION.md) distinguem testes sintéticos, processo Linux e aceites nas máquinas reais.
