@@ -7,6 +7,7 @@ import uuid
 
 from .db import data_dir
 from .operations import _lock, _read, _write
+from . import bootstrap
 
 
 def installation_id() -> str:
@@ -36,6 +37,6 @@ def installation_id() -> str:
 
 def public_info() -> dict:
     secure = os.environ.get("MIA_COOKIE_SECURE", "false").lower() == "true"
-    return {"installation_id": installation_id(), "desktop_protocol": 1,
+    return {"installation_id": installation_id(), "desktop_protocol": 1, "bootstrap_protected": bootstrap.required(),
             "cookie_secure": secure,
             "transport_policy": "https_required" if secure else "private_connection_only"}

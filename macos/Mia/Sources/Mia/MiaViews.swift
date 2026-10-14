@@ -21,7 +21,7 @@ import MiaCore
             case .ready, .offline:
                 if let connection = model.state.connection {
                     ZStack(alignment: .top) {
-                        MiaWebView(connection: connection, reloadID: model.webReloadID, disconnected: model.pageDisconnected, connected: model.pageConnected, notice: model.webNotice).id(connection.id + ":" + connection.installationID)
+                        MiaWebView(connection: connection, reloadID: model.webReloadID, disconnected: model.pageDisconnected, connected: model.pageConnected, notice: model.webNotice).id(connection.webIdentity)
                         if model.state.phase == .offline { offline(connection) }
                     }
                 } else { destinations }
@@ -188,9 +188,9 @@ import MiaCore
                     if let release = model.updates["release"]?.object ?? model.updates["releases"]?.array?.first?.object { Text("Versão \(release["version"]?.string ?? "")").font(.headline); Text(release["notes"]?.string ?? "") }
                     HStack { Button("Buscar atualização do destino") { Task { await model.loadUpdates(check: true) } }; if model.updates["state"]?.string == "available" { Button("Preparar atualização") { Task { await model.prepareUpdate() } } }; if model.updates["state"]?.string == "recovery_required" { Button("Recuperar atualização") { Task { await model.recoverUpdate() } } } }
                     if ["interrupted", "prepared"].contains(model.updates["state"]?.string ?? "") { Button("Descartar preparação da atualização") { Task { await model.discardUpdatePreparation() } } }
-                    if model.updates["state"]?.string == "prepared", model.updatePlan == nil { Button("Revisar atualização preparada") { if let plan = try? ReviewPlan(model.updates, hashKey: "plan_sha256") { model.updatePlan = plan; model.backendRefreshPlan = false } } }
+                    if model.updates["state"]?.string == "prepared", model.updatePlan == nil { Button("Revisar atualização preparada", action: model.reviewPreparedUpdate) }
                 } else { Text("Este app preserva a versão do seu servidor. Atualização remota pelo assistente ainda não está disponível.").foregroundStyle(.secondary) }
-                if let plan = model.updatePlan {
+                if let plan = model.updatePlan, model.state.connection?.mode == "local" {
                     PlanReview(plan: plan, title: "Confira a atualização", actionTitle: "Atualizar com recuperação", approve: { Task { if model.backendRefreshPlan { await model.applyBundledUpdate() } else { await model.applyUpdate() } } }, cancel: { model.updatePlan = nil })
                 }
             }.padding(28)

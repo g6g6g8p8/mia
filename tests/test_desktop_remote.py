@@ -1,6 +1,7 @@
 """Native remote boundary tests with an adapter; never contact personal hosts."""
 import base64
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,8 @@ import socket
 import subprocess
 import sys
 import threading
+import tarfile
+from types import SimpleNamespace
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -20,10 +23,12 @@ KEY = base64.b64encode(b"fixture-server-ed25519-public-key-not-a-secret").decode
 FINGERPRINT = _fingerprint(KEY)
 IDENTITY = "5cdd414b-7271-4503-b817-f764cbd0b900"
 HOST = {"host": "my-server.example", "user": "tester"}
+BOOTSTRAP_TOKEN = "synthetic-private-bootstrap-authority-00000"
+assert len(BOOTSTRAP_TOKEN) == 43
 
 
-def backend(identity=IDENTITY, secure=False, configured=False):
-    return {"health": {"ok": True, "version": "0.2.0a13"}, "status": {"configured": configured, "version": "0.2.0a13"}, "installation": {"installation_id": identity, "version": "0.2.0a13", "desktop_protocol": 1, "cookie_secure": secure, "transport_policy": "https_required" if secure else "private_connection_only"}}
+def backend(identity=IDENTITY, secure=False, configured=False, protected=True):
+    return {"health": {"ok": True, "version": "0.2.0a13"}, "status": {"configured": configured, "version": "0.2.0a13"}, "installation": {"installation_id": identity, "version": "0.2.0a13", "desktop_protocol": 1, "cookie_secure": secure, "transport_policy": "https_required" if secure else "private_connection_only", "bootstrap_protected": protected}}
 
 
 class FixtureSSH:
@@ -34,7 +39,7 @@ class FixtureSSH:
         self.calls = []
         self.liveness = {}
         self.server = backend()
-        self.http_server = self.server
+        self.http_server = backend(configured=True)
         self.offline = False
         self.probe_result = {"platform": "ubuntu", "platform_version": "24.04", "architecture": "x86_64", "home_safe": True, "free_bytes": 10 * 1024**3, "user_service": True, "linger": True, "port_available": True, "backend": None}
 
@@ -48,11 +53,15 @@ class FixtureSSH:
 
     def probe(self, config, pin):
         self.calls.append("authenticated_probe")
-        return dict(self.probe_result)
+        value = dict(self.probe_result)
+        if value.get("backend") and value["backend"]["status"]["configured"] is False and value["backend"]["installation"]["bootstrap_protected"] is True:
+            value.setdefault("bootstrap_token", BOOTSTRAP_TOKEN)
+        return value
 
     def install(self, config, pin, manifest, directory, identity):
         self.calls.append("install")
         self.probe_result.update(port_available=False, backend=self.server)
+        self.http_server = self.server
         return {"ok": True, "version": manifest["version"], "root_id": identity, "installation_id": IDENTITY, "service_activated": True}
 
     def spawn(self, state, resources):
@@ -172,6 +181,9 @@ def test_full_install_uses_approved_exact_artifact_then_checks_identity(controll
     result = controller.handle("remote_install", approved(approve_sha256=plan["plan_sha256"]))
     assert result["mode"] == "ssh" and result["running"] is True
     assert result["installation_id"] == IDENTITY and result["configured"] is False
+    assert result["bootstrap_token"] == BOOTSTRAP_TOKEN
+    assert BOOTSTRAP_TOKEN not in json.dumps(controller.connections())
+    assert BOOTSTRAP_TOKEN not in (controller.base / result["connection_id"] / "connection.json").read_text()
     assert controller.adapter.calls.count("install") == 1
     assert controller.adapter.calls.count("spawn") == 1
     # One short-lived bridge can be replaced by another without creating a new
@@ -179,6 +191,7 @@ def test_full_install_uses_approved_exact_artifact_then_checks_identity(controll
     replacement = RemoteController(controller.resources, controller.home, adapter=controller.adapter)
     connected = replacement.handle("remote_connect", approved())
     assert connected["connection_id"] == result["connection_id"] and connected["url"] == result["url"]
+    assert connected["bootstrap_token"] == BOOTSTRAP_TOKEN
     assert controller.adapter.calls.count("spawn") == 1
 
 
@@ -258,7 +271,7 @@ def test_offline_https_preserves_connection_no_reinstall_and_changed_identity_re
     assert error.value.code == "connection_offline"
     assert controller.connections()[0]["installation_id"] == IDENTITY
     controller.adapter.offline = False
-    controller.adapter.http_server = backend(identity=str(uuid.uuid4()))
+    controller.adapter.http_server = backend(identity=str(uuid.uuid4()), configured=True)
     with pytest.raises(RemoteError) as error:
         controller.handle("https_connect", {"url": "https://mia.example/"})
     assert error.value.code == "installation_changed"
@@ -344,7 +357,8 @@ def test_live_loopback_preflight_returns_only_public_metadata(tmp_path):
         assert state["port_available"] is False
         assert state["backend"] == server_backend
         assert "must-not-appear-in-probe" not in result.stdout
-        assert set(state) == {"platform", "platform_version", "architecture", "home_safe", "free_bytes", "user_service", "linger", "port_available", "backend"}
+        assert state["bootstrap_token"] is None
+        assert set(state) == {"platform", "platform_version", "architecture", "home_safe", "free_bytes", "user_service", "linger", "port_available", "backend", "bootstrap_token"}
     finally:
         server.shutdown()
         server.server_close()

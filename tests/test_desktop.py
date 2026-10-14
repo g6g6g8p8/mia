@@ -9,12 +9,14 @@ import sys
 import uuid
 import sqlite3
 from contextlib import closing
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
 from mia import __version__
 from mia import desktop
-from mia.desktop import DesktopController, DesktopError, MACHINE_ENV
+from mia.desktop import DesktopController, DesktopError, MACHINE_ENV, PRIVATE_MACHINE_ENV
 from mia.launcher import runtime_inventory
 from mia.operations import Manager, _write
 
@@ -176,14 +178,66 @@ def test_install_uses_stable_runtime_and_explicit_empty_local_configuration(bund
     result = controller.handle("local_install", {"approve_sha256": plan["sha256"]})
     assert result["installed"] and not result["recovery_required"]
     assert result["installation_id"] == plan["details"]["installation_id"]
-    assert (controller.root / "machine.env").read_text() == MACHINE_ENV
+    assert (controller.root / "machine.env").read_text() == PRIVATE_MACHINE_ENV
+    assert (controller.root / "bootstrap-token").stat().st_mode & 0o777 == 0o600
     assert list((controller.root / "data/initial").iterdir()) == []
     configuration = json.loads((controller.root / "installation.json").read_text())
     assert configuration["python"].startswith(str(controller.base / "runtimes"))
+    assert configuration["private_bootstrap"] is True
     assert not configuration["python"].startswith(str(controller.resources))
     assert controller.handle("local_bundle_plan", {})["update_available"] is False
     stopped = controller.handle("local_stop", {})
     assert stopped["paused"] and controller.handle("status", {})["local"]["paused"]
+
+
+def test_bootstrap_secret_only_reaches_native_ipc_for_verified_empty_instance(bundle, monkeypatch):
+    darwin(monkeypatch)
+    controller = DesktopController(*bundle)
+    plan = controller.handle("local_plan", {})
+    mock_install_worker(controller, monkeypatch)
+    initial = controller.handle("local_install", {"approve_sha256": plan["sha256"]})
+    assert "bootstrap_token" not in initial  # No verified ready process yet.
+    configuration = json.loads((controller.root / "installation.json").read_text())
+    state = {"configured": False, "version": __version__, "installation_id": configuration["installation_id"], "bootstrap_protected": True, "redirect": False}
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if state["redirect"]:
+                self.send_response(302)
+                self.send_header("Location", "https://example.invalid/")
+                self.end_headers()
+                return
+            value = {"configured": state["configured"], "version": state["version"]} if self.path == "/api/status" else {"installation_id": state["installation_id"], "bootstrap_protected": state["bootstrap_protected"]}
+            payload = json.dumps(value).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+        def log_message(self, *_args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        configuration["port"] = server.server_port
+        _write(controller.root / "installation.json", configuration)
+        monkeypatch.setattr(Manager, "_record", lambda _: {"ready": True})
+        token = (controller.root / "bootstrap-token").read_text().strip()
+        assert controller.handle("status", {})["local"]["bootstrap_token"] == token
+        for change in ({"configured": True}, {"installation_id": str(uuid.uuid4())}, {"bootstrap_protected": False}, {"version": "0.0.0"}, {"redirect": True}):
+            before = dict(state)
+            state.update(change)
+            response = controller.handle("status", {})
+            assert "bootstrap_token" not in response["local"]
+            assert token not in json.dumps(response)
+            state.update(before)
+        (controller.root / "bootstrap-token").chmod(0o644)
+        with pytest.raises(DesktopError) as error:
+            controller.handle("status", {})
+        assert error.value.code == "bootstrap_unavailable" and token not in str(error.value)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
 
 def test_subprocess_does_not_inherit_secrets_or_python_pip_settings(bundle, monkeypatch):
@@ -218,6 +272,9 @@ def test_failed_partial_install_only_resumes_explicitly_and_preserves_attempt(bu
         controller.handle("local_install", {"approve_sha256": plan["sha256"]})
     partials = list((controller.root / "releases").glob("*/interrupted.txt"))
     assert len(partials) == 1
+    original_configuration = (controller.root / "installation.json").read_bytes()
+    original_environment = (controller.root / "machine.env").read_bytes()
+    original_token = (controller.root / "bootstrap-token").read_bytes()
     status = controller.handle("status", {})["local"]
     assert not status["installed"] and status["recovery_required"]
     with pytest.raises(DesktopError, match="recuperação"):
@@ -227,6 +284,67 @@ def test_failed_partial_install_only_resumes_explicitly_and_preserves_attempt(bu
     assert result["installed"] and not result["recovery_required"]
     assert partials[0].read_text() == "preserved incomplete synthetic release"
     assert result["installation_id"] == plan["details"]["installation_id"]
+    assert (controller.root / "installation.json").read_bytes() == original_configuration
+    assert (controller.root / "machine.env").read_bytes() == original_environment
+    assert (controller.root / "bootstrap-token").read_bytes() == original_token
+
+
+def test_partial_recovery_completes_protection_only_before_configuration_publication(bundle, monkeypatch):
+    darwin(monkeypatch)
+    controller = DesktopController(*bundle)
+    plan = controller.handle("local_plan", {})
+    mock_install_worker(controller, monkeypatch, failure=True)
+    with pytest.raises(RuntimeError):
+        controller.handle("local_install", {"approve_sha256": plan["sha256"]})
+    # Simulate a kill after the reviewed defaults were copied but before the
+    # private flag, token and installation configuration were published.
+    (controller.root / "installation.json").unlink()
+    (controller.root / "bootstrap-token").unlink()
+    (controller.root / "machine.env").write_text(MACHINE_ENV)
+    mock_install_worker(controller, monkeypatch)
+    result = controller.handle("local_recover", {})
+    assert result["installed"] and result["installation_id"] == plan["details"]["installation_id"]
+    assert (controller.root / "machine.env").read_text() == PRIVATE_MACHINE_ENV
+    assert len(desktop._private_bootstrap_token(controller.root / "bootstrap-token")) == 43
+
+
+@pytest.mark.parametrize("mutation", ["missing_token", "malformed_token", "shared_token", "token_symlink", "disabled_environment", "changed_configuration"])
+def test_partial_recovery_refuses_altered_private_handoff_without_rotating_token(bundle, monkeypatch, mutation):
+    darwin(monkeypatch)
+    controller = DesktopController(*bundle)
+    plan = controller.handle("local_plan", {})
+    mock_install_worker(controller, monkeypatch, failure=True)
+    with pytest.raises(RuntimeError):
+        controller.handle("local_install", {"approve_sha256": plan["sha256"]})
+    token = controller.root / "bootstrap-token"
+    if mutation == "missing_token":
+        token.unlink()
+    elif mutation == "malformed_token":
+        token.write_bytes(b"malformed private authorization\n")
+    elif mutation == "shared_token":
+        token.chmod(0o644)
+    elif mutation == "token_symlink":
+        retained = controller.home / "preserved-private-token"
+        token.rename(retained)
+        token.symlink_to(retained)
+    elif mutation == "disabled_environment":
+        (controller.root / "machine.env").write_text(MACHINE_ENV)
+    else:
+        configuration = json.loads((controller.root / "installation.json").read_text())
+        configuration["private_bootstrap"] = False
+        _write(controller.root / "installation.json", configuration)
+    before_environment = (controller.root / "machine.env").read_bytes()
+    before_configuration = (controller.root / "installation.json").read_bytes()
+    before_token = token.read_bytes() if token.exists() else None
+    releases = sorted(path.name for path in (controller.root / "releases").iterdir())
+    mock_install_worker(controller, monkeypatch)
+    with pytest.raises(Exception):
+        controller.handle("local_recover", {})
+    assert (controller.root / "machine.env").read_bytes() == before_environment
+    assert (controller.root / "installation.json").read_bytes() == before_configuration
+    assert (token.read_bytes() if token.exists() else None) == before_token
+    assert sorted(path.name for path in (controller.root / "releases").iterdir()) == releases
+    assert not (controller.root / "active.json").exists()
 
 
 def test_partial_recovery_refuses_user_data_and_changed_bundle(bundle, monkeypatch):

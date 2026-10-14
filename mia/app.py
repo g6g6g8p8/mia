@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
 from . import identity
+from . import bootstrap
 from .db import connect, data_dir, database_path, initialize, transaction
 from .security import hash_password, iso, new_session, now, session_hash, verify_password
 from . import harness
@@ -250,6 +251,7 @@ def setup(payload: SetupInput, request: Request, response: Response) -> dict:
         with transaction(immediate=True) as db:
             if db.execute("SELECT 1 FROM owner WHERE id = 1").fetchone():
                 raise HTTPException(409, "Mia já foi configurada")
+            bootstrap.require_owner_creation(request)
             db.execute(
                 "INSERT INTO owner(id, name, email, timezone, password_hash, created_at) VALUES(1,?,?,?,?,?)",
                 (payload.name, payload.email.strip(), payload.timezone, hash_password(payload.password), owner_created),
@@ -267,6 +269,7 @@ def setup(payload: SetupInput, request: Request, response: Response) -> dict:
     except sqlite3.IntegrityError as exc:
         raise HTTPException(409, "Mia já foi configurada ou a área já existe") from exc
     set_session_cookie(response, token)
+    response.delete_cookie(bootstrap.COOKIE_NAME, path="/")
     return {"ok": True}
 
 

@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import plistlib
 import re
+import secrets
 import shutil
 import signal
 import socket
@@ -270,7 +271,7 @@ class Manager:
             shutil.rmtree(release)
             raise
 
-    def install(self, source: Path, *, port: int = 8123, host: str = "127.0.0.1", env_file: Path | None = None, wheelhouse: Path | None = None, offline: bool = False, installation_id: str | None = None) -> dict:
+    def install(self, source: Path, *, port: int = 8123, host: str = "127.0.0.1", env_file: Path | None = None, wheelhouse: Path | None = None, offline: bool = False, installation_id: str | None = None, private_bootstrap: bool = False) -> dict:
         if sys.version_info < (3, 12):
             raise OperationError("Python 3.12+ é necessário")
         ipaddress.ip_address(host)
@@ -293,9 +294,17 @@ class Manager:
         machine = self.root / "machine.env"
         machine.write_text(env_file.read_text() if env_file else "# Configuração privada desta instalação.\nMIA_AI_ENABLED=false\nMIA_COOKIE_SECURE=false\n")
         machine.chmod(0o600)
+        if private_bootstrap:
+            content = machine.read_text()
+            machine.write_text(content + ("" if content.endswith("\n") else "\n") + "MIA_SETUP_REQUIRE_TOKEN=true\n")
+            descriptor = os.open(self.root / "bootstrap-token", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            with os.fdopen(descriptor, "w") as token_file:
+                token_file.write(secrets.token_urlsafe(32) + "\n")
+                token_file.flush()
+                os.fsync(token_file.fileno())
         shutil.copyfile(Path(__file__).resolve(), self.root / "manager.py")
         (self.root / "manager.py").chmod(0o600)
-        _write(self.root / "installation.json", {"format": 1, "host": host, "port": port, "python": sys._base_executable, "installation_id": identity,
+        _write(self.root / "installation.json", {"format": 1, "host": host, "port": port, "python": sys._base_executable, "installation_id": identity, "private_bootstrap": private_bootstrap,
                "manager_protocol": 2, "manager_sha256": hashlib.sha256((self.root / "manager.py").read_bytes()).hexdigest()})
         with _lock(self.root / "operation.lock"):
             release = self._release(source, wheelhouse, offline)
@@ -906,6 +915,7 @@ def main() -> None:
             operation.add_argument("--host", default="127.0.0.1")
             operation.add_argument("--env-file", type=Path)
             operation.add_argument("--installation-id")
+            operation.add_argument("--private-bootstrap", action="store_true")
     for command in ("start", "stop", "status", "recover", "service-run", "migrate-cancel"):
         commands.add_parser(command)
     migration = commands.add_parser("migrate-data")

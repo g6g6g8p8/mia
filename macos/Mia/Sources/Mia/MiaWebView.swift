@@ -9,8 +9,7 @@ import MiaCore
 @MainActor private enum InstanceStores {
     private static var stores: [String: WKWebsiteDataStore] = [:]
     static func store(for connection: MiaConnection) -> WKWebsiteDataStore {
-        let selectedOrigin = WebOrigin(connection.url)!
-        let key = connection.id + "|" + connection.installationID + "|" + selectedOrigin.scheme + "|" + selectedOrigin.host + "|" + String(selectedOrigin.port)
+        let key = connection.webIdentity
         if let existing = stores[key] { return existing }
         let store: WKWebsiteDataStore
         if #available(macOS 14.0, *) {
@@ -44,14 +43,22 @@ import MiaCore
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         view.allowsBackForwardNavigationGestures = true
-        view.load(URLRequest(url: clientURL(connection)))
+        load(view, coordinator: context.coordinator)
         return view
     }
     func updateNSView(_ view: WKWebView, context: Context) {
         if context.coordinator.reloadID != reloadID {
             context.coordinator.reloadID = reloadID
-            view.load(URLRequest(url: clientURL(connection)))
+            load(view, coordinator: context.coordinator)
         }
+    }
+    private func load(_ view: WKWebView, coordinator: Coordinator) {
+        let request = URLRequest(url: clientURL(connection))
+        do {
+            if let cookie = try BootstrapCookie.make(for: connection) {
+                view.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { view.load(request) }
+            } else { view.load(request) }
+        } catch { coordinator.notice("Não foi possível confirmar a autorização para criar esta Mia. Reconecte à mesma instalação; seus dados foram preservados."); coordinator.disconnected() }
     }
     private func clientURL(_ connection: MiaConnection) -> URL {
         var components = URLComponents(url: connection.url, resolvingAgainstBaseURL: false)!

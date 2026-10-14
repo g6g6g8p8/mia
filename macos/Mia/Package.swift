@@ -9,6 +9,7 @@ let package = Package(
     targets: [
         .target(name: "MiaCore"),
         .executableTarget(name: "Mia", dependencies: ["MiaCore", .product(name: "Sparkle", package: "Sparkle", condition: .when(platforms: [.macOS]))], linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"], .when(platforms: [.macOS]))]),
-        .testTarget(name: "MiaCoreTests", dependencies: ["MiaCore"])
+        .testTarget(name: "MiaCoreTests", dependencies: ["MiaCore"]),
+        .testTarget(name: "MiaClientTests", dependencies: ["Mia", "MiaCore"])
     ]
 )

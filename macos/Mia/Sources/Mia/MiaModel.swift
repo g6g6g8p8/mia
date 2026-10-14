@@ -29,7 +29,9 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
     @Published var showControls = false
     @Published var webReloadID = UUID()
     @Published var backendRefreshPlan = false
+    private var updatePlanInstallationID: String?
     private var approvedFingerprint: String?
+    private var approvedHostConfiguration: [String: JSONValue]?
     private var pendingRemotePayload: [String: JSONValue]?
     private let bridge: any BridgeCalling
     private let preferences: UserDefaults
@@ -86,7 +88,7 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
     }
 
     func begin() { state.chooseDestination() }
-    func changeDestination() { plan = nil; hostFingerprint = nil; approvedFingerprint = nil; state.chooseDestination(); showControls = false }
+    func changeDestination() { plan = nil; hostFingerprint = nil; approvedFingerprint = nil; approvedHostConfiguration = nil; clearUpdateReview(); state.chooseDestination(); showControls = false }
 
     func prepareLocal() async {
         await perform("Conferindo este Mac…") {
@@ -114,6 +116,8 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
             }
             var payload: [String: JSONValue] = ["host": .string(self.serverHost.trimmingCharacters(in: .whitespaces)), "user": .string(self.serverUser.trimmingCharacters(in: .whitespaces)), "port": .number(Double(port)), "remote_port": .number(8123)]
             if let key = self.serverKey { payload["key_path"] = .string(key.path) }
+            let configuration = payload
+            if self.approvedHostConfiguration != configuration { self.approvedFingerprint = nil; self.hostFingerprint = nil }
             if let approved = self.approvedFingerprint { payload["approved_host_fingerprint"] = .string(approved) }
             self.pendingRemotePayload = payload
             let result = try await self.call("remote_preflight", payload)
@@ -122,6 +126,7 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
                 self.hostFingerprint = fingerprint; return
             }
             self.approvedFingerprint = fingerprint
+            self.approvedHostConfiguration = configuration
             self.hostFingerprint = nil
             if self.serverConnectOnly {
                 payload["approved_host_fingerprint"] = .string(fingerprint)
@@ -139,6 +144,7 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
 
     func approveHostIdentity() async {
         guard let fingerprint = hostFingerprint else { return }
+        approvedHostConfiguration = pendingRemotePayload?.filter { $0.key != "approved_host_fingerprint" }
         approvedFingerprint = fingerprint; hostFingerprint = nil
         await inspectServer()
     }
@@ -196,6 +202,7 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
     }
 
     func inspectBundledUpdate() async {
+        guard let connection = state.connection, connection.mode == "local" else { return }
         await perform("Conferindo a versão incluída neste app…") {
             let result = try await self.call("local_bundle_plan")
             if result["update_available"]?.bool == false {
@@ -204,11 +211,12 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
             }
             self.updatePlan = try ReviewPlan(result)
             self.backendRefreshPlan = true
+            self.updatePlanInstallationID = connection.installationID
         }
     }
 
     func applyBundledUpdate() async {
-        guard let plan = updatePlan else { return }
+        guard let plan = updatePlan, state.connection?.mode == "local", state.connection?.installationID == updatePlanInstallationID else { return }
         await perform("Atualizando a instalação deste Mac com recuperação…", mutation: true) {
             let result = try await self.call("local_bundle_update", ["approve_sha256": .string(plan.id)])
             if let connection = try? MiaConnection(result["local"]?.object ?? result, local: true) { self.select(connection) }
@@ -219,19 +227,23 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
     }
 
     func loadUpdates(check: Bool = false) async {
+        guard state.connection?.mode == "local" else { updates = [:]; return }
         await perform(check ? "Buscando atualização do destino…" : "Conferindo atualizações…") {
             self.updates = try await self.call(check ? "updates_check" : "updates_status")
         }
     }
     func prepareUpdate() async {
+        guard let connection = state.connection, connection.mode == "local" else { return }
         guard let id = (updates["release"]?.object ?? updates["releases"]?.array?.first?.object)?["id"]?.string else { return }
         await perform("Baixando e verificando a atualização…", mutation: true) {
             self.updates = try await self.call("updates_prepare", ["release_id": .string(id)])
             self.updatePlan = try ReviewPlan(self.updates, hashKey: "plan_sha256")
             self.backendRefreshPlan = false
+            self.updatePlanInstallationID = connection.installationID
         }
     }
     func discardUpdatePreparation() async {
+        guard state.connection?.mode == "local" else { return }
         let id = updates["release"]?.object?["id"]?.string ?? ""
         await perform("Descartando somente a preparação da atualização…", mutation: true) {
             self.updates = try await self.call("updates_prepare", ["release_id": .string(id), "discard": .bool(true)])
@@ -239,7 +251,7 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
         }
     }
     func applyUpdate() async {
-        guard let plan = updatePlan else { return }
+        guard let plan = updatePlan, state.connection?.mode == "local", state.connection?.installationID == updatePlanInstallationID else { return }
         await perform("Aplicando atualização com recuperação…", mutation: true) {
             self.updates = try await self.call("updates_apply", ["approve_sha256": .string(plan.id)])
             self.updatePlan = nil
@@ -249,6 +261,7 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
         await refresh()
     }
     func recoverUpdate() async {
+        guard state.connection?.mode == "local" else { return }
         await perform("Recuperando a atualização…", mutation: true) {
             self.updates = try await self.call("updates_recover")
             self.updatePlan = nil; self.notice = self.updates["summary"]?.string
@@ -268,10 +281,16 @@ enum DestinationChoice: String, CaseIterable, Identifiable {
         }
     }
     private func select(_ connection: MiaConnection) {
+        clearUpdateReview()
         state.show(connection); preferences.set(connection.id, forKey: "Mia.selectedConnection")
         if let index = connections.firstIndex(where: { $0.id == connection.id }) { connections[index] = connection } else { connections.append(connection) }
         showControls = false
     }
+    func reviewPreparedUpdate() {
+        guard let connection = state.connection, connection.mode == "local", let plan = try? ReviewPlan(updates, hashKey: "plan_sha256") else { return }
+        updatePlan = plan; backendRefreshPlan = false; updatePlanInstallationID = connection.installationID
+    }
+    private func clearUpdateReview() { updatePlan = nil; updatePlanInstallationID = nil; backendRefreshPlan = false; updates = [:] }
     private func call(_ action: String, _ payload: [String: JSONValue] = [:]) async throws -> [String: JSONValue] { try await bridge.call(BridgeRequest(action: action, payload: payload)) }
     private func perform(_ message: String, mutation: Bool = false, operation: () async throws -> Void) async {
         guard !busy else { return }

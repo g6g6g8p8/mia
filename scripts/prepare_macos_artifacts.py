@@ -257,7 +257,7 @@ def prepare(output: Path, target_platform: str, architecture: str, cache: Path, 
     requirement_file.write_text("\n".join(pins) + "\n")
     wheelhouse = output / "wheelhouse"
     wheelhouse.mkdir()
-    subprocess.run([str(runtime / "bin/python3"), "-I", "-m", "pip", "download", "--only-binary=:all:", "--disable-pip-version-check", "--index-url", "https://pypi.org/simple/", "--dest", str(wheelhouse), "-r", str(requirement_file)], check=True)
+    subprocess.run([str(runtime / "bin/python3"), "-I", "-B", "-m", "pip", "download", "--only-binary=:all:", "--no-cache-dir", "--disable-pip-version-check", "--index-url", "https://pypi.org/simple/", "--dest", str(wheelhouse), "-r", str(requirement_file)], check=True)
     wheels = wheel_provenance(wheelhouse, pins)
     common = {"format": 1, "platform": target_platform, "architecture": architecture, "python_version": lock["python_version"]}
     runtime_manifest = {**common, "source_url": base + urllib.parse.quote(target["archive"]), "archive_sha256": target["sha256"], "official_checksum_source": lock["checksum_source"], "license_archive_url": base + urllib.parse.quote(target["license_archive"]), "license_archive_sha256": target["license_archive_sha256"], "notices": notices, "files": inventory(runtime)}

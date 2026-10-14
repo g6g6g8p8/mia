@@ -28,6 +28,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  native-compile:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Compile actual native application and run Swift boundary tests
+        run: |
+          set +e
+          swift test --package-path macos/Mia --force-resolved-versions > "$RUNNER_TEMP/native-swift.log" 2>&1
+          mia_swift_status=$?
+          cat "$RUNNER_TEMP/native-swift.log"
+          if [ "$mia_swift_status" -ne 0 ]; then
+            python3 - "$RUNNER_TEMP/native-swift.log" <<'PY'
+          from pathlib import Path
+          import sys
+          message = '\n'.join(Path(sys.argv[1]).read_text(errors='replace').splitlines()[-80:])[-12000:]
+          print('::error title=Native Swift build failed::' + message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY
+          fi
+          exit "$mia_swift_status"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-swift-log-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/native-swift.log
+          retention-days: 7
+
   linux-companion:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -44,9 +81,9 @@ jobs:
           python3 scripts/prepare_macos_artifacts.py --output "$RUNNER_TEMP/mia-linux" --cache "$RUNNER_TEMP/mia-downloads" --platform linux --architecture x86_64
       - name: Test actual companion runtime and dependencies
         run: |
-          "$RUNNER_TEMP/mia-linux/runtime/bin/python3" -I -m venv "$RUNNER_TEMP/mia-linux-test"
-          "$RUNNER_TEMP/mia-linux-test/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/mia-linux/wheelhouse" -r requirements.lock
-          "$RUNNER_TEMP/mia-linux-test/bin/python" -c 'import fastapi,httpx,uvicorn,sqlite3; assert sqlite3.connect(":memory:").execute("select sqlite_version()").fetchone()'
+          "$RUNNER_TEMP/mia-linux/runtime/bin/python3" -I -B -m venv --without-pip "$RUNNER_TEMP/mia-linux-test"
+          "$RUNNER_TEMP/mia-linux/runtime/bin/python3" -I -B -m pip --python "$RUNNER_TEMP/mia-linux-test/bin/python" install --no-index --find-links "$RUNNER_TEMP/mia-linux/wheelhouse" -r requirements.lock
+          "$RUNNER_TEMP/mia-linux-test/bin/python" -I -B -c 'import fastapi,httpx,uvicorn,sqlite3; assert sqlite3.connect(":memory:").execute("select sqlite_version()").fetchone()'
       - name: Preserve runtime links and executable permissions
         run: tar -C "$RUNNER_TEMP/mia-linux/remote-runtime" -czf "$RUNNER_TEMP/ubuntu24-amd64-offline-companion.tar.gz" .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -89,8 +126,27 @@ jobs:
         run: test "$(uname -m)" = "$EXPECTED_ARCHITECTURE"
       - name: Native compile, Swift tests and offline backend lifecycle
         run: |
-          scripts/build_macos_app.sh --preflight
-          scripts/build_macos_app.sh --output "$RUNNER_TEMP/mia-mac" --cache "$RUNNER_TEMP/mia-downloads" --remote-artifact "$RUNNER_TEMP/mia-remote-runtime" --unsigned
+          set +e
+          {
+            scripts/build_macos_app.sh --preflight && scripts/build_macos_app.sh --output "$RUNNER_TEMP/mia-mac" --cache "$RUNNER_TEMP/mia-downloads" --remote-artifact "$RUNNER_TEMP/mia-remote-runtime" --unsigned
+          } > "$RUNNER_TEMP/native-package.log" 2>&1
+          mia_package_status=$?
+          cat "$RUNNER_TEMP/native-package.log"
+          if [ "$mia_package_status" -ne 0 ]; then
+            python3 - "$RUNNER_TEMP/native-package.log" <<'PY'
+          from pathlib import Path
+          import sys
+          message = '\n'.join(Path(sys.argv[1]).read_text(errors='replace').splitlines()[-80:])[-12000:]
+          print('::error title=Native Mac packaging failed::' + message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY
+          fi
+          exit "$mia_package_status"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-package-log-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/native-package.log
+          retention-days: 7
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: Mia-UNSIGNED-INTERNAL-${{ matrix.architecture }}

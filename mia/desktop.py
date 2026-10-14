@@ -13,12 +13,15 @@ from pathlib import Path
 import platform
 import plistlib
 import re
+import secrets
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tomllib
 import uuid
+import urllib.request
 
 from mia import __version__
 from mia.installation import apply_service_plan, service_plan
@@ -59,6 +62,7 @@ def _json(path: Path, *, limit: int = 512 * 1024) -> dict:
 
 
 MACHINE_ENV = "# Configuração privada desta instalação.\nMIA_AI_ENABLED=false\nMIA_COOKIE_SECURE=false\nMIA_INSTALLATION_MODE=local\n"
+PRIVATE_MACHINE_ENV = MACHINE_ENV + "MIA_SETUP_REQUIRE_TOKEN=true\n"
 LOCAL_ACTIONS = {"status", "local_plan", "local_install", "local_start", "local_stop", "local_recover", "local_snapshot", "local_bundle_plan", "local_bundle_update"}
 REMOTE_ACTIONS = {"remote_preflight", "remote_install", "remote_connect", "remote_disconnect", "https_connect"}
 UPDATE_ACTIONS = {"updates_status", "updates_check", "updates_prepare", "updates_apply", "updates_recover"}
@@ -119,7 +123,45 @@ class DesktopController:
         result.update(installed=True, installation_id=identity, url=f"http://127.0.0.1:{configuration['port']}/",
                       running=status["running"], paused=status["paused"], version=status["version"],
                       recovery_required=status["recovery_required"] or state.get("phase") not in (None, "planned", "complete"))
+        if result["running"]:
+            token = self._bootstrap_token(manager, result)
+            if token is not None:
+                result["bootstrap_token"] = token
         return result
+
+    def _http_json(self, origin: str, path: str) -> dict:
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *_args, **_kwargs):
+                return None
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        with opener.open(origin.rstrip("/") + path, timeout=1) as response:
+            if response.status != 200:
+                raise ValueError("unexpected response")
+            raw = response.read(16 * 1024 + 1)
+        if len(raw) > 16 * 1024:
+            raise ValueError("bounded response")
+        value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise ValueError("invalid response")
+        return value
+
+    def _bootstrap_token(self, manager: Manager, local: dict) -> str | None:
+        # The status JSON is private native IPC, never the public HTTP API. Do
+        # not deliver a token to a reused port, redirect, unready process or an
+        # instance whose first owner already exists.
+        record = manager._record()
+        if not record or record.get("ready") is not True:
+            return None
+        try:
+            status = self._http_json(local["url"], "/api/status")
+            if status.get("configured") is not False or status.get("version") != local["version"]:
+                return None
+            info = self._http_json(local["url"], "/api/installation")
+            if info.get("installation_id") != local["installation_id"] or info.get("bootstrap_protected") is not True:
+                return None
+        except (OSError, ValueError, UnicodeError, RecursionError):
+            return None
+        return _private_bootstrap_token(manager.root / "bootstrap-token")
 
     def _bundle(self) -> dict:
         report = _json(self.resources / "build-report.json", limit=16 * 1024 * 1024)
@@ -200,7 +242,7 @@ class DesktopController:
         _no_links(stable)
         activation = self._activation(stable / bundle["python_relative"], port)
         details = {"protocol": 1, "bundle": bundle, "root": str(self.root), "runtime": str(stable), "installation_id": identity,
-                   "port": port, "host": "127.0.0.1", "machine_env": MACHINE_ENV, "activation": activation,
+                   "port": port, "host": "127.0.0.1", "machine_env": PRIVATE_MACHINE_ENV, "private_bootstrap": True, "activation": activation,
                    "offline": True, "empty_installation": True}
         plan = {"sha256": _hash(details), "summary": ["Criar sua Mia vazia, em armazenamento privado neste Mac.",
                 "Usar os componentes verificados incluídos no aplicativo, sem instalar Python ou Git.",
@@ -452,15 +494,19 @@ def _installation_worker(resources: str, home: str, mode: str) -> None:
             output.flush()
             os.fsync(output.fileno())
     if not controller.root.exists():
-        manager.install(source, port=state["port"], host="127.0.0.1", env_file=environment, wheelhouse=wheelhouse, offline=True, installation_id=state["installation_id"])
+        manager.install(source, port=state["port"], host="127.0.0.1", env_file=environment, wheelhouse=wheelhouse, offline=True,
+                        installation_id=state["installation_id"], private_bootstrap=True)
     elif mode == "install":
         raise OperationError("Instalação existente preservada")
     elif not (controller.root / "active.json").exists():
         _resume_empty_install(controller, state, source, wheelhouse)
     manager._check()
     configuration = _json(controller.root / "installation.json")
-    if configuration.get("host") != "127.0.0.1" or configuration.get("port") != state["port"] or configuration.get("python") != details["activation"]["commands"][0][0]:
+    if configuration.get("host") != "127.0.0.1" or configuration.get("port") != state["port"] or configuration.get("python") != details["activation"]["commands"][0][0] or configuration.get("private_bootstrap") is not True:
         raise OperationError("Destino ou runtime da instalação mudou")
+    if (controller.root / "machine.env").read_text() != PRIVATE_MACHINE_ENV:
+        raise OperationError("Configuração privada da instalação mudou")
+    _private_bootstrap_token(controller.root / "bootstrap-token")
     if not configuration.get("installation_id"):
         configuration["installation_id"] = state["installation_id"]
         _write(controller.root / "installation.json", configuration)
@@ -485,7 +531,7 @@ def _resume_empty_install(controller: DesktopController, state: dict, source: Pa
     """
     root = controller.root
     controller._paths()
-    allowed = {"releases", "snapshots", "data", "history", "machine.env", "manager.py", "installation.json", "operation.lock"}
+    allowed = {"releases", "snapshots", "data", "history", "machine.env", "manager.py", "installation.json", "operation.lock", "bootstrap-token"}
     if any(path.name not in allowed or path.is_symlink() for path in root.iterdir()):
         raise OperationError("A instalação incompleta contém estado inesperado")
     for name in ("snapshots", "history"):
@@ -496,29 +542,75 @@ def _resume_empty_install(controller: DesktopController, state: dict, source: Pa
     if data.exists() and (not data.is_dir() or any(path.name != "initial" or path.is_symlink() or not path.is_dir() or any(path.iterdir()) for path in data.iterdir())):
         raise OperationError("Dados existentes impedem reconstrução da instalação")
     manager_source = source / "mia/operations.py"
-    expected_config = {"format": 1, "host": "127.0.0.1", "port": state["port"], "python": sys._base_executable, "installation_id": state["installation_id"],
+    expected_config = {"format": 1, "host": "127.0.0.1", "port": state["port"], "python": sys._base_executable, "installation_id": state["installation_id"], "private_bootstrap": True,
                        "manager_protocol": 2, "manager_sha256": hashlib.sha256(manager_source.read_bytes()).hexdigest()}
     existing = _json(root / "installation.json")
     if existing and any(existing.get(key) != value for key, value in expected_config.items()):
         raise OperationError("Metadados da instalação incompleta mudaram")
-    for name, expected in (("machine.env", MACHINE_ENV.encode()), ("manager.py", manager_source.read_bytes())):
+    for name, expected in (("machine.env", PRIVATE_MACHINE_ENV.encode()), ("manager.py", manager_source.read_bytes())):
         path = root / name
-        if path.exists() and (not path.is_file() or path.read_bytes() != expected):
+        permitted = {expected, MACHINE_ENV.encode()} if name == "machine.env" and not existing else {expected}
+        if path.exists() and (not path.is_file() or path.read_bytes() not in permitted):
             raise OperationError("Configuração da instalação incompleta mudou")
     for name in ("releases", "snapshots", "data", "history", "data/initial"):
         path = root / name
         _no_links(path)
         path.mkdir(mode=0o700, exist_ok=True)
-    for name, expected in (("machine.env", MACHINE_ENV.encode()), ("manager.py", manager_source.read_bytes())):
+    for name, expected in (("machine.env", PRIVATE_MACHINE_ENV.encode()), ("manager.py", manager_source.read_bytes())):
         if not (root / name).exists():
             descriptor = os.open(root / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             with os.fdopen(descriptor, "wb") as output:
                 output.write(expected)
                 output.flush()
                 os.fsync(output.fileno())
+        elif name == "machine.env" and (root / name).read_bytes() == MACHINE_ENV.encode():
+            # A kill between initial environment creation and protection flag
+            # publication may leave only the reviewed empty-install defaults.
+            # No owner/data/active release exists, so completing the same flag
+            # cannot inherit or overwrite somebody's configuration.
+            import tempfile
+            descriptor, temporary = tempfile.mkstemp(prefix=".bootstrap-env-", dir=root)
+            try:
+                with os.fdopen(descriptor, "wb") as output:
+                    output.write(expected)
+                    output.flush()
+                    os.fsync(output.fileno())
+                os.replace(temporary, root / name)
+                _sync(root)
+            finally:
+                Path(temporary).unlink(missing_ok=True)
+    if (root / "bootstrap-token").exists():
+        _private_bootstrap_token(root / "bootstrap-token")
+    else:
+        if existing:
+            # Manager publishes configuration only after creating this token.
+            # Its absence then signals altered state rather than an interrupted
+            # unpublished install, and recovery must not silently rotate it.
+            raise OperationError("O acesso inicial privado da instalação mudou")
+        descriptor = os.open(root / "bootstrap-token", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(descriptor, "w") as output:
+            output.write(secrets.token_urlsafe(32) + "\n")
+            output.flush()
+            os.fsync(output.fileno())
     if not existing:
         _write(root / "installation.json", expected_config)
     manager = controller._manager()
     with _lock(root / "operation.lock"):
         release = manager._release(source, wheelhouse, offline=True)
         _write(root / "active.json", {**release, "data": "data/initial"})
+
+
+def _private_bootstrap_token(path: Path) -> str:
+    _no_links(path)
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor, "rb") as incoming:
+            metadata = os.fstat(incoming.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_mode & 0o777 != 0o600 or metadata.st_size != 44:
+                raise ValueError
+            raw = incoming.read(45)
+    except (OSError, ValueError):
+        raise DesktopError("bootstrap_unavailable", "O acesso inicial privado não pôde ser verificado. Os dados foram preservados; confira a instalação.") from None
+    if not re.fullmatch(rb"[A-Za-z0-9_-]{43}\n", raw):
+        raise DesktopError("bootstrap_unavailable", "O acesso inicial privado não pôde ser verificado. Os dados foram preservados.")
+    return raw[:-1].decode("ascii")

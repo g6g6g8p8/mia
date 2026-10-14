@@ -146,3 +146,36 @@ def test_macos_wheel_requires_supported_minimum_os(tmp_path):
     manifest.write_text(json.dumps(data))
     with pytest.raises(OperationError, match="compatível"):
         package_macos.build(tmp_path / "Mia.app", *inputs, native_binary=thin_macho(tmp_path / "Mia"))
+
+
+def test_prepared_runtime_is_checked_against_pinned_origin_even_with_self_consistent_manifest(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    (source / "scripts").mkdir(parents=True)
+    (source / "requirements.lock").write_text("fixture==1.0\n")
+    trusted = tmp_path / "trusted.tar.gz"
+    content = b"original reviewed runtime fixture; never executed"
+    with tarfile.open(trusted, "w:gz") as stream:
+        member = tarfile.TarInfo("python/bin/python3")
+        member.mode, member.size = 0o755, len(content)
+        stream.addfile(member, io.BytesIO(content))
+    sha = prepare_macos_artifacts.digest(trusted)
+    lock = {"release": "reviewed", "targets": {"linux-x86_64": {"archive": "runtime.tar.gz", "sha256": sha, "license_archive": "notices.tar.gz", "license_archive_sha256": sha, "triple": "x86_64-unknown-linux-gnu"}}}
+    (source / "scripts/macos-runtime-lock.json").write_text(json.dumps(lock))
+    monkeypatch.setattr(prepare_macos_artifacts, "ROOT", source)
+    def cached_download(url, destination, expected):
+        assert expected == sha
+        destination.write_bytes(trusted.read_bytes())
+    monkeypatch.setattr(prepare_macos_artifacts, "download", cached_download)
+    monkeypatch.setattr(prepare_macos_artifacts, "preserve_runtime_notices", lambda *args, **kwargs: {})
+    monkeypatch.setattr(prepare_macos_artifacts, "wheel_provenance", lambda *args, **kwargs: [])
+    runtime = tmp_path / "prepared"
+    prepare_macos_artifacts.extract_runtime(trusted, runtime)
+    wheels = tmp_path / "wheels"
+    wheels.mkdir()
+    prepare_macos_artifacts.verify_prepared(runtime, wheels, "linux", "x86_64", tmp_path / "cache", source=source)
+    (runtime / "bin/python3").write_bytes(b"mutated payload")
+    # A matching caller-generated manifest must not make mutated bytes trusted.
+    (tmp_path / "self-claimed.json").write_text(json.dumps({"files": package_macos.inventory(runtime)}))
+    monkeypatch.setattr(prepare_macos_artifacts.subprocess, "run", lambda *args, **kwargs: pytest.fail("artifact was executed during verification"))
+    with pytest.raises(OperationError, match="bytes oficiais"):
+        prepare_macos_artifacts.verify_prepared(runtime, wheels, "linux", "x86_64", tmp_path / "cache", source=source)

@@ -21,7 +21,9 @@ import SwiftUI
     }
     private func configure() {
         guard let resources = Bundle.main.resourceURL,
-              let data = try? Data(contentsOf: resources.appendingPathComponent("release-channel.json")), data.count <= 65_536,
+              let input = try? FileHandle(forReadingFrom: resources.appendingPathComponent("release-channel.json")) else { return }
+        defer { try? input.close() }
+        guard let data = try? input.read(upToCount: 65_537), data.count <= 65_536,
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any], config["protocol"] as? Int == 1,
               let rawURL = config["appcast_url"] as? String, let url = URL(string: rawURL), url.scheme == "https", url.host != nil, url.user == nil, url.password == nil, url.fragment == nil,
               let key = config["sparkle_public_key"] as? String, Data(base64Encoded: key)?.count == 32,

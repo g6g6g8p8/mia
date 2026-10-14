@@ -98,9 +98,9 @@ python3 "$task_repo/scripts/prepare_macos_artifacts.py" --verify-prepared "$task
 if [ -n "$task_remote" ]; then
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --verify-prepared "$task_remote/payload" --cache "$task_cache" --platform linux --architecture x86_64
 fi
-swift test --package-path "$task_repo/macos/Mia" --disable-automatic-resolution
-swift build --package-path "$task_repo/macos/Mia" -c release --disable-automatic-resolution
-task_bin=$(swift build --package-path "$task_repo/macos/Mia" -c release --show-bin-path --disable-automatic-resolution)
+swift test --package-path "$task_repo/macos/Mia" --force-resolved-versions
+swift build --package-path "$task_repo/macos/Mia" -c release --force-resolved-versions
+task_bin=$(swift build --package-path "$task_repo/macos/Mia" -c release --show-bin-path --force-resolved-versions)
 task_framework=$(python3 - "$task_repo/macos/Mia/.build/artifacts" <<'PY'
 from pathlib import Path
 import sys
@@ -119,26 +119,51 @@ python3 "$task_repo/scripts/package_macos.py" "${task_args[@]}"
 # synthetic empty data. No LaunchAgent is activated by the build pipeline.
 python3 - "$task_repo" "$task_output/Mia.app" <<'PY'
 from pathlib import Path
-import json, socket, sys, tempfile, urllib.request
+import json, secrets, socket, sys, tempfile, urllib.error, urllib.request
 sys.path.insert(0, sys.argv[1])
 from mia.operations import Manager
+from scripts.package_macos import inventory
 resources = Path(sys.argv[2]) / 'Contents/Resources'
+runtime_before = inventory(resources / 'runtime')
 with tempfile.TemporaryDirectory(prefix='mia-mac-build-smoke-') as stage:
     with socket.socket() as s:
         s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
     manager = Manager(Path(stage) / 'installation')
     runtime = resources / 'runtime/bin/python3'
     import subprocess
-    subprocess.run([str(runtime), '-I', str(resources/'source/mia/operations.py'), '--root', str(manager.root), 'install', '--source', str(resources/'source'), '--wheelhouse', str(resources/'wheelhouse'), '--offline', '--port', str(port)], check=True)
+    subprocess.run([str(runtime), '-I', '-B', str(resources/'source/mia/operations.py'), '--root', str(manager.root), 'install', '--source', str(resources/'source'), '--wheelhouse', str(resources/'wheelhouse'), '--offline', '--port', str(port), '--private-bootstrap'], check=True)
     try:
         manager.start()
         with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/status', timeout=5) as response:
             status = json.load(response)
         assert status['configured'] is False
         assert status['version'] == json.loads((resources/'build-report.json').read_text())['app_version']
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/installation', timeout=5) as response:
+            installation = json.load(response)
+        assert installation['bootstrap_protected'] is True
+        # A real native install must remain unclaimed until the app supplies its
+        # private capability. Exercise both paths with disposable synthetic data;
+        # the token/password never appear in command arguments or build output.
+        payload = json.dumps({'name': 'Native build smoke', 'password': secrets.token_urlsafe(24)}).encode()
+        setup_url = f'http://127.0.0.1:{port}/api/setup'
+        request = urllib.request.Request(setup_url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+        try:
+            urllib.request.urlopen(request, timeout=5)
+        except urllib.error.HTTPError as error:
+            assert error.code == 401, 'Unclaimed native installation must require its private bootstrap capability'
+        else:
+            raise AssertionError('First-owner creation was permitted without the private bootstrap capability')
+        token = (manager.root/'bootstrap-token').read_text().strip()
+        request = urllib.request.Request(setup_url, data=payload, headers={'Content-Type': 'application/json', 'Cookie': 'mia_bootstrap=' + token}, method='POST')
+        with urllib.request.urlopen(request, timeout=5) as response:
+            assert response.status == 201
+            assert 'mia_bootstrap=""' in response.headers.get('Set-Cookie', '') or any('mia_bootstrap=""' in value for value in response.headers.get_all('Set-Cookie', []))
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/status', timeout=5) as response:
+            assert json.load(response)['configured'] is True
     finally:
         if manager.root.exists(): manager.stop()
-print('PASS: actual native-Mac offline backend install/health/empty data; graphical/OS lifecycle acceptance remains separate')
+assert inventory(resources / 'runtime') == runtime_before, 'Bundled runtime mutated during native offline smoke'
+print('PASS: actual native-Mac offline backend install/health/private first-owner setup; graphical/OS lifecycle acceptance remains separate')
 PY
 
 task_version=$(python3 - "$task_repo/pyproject.toml" <<'PY'

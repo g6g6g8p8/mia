@@ -245,7 +245,7 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
             channel = json.loads(release_channel.read_text())
             validate_channel(channel)
             (resources / "release-channel.json").write_text(json.dumps(channel, indent=2))
-        info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", "CFBundleVersion": version.replace("a", "."), "CFBundleShortVersionString": version.split("a")[0], "MiaBackendVersion": version, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
+        info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", "CFBundleVersion": version, "CFBundleShortVersionString": version.split("a")[0], "MiaBackendVersion": version, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
         if channel.get("appcast_url") and channel.get("sparkle_public_key"):
             if sparkle_framework is None:
                 raise OperationError("Canal de aplicativo exige Sparkle framework revisado")

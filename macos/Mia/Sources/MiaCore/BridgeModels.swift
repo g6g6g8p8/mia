@@ -102,6 +102,10 @@ public struct MiaConnection: Equatable, Identifiable, Sendable {
         self.metadata = values
     }
     public var title: String { mode == "local" ? "Neste Mac" : (metadata["host"]?.string ?? url.host ?? "Minha Mia") }
+    public var webIdentity: String {
+        let origin = WebOrigin(url)!
+        return id + "|" + installationID + "|" + origin.scheme + "|" + origin.host + "|" + String(origin.port)
+    }
     public var storageDescription: String {
         mode == "local" ? "Seus arquivos ficam neste Mac. Disponível enquanto ele estiver ligado e acordado." : "Seus arquivos ficam nesta instalação no servidor. O app não copia a biblioteca para este Mac."
     }

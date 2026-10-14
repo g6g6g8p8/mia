@@ -158,17 +158,17 @@ def _backend(health: dict, status: dict, installation: dict) -> dict:
             raise ValueError
     except (ValueError, TypeError, AttributeError):
         _fail("protocol_unsupported", "Esta Mia precisa de uma versão compatível com o aplicativo antes de conectar.")
-    if health.get("ok") is not True or not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9._+-]{1,80}", version) or status.get("version") != version or installation.get("version") != version or type(installation.get("desktop_protocol")) is not int or installation["desktop_protocol"] != 1 or type(installation.get("cookie_secure")) is not bool or type(status.get("configured")) is not bool:
+    if health.get("ok") is not True or not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9._+-]{1,80}", version) or status.get("version") != version or installation.get("version") != version or type(installation.get("desktop_protocol")) is not int or installation["desktop_protocol"] != 1 or type(installation.get("cookie_secure")) is not bool or type(installation.get("bootstrap_protected")) is not bool or type(status.get("configured")) is not bool:
         _fail("protocol_unsupported", "A instalação não confirmou uma versão e identidade compatíveis.")
     secure = installation["cookie_secure"]
     if installation.get("transport_policy") != ("https_required" if secure else "private_connection_only"):
         _fail("protocol_unsupported", "A instalação não confirmou sua política de acesso.")
-    return {"installation_id": identity, "version": version, "configured": status["configured"], "cookie_secure": secure}
+    return {"installation_id": identity, "version": version, "configured": status["configured"], "cookie_secure": secure, "bootstrap_protected": installation["bootstrap_protected"]}
 
 
 # A fixed Python program; payload goes through stdin, never into shell text.
 _PROBE = r'''
-import json, os, pathlib, platform, pwd, shutil, socket, subprocess, sys, urllib.request
+import json, os, pathlib, platform, pwd, re, shutil, socket, subprocess, sys, urllib.request, uuid
 p=json.loads(sys.stdin.buffer.readline(65537))
 if set(p)-{'remote_port'} or type(p.get('remote_port')) is not int or not 1<=p['remote_port']<=65535: raise ValueError()
 home=pathlib.Path.home(); uid=os.getuid()
@@ -205,7 +205,26 @@ if not available:
     if response.status!=200 or response.headers.get_content_type()!='application/json' or len(raw)>262144: raise ValueError()
     backend[name]=json.loads(raw)
  except Exception: backend=None
-print(json.dumps({'platform':os_release.get('ID'),'platform_version':os_release.get('VERSION_ID'),'architecture':platform.machine(),'home_safe':safe,'free_bytes':shutil.disk_usage(home).free,'user_service':systemd,'linger':linger,'port_available':available,'backend':backend}))
+token=None
+if backend and backend.get('status',{}).get('configured') is False and backend.get('installation',{}).get('bootstrap_protected') is True:
+ try:
+  identity=backend['installation']['installation_id']; assert str(uuid.UUID(identity))==identity
+  root=home/'.local/share/mia-demo/installations'/identity
+  for path in (root,*root.parents):
+   if path==home.parent: break
+   if path.is_symlink() or not path.is_dir() or path.stat().st_uid!=uid: raise ValueError()
+  if root.stat().st_mode&0o077: raise ValueError()
+  config=root/'installation.json'; source=root/'bootstrap-token'
+  for path in (config,source):
+   if path.is_symlink() or not path.is_file() or path.stat().st_uid!=uid or path.stat().st_mode&0o077: raise ValueError()
+  if config.stat().st_size>262144 or source.stat().st_size!=44 or source.stat().st_mode&0o777!=0o600: raise ValueError()
+  configuration=json.loads(config.read_text())
+  if configuration.get('installation_id')!=identity or configuration.get('private_bootstrap') is not True or configuration.get('host')!='127.0.0.1' or type(configuration.get('port')) is not int or configuration['port']!=p['remote_port']: raise ValueError()
+  raw=source.read_bytes()
+  if not re.fullmatch(rb'[A-Za-z0-9_-]{43}\n',raw): raise ValueError()
+  token=raw[:-1].decode('ascii')
+ except Exception: token=None
+print(json.dumps({'platform':os_release.get('ID'),'platform_version':os_release.get('VERSION_ID'),'architecture':platform.machine(),'home_safe':safe,'free_bytes':shutil.disk_usage(home).free,'user_service':systemd,'linger':linger,'port_available':available,'backend':backend,'bootstrap_token':token}))
 '''
 
 
@@ -279,7 +298,7 @@ try:
  runtime=bundle/'runtime/bin/python3'
  with log.open('ab') as output:
   log.chmod(0o600)
-  subprocess.run([str(runtime),'-I',str(bundle/'source/mia/operations.py'),'--root',str(root),'install','--source',str(bundle/'source'),'--wheelhouse',str(bundle/'wheelhouse'),'--offline','--port',str(port),'--env-file',str(env),'--installation-id',identity],stdout=output,stderr=output,check=True,timeout=600)
+  subprocess.run([str(runtime),'-I',str(bundle/'source/mia/operations.py'),'--root',str(root),'install','--source',str(bundle/'source'),'--wheelhouse',str(bundle/'wheelhouse'),'--offline','--port',str(port),'--env-file',str(env),'--installation-id',identity,'--private-bootstrap'],stdout=output,stderr=output,check=True,timeout=600)
   activation="import sys;sys.path.insert(0,sys.argv[1]);from pathlib import Path;from mia.operations import Manager;from mia.installation import service_plan,apply_service_plan;m=Manager(Path(sys.argv[2]));p=service_plan(m,'systemd');apply_service_plan(m,p,approve_sha256=p['sha256'])"
   journal.write_text(json.dumps({'phase':'activating','installation_id':identity}))
   subprocess.run([str(runtime),'-I','-c',activation,str(bundle/'source'),str(root)],stdout=output,stderr=output,check=True,timeout=60)
@@ -605,11 +624,13 @@ class RemoteController:
     def _check_http(self, url):
         return _backend(self.adapter.http(url + "health"), self.adapter.http(url + "api/status"), self.adapter.http(url + "api/installation"))
 
-    def _connection(self, value, *, running=False, backend=None):
-        allowed = ("connection_id", "installation_id", "mode", "url", "version", "host", "user", "port", "remote_port", "configured")
+    def _connection(self, value, *, running=False, backend=None, include_bootstrap=False):
+        allowed = ("connection_id", "installation_id", "mode", "url", "version", "host", "user", "port", "remote_port", "configured", "bootstrap_protected")
         result = {key: value[key] for key in allowed if key in value}
         if backend:
-            result.update({key: backend[key] for key in ("installation_id", "version", "configured")})
+            result.update({key: backend[key] for key in ("installation_id", "version", "configured", "bootstrap_protected")})
+        if include_bootstrap and result.get("configured") is False and result.get("bootstrap_protected") is True and value.get("bootstrap_token"):
+            result["bootstrap_token"] = value["bootstrap_token"]
         return {**result, "running": running}
 
     def remote_connect(self, payload: dict):
@@ -628,6 +649,13 @@ class RemoteController:
             _fail("connection_offline", "A Mia não respondeu no servidor e porta escolhidos. Nenhuma instalação foi criada.")
         if backend["cookie_secure"]:
             _fail("https_required", "Esta Mia exige HTTPS. Conecte ao endereço HTTPS existente; sua política de segurança será preservada.")
+        token = None
+        if backend["configured"] is False:
+            if backend["bootstrap_protected"] is not True:
+                _fail("bootstrap_unprotected", "Esta Mia vazia precisa de proteção para criar seu primeiro acesso. Prepare o destino pelo instalador privado antes de conectar.")
+            token = probe.get("bootstrap_token")
+            if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", token):
+                _fail("bootstrap_unavailable", "A instalação vazia exige seu canal privado de criação de acesso. O app não encontrou essa autorização no diretório gerenciado deste usuário.")
         identity = self._identity(config)
         directory = self._directory(identity)
         path = directory / "connection.json"
@@ -637,9 +665,16 @@ class RemoteController:
         record = self._record(directory)
         if record and record.get("ready") is True:
             live = self._check_http(prior["url"])
-            if live["installation_id"] != backend["installation_id"]:
+            if live["installation_id"] != backend["installation_id"] or live["cookie_secure"]:
+                self.adapter.stop(record)
                 _fail("installation_changed", "O túnel respondeu com outra instalação; a conexão foi bloqueada.")
-            return self._connection(prior, running=True, backend=live)
+            # Authorization is obtained anew over pinned SSH. Persist only
+            # reconnect metadata, and remove older cached tokens on reuse.
+            if prior.pop("bootstrap_token", None) is not None:
+                _write(path, prior)
+            if token:
+                prior["bootstrap_token"] = token
+            return self._connection(prior, running=True, backend=live, include_bootstrap=True)
         port = prior.get("local_port")
         with socket.socket() as available:
             try:
@@ -649,6 +684,9 @@ class RemoteController:
             port = available.getsockname()[1]
         connection = {"connection_id": identity, **config, **backend, "mode": "ssh", "local_port": port, "url": f"http://127.0.0.1:{port}/", "known_hosts": str(pin)}
         _write(path, connection)
+        if token:
+            # This copy is the private native IPC response, not saved state.
+            connection["bootstrap_token"] = token
         self.adapter.spawn(path, self.resources)
         deadline = time.monotonic() + 15
         last_error = None
@@ -659,7 +697,7 @@ class RemoteController:
                     if live["installation_id"] != backend["installation_id"] or live["cookie_secure"]:
                         self.adapter.stop(self._record(directory))
                         _fail("installation_changed", "A conexão não confirmou o destino esperado. O túnel foi encerrado.")
-                    return self._connection(connection, running=True, backend=live)
+                    return self._connection(connection, running=True, backend=live, include_bootstrap=True)
             except RemoteError as error:
                 if error.code != "connection_offline":
                     raise
@@ -683,6 +721,8 @@ class RemoteController:
             _fail("invalid_url", "Informe o endereço HTTPS da sua Mia.")
         url = remote_url(payload["url"])
         backend = self._check_http(url)
+        if backend["configured"] is False:
+            _fail("bootstrap_requires_private_connection", "Crie o primeiro acesso pelo canal privado do instalador. Depois, conecte a esta Mia pelo endereço HTTPS.")
         identity = hashlib.sha256(("https:" + url).encode()).hexdigest()[:32]
         directory = self._directory(identity)
         path = directory / "connection.json"

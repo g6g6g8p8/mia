@@ -34,6 +34,13 @@ final class SafetyTests: XCTestCase {
         remote["installation_id"] = .null
         XCTAssertThrowsError(try MiaConnection(remote))
     }
+    func testWebIdentityChangesWhenATunnelReconnectsOnAnotherPort() throws {
+        let original: [String: JSONValue] = ["connection_id": .string("same-server"), "installation_id": .string("same-installation"), "mode": .string("ssh"), "url": .string("http://127.0.0.1:8190/")]
+        var reconnected = original; reconnected["url"] = .string("http://127.0.0.1:8191/")
+        XCTAssertNotEqual(try MiaConnection(original).webIdentity, try MiaConnection(reconnected).webIdentity)
+        var another = original; another["installation_id"] = .string("another-installation")
+        XCTAssertNotEqual(try MiaConnection(original).webIdentity, try MiaConnection(another).webIdentity)
+    }
 
     func testReviewNeedsExactHashAndReadableScope() throws {
         let review = ["sha256": JSONValue.string(String(repeating: "a", count: 64)), "summary": .array([.string("Criar Mia vazia neste Mac.")]), "details": .object(["port": .number(8123)])]
@@ -67,5 +74,22 @@ final class SafetyTests: XCTestCase {
         }
         let failure = try decoder.decode(BridgeResponse.self, from: Data(#"{"ok":false,"error":{"code":"safe","message":"Destino indisponível."}}"#.utf8))
         XCTAssertThrowsError(try failure.checkedResult()) { XCTAssertEqual($0 as? BridgeFailure, .backend("Destino indisponível.")) }
+    }
+    func testFirstOwnerCookieIsHTTPOnlyAndUsesSelectedTransport() throws {
+        let token = String(repeating: "x", count: 43)
+        let local = try MiaConnection(["installation_id": .string("fresh"), "url": .string("http://127.0.0.1:8123/"), "bootstrap_token": .string(token)], local: true)
+        let cookie = try XCTUnwrap(BootstrapCookie.make(for: local))
+        XCTAssertEqual(cookie.name, "mia_bootstrap"); XCTAssertEqual(cookie.domain, "127.0.0.1"); XCTAssertEqual(cookie.value, token)
+        XCTAssertTrue(cookie.isHTTPOnly); XCTAssertFalse(cookie.isSecure); XCTAssertTrue(cookie.isSessionOnly)
+        let remote = try MiaConnection(["installation_id": .string("fresh-server"), "url": .string("https://mia.example/"), "bootstrap_token": .string(token)])
+        XCTAssertTrue(try XCTUnwrap(BootstrapCookie.make(for: remote)).isSecure)
+        let alreadyConfigured = try MiaConnection(["installation_id": .string("ready"), "url": .string("https://mia.example/")])
+        XCTAssertNil(try BootstrapCookie.make(for: alreadyConfigured))
+    }
+    func testFirstOwnerTokenCannotInjectCookieAttributes() throws {
+        for token in ["too-short", String(repeating: "x", count: 40) + "; HttpOnly", String(repeating: "x", count: 40) + "\r\n", String(repeating: "x", count: 257)] {
+            let connection = try MiaConnection(["installation_id": .string("fresh"), "url": .string("http://127.0.0.1:8123/"), "bootstrap_token": .string(token)], local: true)
+            XCTAssertThrowsError(try BootstrapCookie.make(for: connection))
+        }
     }
 }

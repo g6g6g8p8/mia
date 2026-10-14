@@ -14,7 +14,9 @@ private func runSignatureHelperIfRequested() {
     let path = URL(fileURLWithPath: arguments[4])
     guard let size = try? path.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]), size.isRegularFile == true,
           let bytes = size.fileSize, bytes <= 2_097_152,
-          let data = try? Data(contentsOf: path), data.count <= 2_097_152,
+          let input = try? FileHandle(forReadingFrom: path) else { exit(1) }
+    defer { try? input.close() }
+    guard let data = try? input.read(upToCount: 2_097_153), data.count <= 2_097_152,
           let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: key), publicKey.isValidSignature(signature, for: data) else { exit(1) }
     exit(0)
 }
