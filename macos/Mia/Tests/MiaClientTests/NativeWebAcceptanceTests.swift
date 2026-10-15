@@ -12,6 +12,7 @@ import MiaCore
 @MainActor final class NativeWebAcceptanceTests: XCTestCase {
     private struct AcceptanceFailure: LocalizedError { let message: String; var errorDescription: String? { message } }
     private var currentStep = "native fixture initialization"
+    private var completedMainNavigations = 0
 
     private func safeDiagnostic(_ value: String) -> String {
         String(value.replacingOccurrences(of: "[A-Za-z0-9_-]{43}", with: "[redacted capability]", options: .regularExpression).prefix(240))
@@ -50,6 +51,20 @@ import MiaCore
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         throw AcceptanceFailure(message: "Native WebKit did not reach: " + label + (lastFailure.map { "; last evaluation: " + $0 } ?? "; page did not satisfy the static condition"))
+    }
+
+    private func waitForMainNavigation(after previous: Int, timeout: TimeInterval = 30) async throws {
+        currentStep = "waiting for completed main-frame reload"
+        let end = Date().addingTimeInterval(timeout)
+        while Date() < end {
+            if completedMainNavigations > previous {
+                currentStep = "completed main-frame reload"
+                print("Mia native WebKit reached: " + currentStep)
+                return
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        throw AcceptanceFailure(message: "Native WebKit did not complete the main-frame reload.")
     }
 
     private func assertNumber(_ view: WKWebView, _ body: String, _ expected: Int, file: StaticString = #filePath, line: UInt = #line) async throws {
@@ -109,7 +124,7 @@ import MiaCore
         let token = try String(contentsOfFile: tokenPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
         _ = NSApplication.shared
         let connection = try MiaConnection(["installation_id": .string(UUID().uuidString), "url": .string(base.absoluteString), "running": .bool(true), "bootstrap_token": .string(token)], local: true)
-        let coordinator = MiaWebView.Coordinator(connection: connection, reloadID: UUID(), disconnected: {}, connected: {}, notice: { _ in })
+        let coordinator = MiaWebView.Coordinator(connection: connection, reloadID: UUID(), disconnected: {}, connected: { [weak self] in self?.completedMainNavigations += 1 }, notice: { _ in })
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
@@ -186,7 +201,13 @@ import MiaCore
         _ = try await javascript(view, "document.querySelector('.source-card button[data-document]').click(); return true;")
         try await wait(view, "document.querySelector('#source-dialog')?.textContent.includes('Aurora')", label: "original source dialog")
         _ = try await javascript(view, "document.querySelector('#source-dialog button').click(); return true;")
-        view.reload()
+        // reload() returns before navigation begins: the previous document can
+        // still satisfy the DOM predicate and then cancel its pending fetch.
+        // Require the real Coordinator's main-frame didFinish first, followed
+        // by the unchanged persisted-focus/session checks on the new page.
+        let navigationsBeforeReload = completedMainNavigations
+        guard view.reload() != nil else { throw AcceptanceFailure(message: "Native WebKit did not start the main-frame reload.") }
+        try await waitForMainNavigation(after: navigationsBeforeReload)
         try await wait(view, "document.querySelector('.source-card button[data-document]') && document.body.textContent.includes('Retomar o projeto Aurora')", label: "reload retaining focus and session")
         let restoredFocus = try await javascript(view, "return (await (await fetch('/api/experience')).json()).focus.source_ids;")
         XCTAssertEqual(restoredFocus as? [String], [selectedSourceID])

@@ -203,6 +203,20 @@ else
   task_name="Mia-$task_version-$task_arch"
   task_stage='signing native app bundle'
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --sign-app "$task_output/Mia.app" --sign-identity "$task_identity"
+  # The copied application must carry its own ticket: stapling only the DMG
+  # cannot satisfy the publisher's offline application-ticket verification.
+  task_stage='notarizing and stapling the application before final acceptance'
+  ditto -c -k --keepParent "$task_output/Mia.app" "$task_output/app-notarization.zip"
+  xcrun notarytool submit "$task_output/app-notarization.zip" --keychain-profile "$task_notary" --wait --output-format json > "$task_output/app-notarization-result.json"
+  python3 - "$task_output/app-notarization-result.json" <<'PY'
+import json,sys
+if json.load(open(sys.argv[1])).get('status') != 'Accepted':
+    raise SystemExit('Application notarization did not accept the artifact; do not distribute')
+PY
+  xcrun stapler staple "$task_output/Mia.app"
+  xcrun stapler validate "$task_output/Mia.app"
+  codesign --verify --deep --strict "$task_output/Mia.app"
+  spctl --assess --type execute --verbose "$task_output/Mia.app"
 fi
 test_backend_runtime
 task_stage='accepting actual native WebKit against the final bundled backend'
