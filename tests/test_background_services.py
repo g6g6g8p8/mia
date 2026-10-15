@@ -25,6 +25,8 @@ def test_service_plan_exact_review_hash_and_user_scope(managed, tmp_path, monkey
     plan = service_plan(managed, "systemd", home=home)
     assert plan["scope"] == "current-user" and not plan["network_changes"]
     assert "Restart=no" in plan["content"] and "service-run" in plan["content"]
+    assert plan["commands"][0][1:3] == ["-I", "-B"]
+    assert '"-I" "-B"' in plan["content"]
     assert "linger" in plan["availability"]
     commands = []
     monkeypatch.setattr(subprocess, "run", lambda command, **kwargs: commands.append(command))
@@ -46,6 +48,8 @@ def test_launchd_plan_is_distinct_and_has_one_bounded_retry_controller(managed, 
     plist = plistlib.loads(plan["content"].encode())
     assert plist["RunAtLoad"] and not plist["KeepAlive"]
     assert plist["ProgramArguments"][-1] == "service-run"
+    assert plist["ProgramArguments"][1:3] == ["-I", "-B"]
+    assert plan["commands"][0][1:3] == ["-I", "-B"]
     assert plist["Label"] in plan["destination"]
     assert plan["commands"][-1][0:2] == ["launchctl", "bootstrap"]
 
@@ -250,7 +254,7 @@ def live_runner(managed, monkeypatch):
     runners = []
     def launch():
         log = (managed.root / "test-runner.log").open("ab")
-        process = subprocess.Popen([sys.executable, str(managed.root / "manager.py"), "--root", str(managed.root), "service-run"], stdout=log, stderr=log, start_new_session=True)
+        process = subprocess.Popen([sys.executable, "-I", "-B", str(managed.root / "manager.py"), "--root", str(managed.root), "service-run"], stdout=log, stderr=log, start_new_session=True)
         log.close()
         runners.append(process)
         return process
@@ -292,7 +296,7 @@ def test_command_exit_leaves_backend_running_and_runner_adopts_it(live_runner):
     manager, launch = live_runner
     # The invoking process really exits; only detached backend survives. This
     # exercises process lifecycle, not a claim about real SSH or machine boot.
-    command = subprocess.run([sys.executable, str(manager.root / "manager.py"), "--root", str(manager.root), "start"], check=True, capture_output=True, text=True)
+    command = subprocess.run([sys.executable, "-I", "-B", str(manager.root / "manager.py"), "--root", str(manager.root), "start"], check=True, capture_output=True, text=True)
     assert json.loads(command.stdout)["running"]
     record = manager._record()
     assert record and os.getsid(record["pid"]) == record["pid"]

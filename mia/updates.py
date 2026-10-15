@@ -132,7 +132,7 @@ def validate_channel(channel: dict) -> dict:
         raise UpdateError("Protocolo do canal de atualização incompatível")
     if not isinstance(channel.get("channel"), str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,40}", channel["channel"]):
         raise UpdateError("Nome do canal de atualização inválido")
-    allowed = {"protocol", "channel", "backend_feed_url", "backend_public_key", "appcast_url", "sparkle_public_key"}
+    allowed = {"protocol", "channel", "backend_feed_url", "backend_public_key", "appcast_url", "sparkle_public_key", "distribution_url", "beta_access_required"}
     if set(channel) - allowed:
         raise UpdateError("Configuração do canal contém campos não permitidos")
     for url_field, key_field in (("backend_feed_url", "backend_public_key"), ("appcast_url", "sparkle_public_key")):
@@ -141,6 +141,20 @@ def validate_channel(channel: dict) -> dict:
         if channel.get(url_field):
             _https(channel[url_field])
             _decode(channel[key_field], 32)
+    if "beta_access_required" in channel and type(channel["beta_access_required"]) is not bool:
+        raise UpdateError("Política de acesso beta deve ser booleana")
+    if "distribution_url" in channel:
+        _https(channel["distribution_url"])
+        parsed = urllib.parse.urlsplit(channel["distribution_url"])
+        if any(part in (".", "..") for part in parsed.path.split("/")) or "%" in parsed.path:
+            raise UpdateError("Endereço da distribuição contém caminho não permitido")
+    if channel.get("beta_access_required"):
+        if not channel.get("distribution_url") or not channel.get("appcast_url"):
+            raise UpdateError("Canal privado beta exige distribuição e appcast configurados")
+        distribution = urllib.parse.urlsplit(channel["distribution_url"])
+        appcast = urllib.parse.urlsplit(channel["appcast_url"])
+        if (appcast.scheme, appcast.hostname, appcast.port or 443) != (distribution.scheme, distribution.hostname, distribution.port or 443) or not appcast.path.startswith(distribution.path.rstrip("/") + "/"):
+            raise UpdateError("Appcast privado deve pertencer à distribuição autorizada")
     return channel
 
 

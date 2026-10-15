@@ -275,6 +275,7 @@ def test_compiled_remote_installer_enables_private_owner_creation_before_activat
         if command[:2] == ["/usr/bin/systemctl", "--user"]:
             return subprocess.CompletedProcess(command, 0)
         if "install" in command:
+            assert command[1:3] == ["-I", "-B"]
             assert "--private-bootstrap" in command
             root = Path(command[command.index("--root") + 1])
             calls.append("install")
@@ -283,7 +284,8 @@ def test_compiled_remote_installer_enables_private_owner_creation_before_activat
                                   wheelhouse=Path(command[command.index("--wheelhouse") + 1]), offline=True,
                                   installation_id=command[command.index("--installation-id") + 1], private_bootstrap=True)
         else:
-            assert "apply_service_plan" in command[3]
+            assert command[1:3] == ["-I", "-B"]
+            assert "apply_service_plan" in command[command.index("-c") + 1]
             root = Path(command[-1])
             assert json.loads((root / "installation.json").read_text())["private_bootstrap"] is True
             assert (root / "machine.env").read_text().endswith("MIA_SETUP_REQUIRE_TOKEN=true\n")

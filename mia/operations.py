@@ -374,7 +374,7 @@ class Manager:
         self._check()
         self._background_capability()
         config = _read(self.root / "installation.json")
-        arguments = [config["python"], str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
+        arguments = [config["python"], "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
         if kind == "launchd":
             return plistlib.dumps({"Label": "local.mia." + hashlib.sha256(str(self.root).encode()).hexdigest()[:12], "ProgramArguments": arguments,
                                    "RunAtLoad": True, "KeepAlive": False, "ProcessType": "Background",

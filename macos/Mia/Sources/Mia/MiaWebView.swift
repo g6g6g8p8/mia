@@ -9,7 +9,7 @@ import MiaCore
 @MainActor private enum InstanceStores {
     private static var stores: [String: WKWebsiteDataStore] = [:]
     static func store(for connection: MiaConnection) -> WKWebsiteDataStore {
-        let key = connection.webIdentity
+        let key = connection.websiteDataIdentity
         if let existing = stores[key] { return existing }
         let store: WKWebsiteDataStore
         if #available(macOS 14.0, *) {

@@ -56,6 +56,7 @@ private func runSignatureHelperIfRequested() {
     var body: some Scene {
         Window("Mia", id: "mia") {
             MiaWindow(model: model, updater: updater, delegate: delegate)
+                .onOpenURL { url in Task { model.showControls = true; await updater.betaAccess.accept(url) } }
         }.defaultSize(width: 1040, height: 780)
         .commands { MiaCommands(model: model, updater: updater) }
     }
@@ -69,6 +70,7 @@ private func runSignatureHelperIfRequested() {
         CommandGroup(after: .appInfo) {
             Button("Minha instalação…") { openWindow(id: "mia"); model.showControls = true }.keyboardShortcut(",")
             Button("Buscar atualização do app…") { updater.check() }.disabled(!updater.configured || updater.updating || model.busy)
+            Button("Ativar convite da demonstração…") { openWindow(id: "mia"); model.showControls = true; updater.betaAccess.showActivation = true }.disabled(!updater.betaAccess.configured)
         }
         CommandGroup(before: .windowArrangement) { Button("Mostrar Mia") { openWindow(id: "mia") }.keyboardShortcut("1") }
     }

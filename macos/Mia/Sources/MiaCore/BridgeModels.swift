@@ -43,6 +43,7 @@ public struct BridgeRequest: Encodable, Sendable {
     public static let actions: Set<String> = [
         "status", "local_plan", "local_install", "local_start", "local_stop", "local_recover", "local_snapshot", "local_bundle_plan", "local_bundle_update",
         "remote_preflight", "remote_install", "remote_connect", "remote_disconnect", "https_connect",
+        "remote_bundle_plan", "remote_bundle_update", "remote_snapshot_plan", "remote_snapshot", "remote_recovery_plan", "remote_recover",
         "updates_status", "updates_check", "updates_prepare", "updates_apply", "updates_recover"
     ]
 }

@@ -64,7 +64,7 @@ def _json(path: Path, *, limit: int = 512 * 1024) -> dict:
 MACHINE_ENV = "# Configuração privada desta instalação.\nMIA_AI_ENABLED=false\nMIA_COOKIE_SECURE=false\nMIA_INSTALLATION_MODE=local\n"
 PRIVATE_MACHINE_ENV = MACHINE_ENV + "MIA_SETUP_REQUIRE_TOKEN=true\n"
 LOCAL_ACTIONS = {"status", "local_plan", "local_install", "local_start", "local_stop", "local_recover", "local_snapshot", "local_bundle_plan", "local_bundle_update"}
-REMOTE_ACTIONS = {"remote_preflight", "remote_install", "remote_connect", "remote_disconnect", "https_connect"}
+REMOTE_ACTIONS = {"remote_preflight", "remote_install", "remote_connect", "remote_disconnect", "https_connect", "remote_bundle_plan", "remote_bundle_update", "remote_snapshot_plan", "remote_snapshot", "remote_recovery_plan", "remote_recover"}
 UPDATE_ACTIONS = {"updates_status", "updates_check", "updates_prepare", "updates_apply", "updates_recover"}
 
 
@@ -191,10 +191,49 @@ class DesktopController:
         if not python.is_file() or not python.stat().st_mode & 0o111:
             raise DesktopError("invalid_bundle", "O runtime incluído não pode iniciar a Mia.")
         relative_python = str(python.resolve().relative_to((self.resources / "runtime").resolve()))
+        # The authenticated assembly report retains the upstream inventory
+        # before Developer ID signing. Signing timestamps change the final
+        # binary hashes, but must never authorize replacing the private Python
+        # already used by installed venvs. Missing provenance is deliberately
+        # not reconstructed for older installations.
+        origin = None
+        original_files = runtime.get("source_archive_files", runtime["files"])
+        source_url = runtime.get("source_url")
+        archive_sha256 = runtime.get("archive_sha256")
+        license_sha256 = runtime.get("license_archive_sha256")
+        valid_inventory = isinstance(original_files, dict) and bool(original_files) and all(
+            isinstance(name, str) and not Path(name).is_absolute() and ".." not in Path(name).parts and
+            isinstance(record, dict) and (
+                set(record) == {"sha256", "executable"} and isinstance(record["sha256"], str) and
+                re.fullmatch(r"[0-9a-f]{64}", record["sha256"]) is not None and type(record["executable"]) is bool or
+                set(record) == {"symlink"} and isinstance(record["symlink"], str) and not Path(record["symlink"]).is_absolute()
+            ) for name, record in original_files.items())
+        proof = (isinstance(source_url, str) and source_url.startswith("https://github.com/astral-sh/python-build-standalone/releases/download/") and
+                 isinstance(archive_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", archive_sha256) is not None and
+                 isinstance(license_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", license_sha256) is not None and
+                 isinstance(runtime.get("official_checksum_source"), str) and
+                 runtime["official_checksum_source"].startswith("https://github.com/astral-sh/python-build-standalone/releases/download/") and
+                 isinstance(runtime.get("license_archive_url"), str) and
+                 runtime["license_archive_url"].startswith("https://github.com/astral-sh/python-build-standalone/releases/download/") and
+                 isinstance(runtime.get("content_transformations", []), list))
+        if "source_archive_files" in runtime and (
+                runtime.get("content_transformation") != "Developer ID codesign of native runtime executables/libraries" or
+                runtime.get("python_entitlements") != {"com.apple.security.cs.disable-library-validation": True}):
+            proof = False
+        if proof and valid_inventory and relative_python in original_files:
+            # Apart from the final signatures, bind all origin material,
+            # including notice extraction and any reviewed transformation.
+            origin = {"format": 1, "platform": runtime["platform"], "architecture": architecture,
+                      "python_version": runtime["python_version"], "python_relative": relative_python,
+                      "original_files_sha256": _hash(original_files), "archive_sha256": archive_sha256,
+                      "source_url": source_url, "official_checksum_source": runtime["official_checksum_source"],
+                      "license_archive_url": runtime["license_archive_url"], "license_archive_sha256": license_sha256,
+                      "content_transformations": runtime.get("content_transformations", []),
+                      "notices_sha256": _hash(runtime.get("notices", {}))}
         return {"resources": str(self.resources), "version": metadata["version"], "architecture": architecture,
                 "source_sha256": _hash(source_files), "runtime_sha256": _hash(runtime["files"]),
                 "wheelhouse_sha256": _hash(wheels["files"]), "report_sha256": hashlib.sha256((self.resources / "build-report.json").read_bytes()).hexdigest(),
-                "python_relative": relative_python}
+                "python_relative": relative_python, "python_version": runtime["python_version"], "runtime_origin": origin}
 
     @staticmethod
     def _port_available(port: int) -> bool:
@@ -209,13 +248,13 @@ class DesktopController:
         name = "local.mia." + hashlib.sha256(str(self.root).encode()).hexdigest()[:12]
         destination = self.home / "Library/LaunchAgents" / (name + ".plist")
         _no_links(destination)
-        arguments = [str(python), str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
+        arguments = [str(python), "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
         content = plistlib.dumps({"Label": name, "ProgramArguments": arguments, "RunAtLoad": True, "KeepAlive": False, "ProcessType": "Background",
                                  "StandardOutPath": str(self.root / "service.log"), "StandardErrorPath": str(self.root / "service.log")}).decode()
         if destination.exists() and (not destination.is_file() or destination.read_text() != content):
             raise DesktopError("service_conflict", "Já existe um serviço diferente neste destino. Nenhum serviço foi substituído.")
         return {"kind": "launchd", "destination": str(destination), "content": content,
-                "commands": [[str(python), str(self.root / "manager.py"), "--root", str(self.root), "start"],
+                "commands": [[str(python), "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "start"],
                              ["launchctl", "bootstrap", "gui/" + str(os.getuid()), str(destination)]],
                 "port": port, "network_changes": False, "scope": "current-user"}
 
@@ -365,14 +404,26 @@ class DesktopController:
             raise DesktopError("recovery_required", "Conclua a recuperação da instalação antes de atualizar.")
         bundle = self._bundle()
         previous = state.get("bundle", {})
-        if any(bundle.get(key) != previous.get(key) for key in ("runtime_sha256", "architecture", "python_relative")):
+        installed_runtime = state["installed_runtime"] if "installed_runtime" in state else {
+            key: previous.get(key) for key in ("runtime_sha256", "architecture", "python_relative", "python_version", "runtime_origin")}
+        if (not isinstance(installed_runtime, dict) or
+                not isinstance(installed_runtime.get("runtime_sha256"), str) or
+                re.fullmatch(r"[0-9a-f]{64}", installed_runtime["runtime_sha256"]) is None or
+                any(bundle.get(key) != installed_runtime.get(key) for key in ("architecture", "python_relative")) or
+                installed_runtime.get("python_version") not in (None, bundle["python_version"])):
             raise DesktopError("runtime_upgrade_required", "Esta versão requer atualização coordenada do runtime. Sua biblioteca foi preservada; o backend atual continua disponível.")
-        stable = self.base / "runtimes" / bundle["runtime_sha256"]
+        old_origin = installed_runtime.get("runtime_origin")
+        new_origin = bundle.get("runtime_origin")
+        if ((old_origin is not None and new_origin is not None and old_origin != new_origin) or
+                bundle["runtime_sha256"] != installed_runtime["runtime_sha256"] and
+                (not old_origin or old_origin != new_origin)):
+            raise DesktopError("runtime_upgrade_required", "Esta versão requer atualização coordenada do runtime. Sua biblioteca foi preservada; o backend atual continua disponível.")
+        stable = self.base / "runtimes" / installed_runtime["runtime_sha256"]
         _no_links(stable)
-        if _hash(runtime_inventory(stable)) != bundle["runtime_sha256"]:
+        if not stable.is_dir() or stable.stat().st_uid != os.getuid() or stable.stat().st_mode & 0o077 or _hash(runtime_inventory(stable)) != installed_runtime["runtime_sha256"]:
             raise DesktopError("runtime_changed", "O runtime privado mudou. A atualização foi interrompida com seus dados preservados.")
         configuration = _json(self.root / "installation.json")
-        if configuration.get("python") != str(stable / bundle["python_relative"]):
+        if configuration.get("python") != str(stable / installed_runtime["python_relative"]):
             raise DesktopError("runtime_upgrade_required", "O backend usa outro runtime. Ele não será substituído automaticamente.")
         active = manager.active()
         def version(value):
@@ -383,8 +434,8 @@ class DesktopController:
         if version(bundle["version"]) < version(active["version"]):
             raise DesktopError("downgrade_rejected", "O aplicativo contém uma versão anterior. Use a recuperação revisada para retornar de versão.")
         details = {"protocol": 1, "root": str(self.root), "installation_id": self._local()["installation_id"], "active": active,
-                   "bundle": bundle, "manager_sha256": configuration["manager_sha256"], "runtime": str(stable),
-                   "command": [configuration["python"], str(self.root / "manager.py"), "--root", str(self.root), "update",
+                   "bundle": bundle, "installed_runtime": installed_runtime, "manager_sha256": configuration["manager_sha256"], "runtime": str(stable),
+                   "command": [configuration["python"], "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "update",
                                "--source", str(self.resources / "source"), "--wheelhouse", str(self.resources / "wheelhouse"), "--offline"]}
         return {"sha256": _hash(details), "current_version": active["version"], "candidate_version": bundle["version"],
                 "update_available": bundle["version"] != active["version"],
@@ -414,6 +465,7 @@ class DesktopController:
                 if was_paused:
                     self._manager().stop()
                 state = _json(self.journal)
+                state["installed_runtime"] = plan["details"]["installed_runtime"]
                 state["bundle"] = plan["details"]["bundle"]
                 _write(self.journal, state)
             return self._local()

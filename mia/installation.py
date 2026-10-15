@@ -59,7 +59,7 @@ def service_plan(manager: Manager, kind: str, *, home: Path | None = None) -> di
     manager._check()
     home = (home or Path.home()).resolve()
     configuration = _read(manager.root / "installation.json")
-    start = [configuration["python"], str(manager.root / "manager.py"), "--root", str(manager.root), "start"]
+    start = [configuration["python"], "-I", "-B", str(manager.root / "manager.py"), "--root", str(manager.root), "start"]
     identity = hashlib.sha256(str(manager.root).encode()).hexdigest()[:12]
     if kind == "systemd":
         name = "mia-" + identity + ".service"

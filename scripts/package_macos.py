@@ -286,6 +286,8 @@ def build(output: Path, runtime: Path, runtime_manifest: Path, wheelhouse: Path,
             validate_channel(channel)
             (resources / "release-channel.json").write_text(json.dumps(channel, indent=2))
         info = {"CFBundleIdentifier": "org.mia.demo" if native_binary else "local.mia.launcher", "CFBundleName": "Mia", "CFBundleDisplayName": "Mia", "CFBundleExecutable": "Mia", "CFBundlePackageType": "APPL", "CFBundleIconFile": "mia-icon.icns", **version_metadata, "LSMinimumSystemVersion": "13.0" if native_binary else "12.0", "NSHighResolutionCapable": True, "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True}, "SUEnableAutomaticChecks": False, "SUAutomaticallyUpdate": False}
+        if native_binary is not None:
+            info["CFBundleURLTypes"] = [{"CFBundleURLName": "org.mia.demo.invitation", "CFBundleTypeRole": "Viewer", "CFBundleURLSchemes": ["mia-demo"]}]
         if channel.get("appcast_url") and channel.get("sparkle_public_key"):
             if sparkle_framework is None:
                 raise OperationError("Canal de aplicativo exige Sparkle framework revisado")

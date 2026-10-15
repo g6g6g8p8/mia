@@ -455,7 +455,8 @@ def test_already_bundled_update_uses_stable_manager_and_preserves_library(bundle
     def run(command, **kwargs):
         calls.append(command)
         assert command[0] == json.loads((controller.root / "installation.json").read_text())["python"]
-        assert command[1] == str(controller.root / "manager.py")
+        assert command[1:3] == ["-I", "-B"]
+        assert command[3] == str(controller.root / "manager.py")
         assert "MIA_AI_API_KEY" not in kwargs["env"]
         Manager(controller.root).update(controller.resources / "source", wheelhouse=controller.resources / "wheelhouse", offline=True)
     monkeypatch.setattr(subprocess, "run", run)

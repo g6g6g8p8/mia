@@ -205,6 +205,10 @@ else
   python3 "$task_repo/scripts/prepare_macos_artifacts.py" --sign-app "$task_output/Mia.app" --sign-identity "$task_identity"
 fi
 test_backend_runtime
+task_stage='accepting actual native WebKit against the final bundled backend'
+python3 "$task_repo/scripts/native_mac_acceptance.py" --app "$task_output/Mia.app" --source "$task_repo" --output "$task_output/native-webkit-acceptance.json"
+task_stage='accepting isolated native user service against the final bundled backend'
+python3 "$task_repo/scripts/native_mac_service_acceptance.py" --app "$task_output/Mia.app" --source "$task_repo" --output "$task_output/native-service-acceptance.json"
 task_stage='staging disk-image contents'
 echo 'Mia Mac build: staging disk-image contents.'
 mkdir "$task_output/dmg-root"
@@ -229,17 +233,7 @@ fi
 task_stage='verifying final disk-image integrity'
 hdiutil verify "$task_output/$task_name.dmg"
 task_stage='writing artifact digest and verification receipt'
-python3 - "$task_output/$task_name.dmg" "$task_unsigned" "$task_repo" "$task_output/Mia.app" "$task_output/dmg-root/Mia.app" <<'PY'
-from pathlib import Path
-import hashlib,json,sys
-sys.path.insert(0,sys.argv[3])
-from scripts.package_macos import inventory
-p=Path(sys.argv[1])
-with p.open('rb') as f: sha=hashlib.file_digest(f,'sha256').hexdigest()
-app_files=inventory(Path(sys.argv[4]))
-assert app_files==inventory(Path(sys.argv[5])), 'Staged app must match the final tested app bytes'
-app_digest=hashlib.sha256(json.dumps(app_files,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-Path(str(p)+'.sha256').write_text(sha+'  '+p.name+'\n')
-Path(str(p)+'.verification.json').write_text(json.dumps({'artifact':p.name,'sha256':sha,'disk_image_integrity_verified':True,'signed':sys.argv[2]=='false','notarized':sys.argv[2]=='false','native_backend_smoke_passed':True,'native_backend_smoke_scope':'final app runtime after code signing' if sys.argv[2]=='false' else 'unsigned development app runtime','app_files':app_files,'app_inventory_sha256':app_digest,'clean_mac_ui_acceptance':False,'consumer_distribution_ready':False},indent=2))
-PY
+task_receipt=(--app "$task_output/Mia.app" --staged-app "$task_output/dmg-root/Mia.app" --artifact "$task_output/$task_name.dmg" --webkit-evidence "$task_output/native-webkit-acceptance.json" --service-evidence "$task_output/native-service-acceptance.json")
+if [ "$task_unsigned" = false ]; then task_receipt+=(--signed --notarization "$task_output/notarization-result.json"); fi
+PYTHONPATH="$task_repo" python3 "$task_repo/scripts/mac_build_receipt.py" "${task_receipt[@]}"
 echo "Built: $task_output/$task_name.dmg"

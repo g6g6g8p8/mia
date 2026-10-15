@@ -46,6 +46,9 @@ import MiaCore
             Text("Reúna suas notas e conversas para retomar projetos, encontrar decisões e avançar com fontes.").font(.title3).foregroundStyle(.secondary)
             Text("Esta Mia será sua: escolha onde guardar o contexto, crie seu acesso e confira o material antes de importar. Você pode começar sem configurar IA.")
             Button("Começar", action: model.begin).buttonStyle(.borderedProminent).controlSize(.large)
+            if updater.betaAccess.configured {
+                Button("Ativar meu convite para atualizações") { model.showControls = true; updater.betaAccess.showActivation = true }
+            }
             if !model.connections.isEmpty {
                 Divider(); Text("Ou retome uma instalação sua:").foregroundStyle(.secondary)
                 ForEach(model.connections) { connection in Button(connection.title) { Task { await model.connectSaved(connection) } } }
@@ -117,16 +120,22 @@ import MiaCore
             Text("Uma operação não foi concluída ou seu resultado não foi confirmado. O app preserva o destino e não cria uma biblioteca vazia no lugar da anterior.")
             HStack {
                 Button("Conferir estado") { Task { await model.refresh(initial: true) } }.buttonStyle(.borderedProminent)
-                if model.state.connection?.mode == "local" || model.choice == .local { Button("Recuperar instalação neste Mac") { Task { await model.recoverLocal() } } }
+                if model.state.connection?.mode == "local" || (model.state.connection == nil && model.choice == .local) { Button("Recuperar instalação neste Mac") { Task { await model.recoverLocal() } } }
+                if model.state.connection?.mode == "ssh" { Button("Conferir recuperação do servidor") { Task { await model.inspectRemoteOperation(.recovery) } } }
                 Button("Escolher outro destino", action: model.changeDestination)
             }
-            Text("Se a operação foi no servidor, reconecte ao mesmo destino antes de repetir uma instalação.").foregroundStyle(.secondary)
+            if let plan = model.remotePlan, let operation = model.remoteOperation, model.state.connection?.mode == "ssh" {
+                PlanReview(plan: plan, title: operation.title, actionTitle: operation.actionTitle, approve: { Task { await model.applyRemoteOperation() } }, cancel: model.cancelRemoteReview)
+            }
+            Text("Confira ou recupere o mesmo destino para resolver a operação anterior. Seus dados não serão substituídos por uma instalação vazia.").foregroundStyle(.secondary)
         }.padding(48).frame(maxWidth: 820, maxHeight: .infinity, alignment: .leading)
     }
     private func offline(_ connection: MiaConnection) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Conexão interrompida", systemImage: "wifi.slash").font(.title2)
-            Text("Sua biblioteca permanece no destino. Reconectar retoma esta instalação sem reinstalar ou substituir dados.")
+            Label(connection.metadata["paused"]?.bool == true ? "Mia pausada" : "Conexão indisponível", systemImage: connection.metadata["paused"]?.bool == true ? "pause.circle" : "wifi.slash").font(.title2)
+            if connection.metadata["paused"]?.bool == true {
+                Text(connection.mode == "local" ? "Sua biblioteca permanece neste Mac. Reconectar retoma sua instalação." : "Sua biblioteca permanece no servidor. Esta instalação está pausada no destino; atualização e recuperação preservam essa pausa.")
+            } else { Text("Sua biblioteca permanece no destino. Reconectar confere esta instalação sem reinstalar ou substituir dados.") }
             HStack { Button("Reconectar") { Task { await model.reconnect() } }.buttonStyle(.borderedProminent); Button("Minha instalação") { model.showControls = true } }
         }.padding(24).background(.regularMaterial).cornerRadius(14).padding(24).frame(maxWidth: 680)
     }
@@ -177,21 +186,38 @@ import MiaCore
                         HStack { Button("Cópia de recuperação") { Task { await model.snapshot() } }; Button("Parar Mia") { confirmStop() }; Button("Recuperar") { Task { await model.recoverLocal() } } }
                         Text("Cópias de recuperação ficam nesta instalação. Exporte pela Biblioteca para guardar outra cópia fora deste Mac.").font(.caption).foregroundStyle(.secondary)
                         Button("Conferir versão incluída no app") { Task { await model.inspectBundledUpdate() } }
-                    } else { Text("Atualizar o app não atualiza seu servidor. Backup e recuperação do destino seguem as permissões daquela instalação.").font(.caption).foregroundStyle(.secondary) }
+                    } else if connection.mode == "ssh" {
+                        Divider(); Text("Operação no meu servidor").font(.headline)
+                        Text("As operações usam a conexão SSH e a identidade que você confirmou. Cada alteração apresenta seu destino e pede uma confirmação própria.").foregroundStyle(.secondary)
+                        if connection.metadata["paused"]?.bool == true { Text("Sua instalação está pausada. Atualizar ou recuperar preserva essa pausa.").font(.caption).foregroundStyle(.secondary) }
+                        HStack {
+                            Button("Cópia de recuperação") { Task { await model.inspectRemoteOperation(.snapshot) } }.disabled(model.state.phase == .recoveryRequired)
+                            Button("Conferir recuperação") { Task { await model.inspectRemoteOperation(.recovery) } }
+                        }
+                        Text("A cópia verificada fica no mesmo servidor. Exporte pela Biblioteca para guardar outra cópia fora dele.").font(.caption).foregroundStyle(.secondary)
+                        Button("Conferir versão incluída no app") { Task { await model.inspectRemoteOperation(.bundledUpdate) } }.disabled(model.state.phase == .recoveryRequired)
+                        Text("O app e a instalação têm atualizações separadas. Trocar o app não altera o backend nem sua biblioteca no servidor. Se o runtime ou o gerenciador exigir uma migração, esta atualização será bloqueada com seus dados preservados.").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Esta conexão HTTPS abre sua Mia. Cópias, recuperação e atualização do backend exigem acesso administrativo ao servidor; este endereço não autoriza comandos SSH. Para usar o assistente, conecte o mesmo destino por No meu servidor.").font(.caption).foregroundStyle(.secondary)
+                    }
                 } else { Text("Nenhuma instalação selecionada."); Button("Escolher destino") { model.begin(); dismiss() } }
                 Divider(); Text("Atualizações do app").font(.headline)
                 Text(updater.explanation).foregroundStyle(.secondary)
+                BetaAccessControls(access: updater.betaAccess)
                 Button("Buscar atualização do app") { updater.check() }.disabled(!updater.configured || updater.updating || model.busy)
-                Divider(); Text("Atualização da instalação neste Mac").font(.headline)
                 if model.state.connection?.mode == "local" {
+                    Divider(); Text("Atualização da instalação neste Mac").font(.headline)
                     Text(model.updates["summary"]?.string ?? "Confira o canal de atualização do destino antes de alterar sua instalação.").foregroundStyle(.secondary)
                     if let release = model.updates["release"]?.object ?? model.updates["releases"]?.array?.first?.object { Text("Versão \(release["version"]?.string ?? "")").font(.headline); Text(release["notes"]?.string ?? "") }
                     HStack { Button("Buscar atualização do destino") { Task { await model.loadUpdates(check: true) } }; if model.updates["state"]?.string == "available" { Button("Preparar atualização") { Task { await model.prepareUpdate() } } }; if model.updates["state"]?.string == "recovery_required" { Button("Recuperar atualização") { Task { await model.recoverUpdate() } } } }
                     if ["interrupted", "prepared"].contains(model.updates["state"]?.string ?? "") { Button("Descartar preparação da atualização") { Task { await model.discardUpdatePreparation() } } }
                     if model.updates["state"]?.string == "prepared", model.updatePlan == nil { Button("Revisar atualização preparada", action: model.reviewPreparedUpdate) }
-                } else { Text("Este app preserva a versão do seu servidor. Atualização remota pelo assistente ainda não está disponível.").foregroundStyle(.secondary) }
+                }
                 if let plan = model.updatePlan, model.state.connection?.mode == "local" {
                     PlanReview(plan: plan, title: "Confira a atualização", actionTitle: "Atualizar com recuperação", approve: { Task { if model.backendRefreshPlan { await model.applyBundledUpdate() } else { await model.applyUpdate() } } }, cancel: { model.updatePlan = nil })
+                }
+                if let plan = model.remotePlan, let operation = model.remoteOperation, model.state.connection?.mode == "ssh" {
+                    PlanReview(plan: plan, title: operation.title, actionTitle: operation.actionTitle, approve: { Task { await model.applyRemoteOperation() } }, cancel: model.cancelRemoteReview)
                 }
             }.padding(28)
         }.frame(width: 690, height: 620).disabled(model.busy || updater.updating).task { await model.loadUpdates() }
@@ -199,6 +225,32 @@ import MiaCore
     private func confirmStop() {
         let alert = NSAlert(); alert.messageText = "Parar Mia neste Mac?"; alert.informativeText = "Seus dados permanecem guardados. A Mia ficará indisponível até você escolher Retomar ou Reconectar."; alert.addButton(withTitle: "Parar Mia"); alert.addButton(withTitle: "Cancelar")
         if alert.runModal() == .alertFirstButtonReturn { Task { await model.stopLocal() } }
+    }
+}
+
+@MainActor private struct BetaAccessControls: View {
+    @ObservedObject var access: BetaAccess
+    var body: some View {
+        if access.configured {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(access.message).foregroundStyle(.secondary)
+                if access.canUpdate, let expiry = access.expiresAt {
+                    Text("Atualizações autorizadas até \(expiry.formatted(.dateTime.day().month().year())).").font(.caption).foregroundStyle(.secondary)
+                }
+                DisclosureGroup("Ativar ou trocar convite", isExpanded: $access.showActivation) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SecureField("Código de ativação do convite", text: $access.activationTicket).textFieldStyle(.roundedBorder)
+                        Text("Ativar confirma seu convite com o serviço de distribuição. Suas notas e conversas permanecem na instalação escolhida. A autorização fica no Chaves deste Mac.").font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Button("Ativar convite") { Task { await access.activate() } }.buttonStyle(.borderedProminent)
+                            if access.busy { ProgressView().controlSize(.small); Text("Confirmando convite…").font(.caption) }
+                        }
+                    }.padding(.top, 8)
+                }
+                if access.canUpdate { Button("Remover autorização de atualizações deste Mac") { access.forget() } }
+                Text("Seu acesso, biblioteca e exportação continuam disponíveis sem essa autorização.").font(.caption).foregroundStyle(.secondary)
+            }.disabled(access.busy)
+        }
     }
 }
 #endif

@@ -65,6 +65,9 @@ final class SafetyTests: XCTestCase {
         let request = try BridgeRequest(action: "local_install", payload: ["approve_sha256": .string(String(repeating: "f", count: 64))])
         let encoded = try JSONEncoder().encode(request)
         XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("approve_sha256"))
+        for action in ["remote_bundle_plan", "remote_bundle_update", "remote_snapshot_plan", "remote_snapshot", "remote_recovery_plan", "remote_recover"] {
+            XCTAssertEqual(try BridgeRequest(action: action).action, action)
+        }
     }
 
     func testResponseCannotMixSuccessAndErrorOrOmitResult() throws {

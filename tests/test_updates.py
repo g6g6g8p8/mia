@@ -257,6 +257,66 @@ def test_channel_public_config_rejects_private_fields_and_unpaired_trust():
         updates.validate_channel({"protocol": 1, "channel": "beta", "appcast_url": "https://releases.example/appcast.xml"})
 
 
+def private_channel():
+    return {"protocol": 1, "channel": "beta", "beta_access_required": True,
+            "distribution_url": "https://releases.example/mia",
+            "appcast_url": "https://releases.example/mia/updates/arm64/appcast.xml",
+            "sparkle_public_key": base64.b64encode(b"s" * 32).decode()}
+
+
+def test_private_channel_binds_appcast_to_its_trusted_distribution():
+    config = private_channel()
+    assert updates.validate_channel(config) == config
+    config["distribution_url"] += "/"
+    assert updates.validate_channel(config) == config
+    legacy = {"protocol": 1, "channel": "beta"}
+    assert updates.validate_channel(legacy) == legacy
+
+
+@pytest.mark.parametrize("url", [
+    "https://other.example/mia/updates/arm64/appcast.xml",
+    "https://releases.example:444/mia/updates/arm64/appcast.xml",
+    "https://releases.example/miami/updates/arm64/appcast.xml",
+    "https://releases.example/updates/arm64/appcast.xml",
+])
+def test_private_channel_rejects_unrelated_appcast_origins_and_prefixes(url):
+    config = private_channel()
+    config["appcast_url"] = url
+    with pytest.raises(UpdateError, match="distribuição autorizada"):
+        updates.validate_channel(config)
+
+
+@pytest.mark.parametrize("url", [
+    "http://releases.example/mia", "https://user:secret@releases.example/mia",
+    "https://releases.example/mia?token=secret", "https://releases.example/mia#fragment",
+    "https://releases.example/./mia", "https://releases.example/x/../mia",
+    "https://releases.example/%6dia",
+])
+def test_private_channel_rejects_unsafe_distribution_urls(url):
+    config = private_channel()
+    config["distribution_url"] = url
+    with pytest.raises(UpdateError):
+        updates.validate_channel(config)
+
+
+@pytest.mark.parametrize("policy", [1, "true", None, {}])
+def test_private_channel_requires_boolean_policy(policy):
+    config = private_channel()
+    config["beta_access_required"] = policy
+    with pytest.raises(UpdateError, match="booleana"):
+        updates.validate_channel(config)
+
+
+@pytest.mark.parametrize("missing", ["distribution_url", "appcast_url"])
+def test_private_channel_requires_both_delivery_endpoints(missing):
+    config = private_channel()
+    del config[missing]
+    if missing == "appcast_url":
+        del config["sparkle_public_key"]
+    with pytest.raises(UpdateError, match="distribuição e appcast"):
+        updates.validate_channel(config)
+
+
 def test_changed_official_channel_cannot_use_previous_signed_cache(channel):
     controller, _, _, _ = channel
     controller.handle("updates_check", {})
