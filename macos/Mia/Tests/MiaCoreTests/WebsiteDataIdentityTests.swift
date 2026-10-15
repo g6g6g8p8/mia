@@ -26,12 +26,15 @@ final class WebsiteDataIdentityTests: XCTestCase {
             ["connection_id": .string("another-server")],
             ["installation_id": .string("another-installation")],
             ["host_key_fingerprint": .string("SHA256:changed-server")],
-            ["url": .string("http://localhost:8190/")],
+            ["url": .string("http://[::1]:8190/")],
             ["url": .string("https://127.0.0.1:8190/")]
         ]
         for difference in differences {
             XCTAssertNotEqual(first.websiteDataIdentity, try connection(difference).websiteDataIdentity)
         }
+        // Plain HTTP is restricted to literal loopback addresses. A host name
+        // must not bypass that trust rule just to exercise storage identity.
+        XCTAssertThrowsError(try connection(["url": .string("http://localhost:8190/")]))
     }
 
     func testHTTPSStoresRemainBoundToCompleteEffectiveOrigin() throws {

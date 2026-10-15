@@ -238,7 +238,7 @@ private struct BetaLease: Codable {
             }
             let body = try JSONSerialization.data(withJSONObject: ["ticket": ticket, "client_nonce": nonce, "architecture": policy.architecture])
             let response = try await http.activate(url: policy.activationURL, body: body)
-            if response.status == 401 || response.status == 403 { throw BetaAccessFailure.invalidTicket }
+            if [401, 403, 410].contains(response.status) { throw BetaAccessFailure.invalidTicket }
             guard response.status == 200, response.url == policy.activationURL, response.body.count <= 16_384,
                   response.contentType.split(separator: ";").first?.trimmingCharacters(in: .whitespaces).lowercased() == "application/json",
                   let value = try JSONSerialization.jsonObject(with: response.body) as? [String: Any], Set(value.keys) == ["access_token", "expires_at"],

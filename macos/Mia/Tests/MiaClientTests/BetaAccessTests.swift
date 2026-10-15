@@ -129,9 +129,10 @@ final class BetaAccessTests: XCTestCase {
 
     @MainActor func testExpiredOrRevokedAccessBlocksOnlyDistributionAuthorization() async throws {
         let store = MemoryBetaSecrets()
-        let http = ScriptedBetaHTTP([.success(try response(status: 403))])
+        let http = ScriptedBetaHTTP([.success(try response(status: 410))])
         let client = try access(store, http); client.activationTicket = ticket; await client.activate()
         XCTAssertFalse(client.canUpdate); XCTAssertThrowsError(try client.authorization(for: policy().feedURL))
+        XCTAssertEqual(client.message, BetaAccessFailure.invalidTicket.localizedDescription)
         store.values[try policy().identity + ".lease"] = try JSONSerialization.data(withJSONObject: ["token": token, "expiresAt": 999])
         let expired = try access(store, http)
         XCTAssertFalse(expired.canUpdate); XCTAssertThrowsError(try expired.authorization(for: policy().feedURL))

@@ -53,7 +53,9 @@ jobs:
             python3 - "$RUNNER_TEMP/native-swift.log" <<'PY'
           from pathlib import Path
           import sys
-          message = '\n'.join(Path(sys.argv[1]).read_text(errors='replace').splitlines()[-30:])[-2200:]
+          lines = Path(sys.argv[1]).read_text(errors='replace').splitlines()
+          failures = list(dict.fromkeys(line for line in lines if 'error:' in line or 'AssertionError' in line or 'RuntimeError' in line))
+          message = '\n'.join(failures)[:2800] + '\n' + '\n'.join(lines[-12:])[-1000:]
           print('::error title=Native Swift build failed::' + message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           PY
           fi
@@ -136,7 +138,9 @@ jobs:
             python3 - "$RUNNER_TEMP/native-package.log" <<'PY'
           from pathlib import Path
           import sys
-          message = '\n'.join(Path(sys.argv[1]).read_text(errors='replace').splitlines()[-30:])[-2200:]
+          lines = Path(sys.argv[1]).read_text(errors='replace').splitlines()
+          failures = list(dict.fromkeys(line for line in lines if 'error:' in line or 'AssertionError' in line or 'RuntimeError' in line))
+          message = '\n'.join(failures)[:2800] + '\n' + '\n'.join(lines[-12:])[-1000:]
           print('::error title=Native Mac packaging failed::' + message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           PY
           fi
