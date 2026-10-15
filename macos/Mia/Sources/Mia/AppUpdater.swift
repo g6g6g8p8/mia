@@ -77,7 +77,7 @@ import SwiftUI
     }
     // Ignore any Sparkle feed preference changed outside the reviewed bundle.
     func feedURLString(for updater: SPUUpdater) -> String? { policy?.feedURL.absoluteString }
-    func updater(_ updater: SPUUpdater, didFinishLoadingAppcast appcast: SUAppcast) { updater.httpHeaders = nil }
+    func updater(_ updater: SPUUpdater, didFinishLoading appcast: SUAppcast) { updater.httpHeaders = nil }
     @objc(updater:shouldProceedWithUpdate:updateCheck:error:)
     func updater(_ updater: SPUUpdater, shouldProceedWithUpdate item: SUAppcastItem, updateCheck: SPUUpdateCheck) throws {
         guard let policy, let url = item.fileURL, policy.allowsDownload(url),
