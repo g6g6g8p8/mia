@@ -1,6 +1,6 @@
 # Mia Demo a14 — implementação e validação
 
-15/10/2026. Implementação de [MAC-DEMO.md](MAC-DEMO.md), na branch `feat/invite-only-mac-demo`. A a14 amplia o cliente nativo, a operação do servidor e a distribuição privada do beta. A revisão integrada e o CI desta revisão ainda precisam concluir. Assinatura Apple, publicação e aceites reais permanecem requisitos para liberar convidados.
+15/10/2026. Implementação de [MAC-DEMO.md](MAC-DEMO.md), na branch `feat/invite-only-mac-demo`. A a14 amplia o cliente nativo, a operação do servidor e a distribuição privada do beta. O CI da revisão `e1afa53` passou os cinco jobs. Assinatura Apple, publicação e aceites reais permanecem requisitos para liberar convidados.
 
 ## Implementado no código
 
@@ -22,9 +22,9 @@ Os serviços passam a iniciar Python com `-I -B`, evitando que o início grave b
 
 A referência anterior **a13** passou 528 testes Python, 21 testes Swift por arquitetura e geração/verificação dos DMGs internos arm64 e Intel. O [CI da revisão `ac65fa5`](https://github.com/g6g6g8p8/mia/actions/runs/38597494351) passou os cinco jobs. Esses DMGs não foram assinados nem notarizados. Os resultados históricos não aprovam automaticamente a a14.
 
-Na a14, **722 testes Python passaram**, incluindo operação remota, manutenção do runtime assinado, autorização de distribuição, Redis real com concorrência/reinício e recibos de publicação. A compilação e a suíte Swift passaram em arm64 e Intel na revisão `1c07800`: 49 testes aprovados e um ensaio WebKit opt-in separado. O empacotamento dessa revisão encontrou uma falha no percurso WebKit; seus ensaios não estão aprovados. Os resultados e a revisão final devem ser conferidos no PR/CI antes de promover um artefato.
+Na a14, **722 testes Python passaram**, incluindo operação remota, manutenção do runtime assinado, autorização de distribuição, Redis real com concorrência/reinício e recibos de publicação. Na revisão `e1afa53`, a compilação e a suíte Swift passaram em arm64 e Intel: 49 testes aprovados e um ensaio WebKit opt-in separado. O [CI completo](https://github.com/g6g6g8p8/mia/actions/runs/38725718036) passou os cinco jobs, incluindo companion Linux, ensaios nativos e geração/verificação dos dois DMGs internos. Depois dos ajustes finais do harness/build, também passaram 40 testes de evidência/aceite e 51 de empacotamento. Nenhum desses artefatos é assinado ou notarizado.
 
-Também foram implementados dois ensaios macOS com o runtime final do app: WKWebView real com autenticação, importação/revisão/foco/Hoje, e serviço launchd real em diretório sintético isolado. O build exige esses ensaios e registra seus resultados no recibo. **Implementar o ensaio não significa que esta revisão já passou em Mac.** O seletor de pasta usa fixture do delegate; clique humano no NSOpenPanel, instalação em Mac limpo, login do sistema, boot e suspensão continuam aceites separados.
+Os dois ensaios macOS passaram nas duas arquiteturas com o runtime final do app: WKWebView real com autenticação, importação ZIP/pasta, revisão/foco/Hoje, reabertura e bloqueio de origem; e serviço launchd real em diretório sintético isolado, com pausa/retomada e remoção/recriação do job preservando o proprietário. O build registra os resultados e a limpeza no recibo. A revisão corrigiu uma corrida no teste de recarga: a verificação agora espera a conclusão real da navegação. O seletor de pasta usa fixture do delegate; clique humano no NSOpenPanel, instalação em Mac limpo, login do sistema, boot e suspensão continuam aceites separados.
 
 O ensaio Linux a14 instalou offline, criou proprietário/tarefa/fonte sintéticos, executou snapshot e atualização preservando os dados e a pausa, usando o bootstrap corrigido. Usou processos e HTTP reais, com identidade Ubuntu/systemd/linger simulada no ambiente de desenvolvimento; não é instalação SSH/systemd em servidor pessoal. Não comprova migração automática do bootstrap a13 original.
 
