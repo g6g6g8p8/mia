@@ -176,7 +176,10 @@ def _range(value: str | None, size: int) -> tuple[int, int, bool]:
     return start, end, True
 
 
-def create_distribution_app(directory: Path, artifact: Path, *, sha256: str) -> FastAPI:
+def create_distribution_app(directory: Path, artifact: Path, *, sha256: str, url_prefix: str = "") -> FastAPI:
+    # Mounted portals keep an immutable artifact and its own browser state.
+    if not isinstance(url_prefix, str) or url_prefix and (not re.fullmatch(r"(?:/[A-Za-z0-9._-]+)+", url_prefix) or any(part in (".", "..") for part in url_prefix.split("/"))):
+        raise DistributionError("Prefixo de distribuição inválido")
     store = InvitationStore(directory)
     artifact = Path(artifact).absolute()
     if artifact.is_symlink() or any(p.is_symlink() for p in artifact.parents):
@@ -244,7 +247,7 @@ def create_distribution_app(directory: Path, artifact: Path, *, sha256: str) -> 
             link.href=url; link.download='FILENAME'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),60000);
             state.textContent='Download concluído. Abra a Mia e escolha onde guardar seu contexto.';
           } catch (error) { state.textContent=error.message; } finally { button.disabled=false; }
-        };</script></html>""".replace("FILENAME", html.escape(filename)).replace("SCRIPT_NONCE", html.escape(request.state.csp_nonce))
+        };</script></html>""".replace("FILENAME", html.escape(filename)).replace("SCRIPT_NONCE", html.escape(request.state.csp_nonce)).replace("'/redeem'", "'" + url_prefix + "/redeem'").replace("'/download'", "'" + url_prefix + "/download'").replace("mia-demo-download", "mia-demo-download-" + sha256).replace("mia-demo-request", "mia-demo-request-" + sha256)
 
     @app.post("/redeem")
     async def redeem(request: Request):
@@ -264,7 +267,7 @@ def create_distribution_app(directory: Path, artifact: Path, *, sha256: str) -> 
         except (ValueError, UnicodeError, RecursionError):
             raise HTTPException(400, "Pedido de resgate inválido") from None
         try:
-            return {**store.redeem(payload["token"], sha256, request_id=payload.get("request_id")), "download_path": "/download", "filename": filename, "size": info.st_size, "sha256": sha256}
+            return {**store.redeem(payload["token"], sha256, request_id=payload.get("request_id")), "download_path": url_prefix + "/download", "filename": filename, "size": info.st_size, "sha256": sha256}
         except DistributionError:
             raise HTTPException(410, "Convite inválido, expirado ou já utilizado") from None
 

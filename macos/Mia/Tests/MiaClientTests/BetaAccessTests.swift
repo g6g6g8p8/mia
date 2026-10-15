@@ -114,7 +114,11 @@ final class BetaAccessTests: XCTestCase {
         await client.activate()
         XCTAssertTrue(client.canUpdate)
         let requests = await http.requests()
-        XCTAssertEqual(requests.count, 2); XCTAssertEqual(requests[0].1, requests[1].1)
+        XCTAssertEqual(requests.count, 2)
+        // Replay identity is the ticket/nonce/architecture, independent of
+        // JSON object ordering chosen by Foundation on each serialization.
+        XCTAssertEqual(try JSONDecoder().decode([String: String].self, from: requests[0].1),
+                       try JSONDecoder().decode([String: String].self, from: requests[1].1))
     }
 
     @MainActor func testStoredAuthorizationRestoresWithoutNetworkAndNeverAuthorizesForeignHosts() async throws {
