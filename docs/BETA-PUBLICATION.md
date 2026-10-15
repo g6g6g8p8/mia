@@ -278,10 +278,8 @@ Não há promessa de custo fixo ou disponibilidade contínua a partir deste prep
 
 ### Bloqueios concretos para liberar convidados
 
-1. Instalar/vincular Upstash Redis em plano gratuito e conferir persistência,
-   quota e variáveis REST de produção. O plugin consulta configurações existentes,
-   mas não oferece criação da integração nesta sessão; requer ação no painel ou
-   acesso ao navegador autorizado. Não solicitar tokens pelo chat.
+1. Upstash Free provisionado pelo proprietário e vinculado via conectores em 15/10;
+   conferir dimensionamento dos convites e ensaio completo antes da liberação.
 2. Apple Developer, Developer ID Application, perfil notarytool e Mac de assinatura;
    gerar canais com esta origem e chaves públicas reais antes de assinar.
 3. Build/atestação Apple e aceites nos aparelhos finais por arquitetura/modalidade,
@@ -291,3 +289,33 @@ Não há promessa de custo fixo ou disponibilidade contínua a partir deste prep
    revogação e independência da biblioteca. Só então emitir arquivos privados de
    convite para destinatários escolhidos pelo proprietário. Nenhum convite foi
    emitido ou enviado; o portal não recebeu conteúdo pessoal nem chaves de IA.
+
+
+### Redis Free vinculado — 15/10/2026
+
+O proprietário criou `mia-beta-invites` (ID
+`b495258d-b2ac-4b12-91ab-bd8a33159b26`). O conector Upstash confirmou
+plano `free`, estado `active`, região primária `us-east-1`, TLS ativo,
+`auto_upgrade=false` e `eviction=false`. Nenhum upgrade foi contratado.
+
+Credenciais obtidas pelo conector e transmitidas diretamente à Vercel, sem
+valores no chat, arquivos ou Git. `UPSTASH_REDIS_REST_URL` é configuração e
+`UPSTASH_REDIS_REST_TOKEN` é sensível; ambas restritas a `production`.
+A integração é direta por variáveis REST; não foi instalada uma integração
+Marketplace, nem é necessária para esse caminho.
+
+Verificação real pelo conector: `PING` retornou `PONG`; `EVAL` executou
+SET com TTL de 120 segundos e GET na chave sintética isolada
+`{mia-provisioning-check}:20261015`, retornando o valor esperado. A chave
+expira automaticamente. Isso comprova acesso REST e operação Lua; não é
+ensaio de reinício/restauração nem percurso de convite com o app final.
+
+Redeploy de produção `dpl_5iY3rLnKFPnVxMW8SNzV88AbCMXE` confirmado
+`READY`, alias https://mia-beta-distribution.vercel.app, usando o kit
+preparatório existente. O kit sem release aprovado não instancia o registro
+de convites: a validação Redis foi feita pelo conector, não por uma emissão
+de convite via Function. Nenhum convite real foi emitido. Não houve alteração
+de código; testes Python/Swift anteriores mantêm seus escopos registrados.
+
+Após o redeploy, GET HTTPS público em `/health` e `/invite` confirmou 503,
+`ready_for_beta=false` e `Cache-Control: no-store`.
