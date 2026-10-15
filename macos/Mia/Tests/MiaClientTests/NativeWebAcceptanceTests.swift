@@ -11,22 +11,45 @@ import MiaCore
 /// physical NSOpenPanel interaction, Gatekeeper, login, boot, sleep or a Vault.
 @MainActor final class NativeWebAcceptanceTests: XCTestCase {
     private struct AcceptanceFailure: LocalizedError { let message: String; var errorDescription: String? { message } }
+    private var currentStep = "native fixture initialization"
+
+    private func safeDiagnostic(_ value: String) -> String {
+        String(value.replacingOccurrences(of: "[A-Za-z0-9_-]{43}", with: "[redacted capability]", options: .regularExpression).prefix(240))
+    }
 
     private func javascript(_ view: WKWebView, _ body: String, arguments: [String: Any] = [:]) async throws -> Any? {
-        try await withCheckedThrowingContinuation { continuation in
-            view.callAsyncJavaScript(body, arguments: arguments, in: nil, in: .page) { result in
-                continuation.resume(with: result.map { $0 as Any? })
+        do {
+            return try await withCheckedThrowingContinuation { continuation in
+                view.callAsyncJavaScript(body, arguments: arguments, in: nil, in: .page) { result in
+                    continuation.resume(with: result.map { $0 as Any? })
+                }
             }
+        } catch {
+            let failure = error as NSError
+            // Log only the static harness script, never argument values,
+            // cookies, page contents, request bodies or capabilities.
+            let script = safeDiagnostic(String(body.prefix(120)))
+            let exception = (failure.userInfo["WKJavaScriptExceptionMessage"] as? String).map(safeDiagnostic) ?? "unavailable"
+            throw AcceptanceFailure(message: "Native WebKit JavaScript failed after [\(currentStep)]; static script [\(script)]; \(failure.domain) code \(failure.code); exception [\(exception)]")
         }
     }
 
     private func wait(_ view: WKWebView, _ expression: String, label: String, timeout: TimeInterval = 30) async throws {
+        currentStep = "waiting for " + label
         let end = Date().addingTimeInterval(timeout)
+        var lastFailure: String?
         while Date() < end {
-            if (try? await javascript(view, "return Boolean(\(expression));")) as? Bool == true { return }
+            do {
+                if (try await javascript(view, "return Boolean(\(expression));")) as? Bool == true {
+                    currentStep = label
+                    print("Mia native WebKit reached: " + label)
+                    return
+                }
+                lastFailure = nil
+            } catch { lastFailure = error.localizedDescription }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
-        throw AcceptanceFailure(message: "Native WebKit did not reach: " + label)
+        throw AcceptanceFailure(message: "Native WebKit did not reach: " + label + (lastFailure.map { "; last evaluation: " + $0 } ?? "; page did not satisfy the static condition"))
     }
 
     private func assertNumber(_ view: WKWebView, _ body: String, _ expected: Int, file: StaticString = #filePath, line: UInt = #line) async throws {

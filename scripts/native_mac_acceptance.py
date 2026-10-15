@@ -20,6 +20,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 import zipfile
 
 
@@ -147,6 +148,21 @@ def run(app: Path, source: Path, output: Path) -> dict:
         # The capability never appears in published logs, even on a framework
         # error. The native test itself never reads it from page JavaScript.
         log = (native.stdout + native.stderr).replace(token, "[redacted bootstrap capability]")
+        if native.returncode or not result_path.is_file():
+            # Summarize transport behavior without publishing backend log text,
+            # URL queries, cookies, request bodies or synthetic fixture paths.
+            allowed_routes = {"/", "/api/status", "/api/installation", "/api/setup", "/api/documents", "/api/migrations", "/api/experience", "/api/runs", "/api/ai/config"}
+            statuses = []
+            service_log = manager.root / "service.log"
+            try:
+                if service_log.is_file():
+                    for method, raw_path, status_code in re.findall(r'"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) ([^ ]+) HTTP/[0-9.]+" ([0-9]{3})', service_log.read_text(errors="replace")):
+                        route = urlsplit(raw_path).path
+                        statuses.append({"method": method, "route": route if route in allowed_routes else "/other", "status": int(status_code)})
+                summary = json.dumps(statuses[-20:], sort_keys=True)
+            except (OSError, ValueError):
+                summary = "unavailable; original native failure retained"
+            log += "\nNative synthetic backend HTTP status summary: " + summary + "\n"
         write_new(log_path, log)
         if native.returncode or not result_path.is_file():
             print(log[-6000:], file=sys.stderr)

@@ -137,7 +137,7 @@ def run(app: Path, source: Path, output: Path) -> dict:
         token = (manager.root / "bootstrap-token").read_text().strip()
         authorized = urllib.request.Request(base + "api/setup", data=payload, headers={"Content-Type": "application/json", "Cookie": "mia_bootstrap=" + token}, method="POST")
         with opener.open(authorized, timeout=5) as response:
-            if response.status != 200:
+            if response.status != 201:
                 raise AssertionError("Private synthetic owner creation failed.")
 
         manager.stop()

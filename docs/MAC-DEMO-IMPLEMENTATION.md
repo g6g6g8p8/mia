@@ -22,7 +22,7 @@ Os serviços passam a iniciar Python com `-I -B`, evitando que o início grave b
 
 A referência anterior **a13** passou 528 testes Python, 21 testes Swift por arquitetura e geração/verificação dos DMGs internos arm64 e Intel. O [CI da revisão `ac65fa5`](https://github.com/g6g6g8p8/mia/actions/runs/38597494351) passou os cinco jobs. Esses DMGs não foram assinados nem notarizados. Os resultados históricos não aprovam automaticamente a a14.
 
-Na a14 foram adicionados testes de operação remota, manutenção do runtime assinado, autorização de distribuição, persistência concorrente dos convites e recibos de publicação. Os resultados integrados desta revisão devem ser conferidos no PR/CI antes de promover um artefato.
+Na a14, **722 testes Python passaram**, incluindo operação remota, manutenção do runtime assinado, autorização de distribuição, Redis real com concorrência/reinício e recibos de publicação. A compilação e a suíte Swift passaram em arm64 e Intel na revisão `1c07800`: 49 testes aprovados e um ensaio WebKit opt-in separado. O empacotamento dessa revisão encontrou uma falha no percurso WebKit; seus ensaios não estão aprovados. Os resultados e a revisão final devem ser conferidos no PR/CI antes de promover um artefato.
 
 Também foram implementados dois ensaios macOS com o runtime final do app: WKWebView real com autenticação, importação/revisão/foco/Hoje, e serviço launchd real em diretório sintético isolado. O build exige esses ensaios e registra seus resultados no recibo. **Implementar o ensaio não significa que esta revisão já passou em Mac.** O seletor de pasta usa fixture do delegate; clique humano no NSOpenPanel, instalação em Mac limpo, login do sistema, boot e suspensão continuam aceites separados.
 
