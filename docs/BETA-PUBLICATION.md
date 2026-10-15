@@ -7,8 +7,9 @@ servidor. Ele não executa estes comandos.
 ## Estado e recursos
 
 O código prepara uma publicação imutável, um portal Vercel, convites duráveis e
-atualizações privadas. **Não há publicação Vercel nem convite real comprovados
-nesta execução.** A conta Apple Developer, o build assinado/notarizado e os
+atualizações privadas. **Kit preparatório publicado em 15/10/2026; beta ainda indisponível.**
+Origem: https://mia-beta-distribution.vercel.app. Não há convite real emitido.
+Evidências e pendências da conta estão no registro ao final deste documento. A conta Apple Developer, o build assinado/notarizado e os
 aceites nos aparelhos finais permanecem pendentes. Um DMG interno sem assinatura
 não pode ser promovido apenas por editar campos de um recibo.
 
@@ -57,8 +58,7 @@ python3 scripts/deploy_demo_distribution.py kit \
 ```
 
 O kit contém `api/index.py`, `vercel.json`, Python/dependências fixadas e os
-avisos originais. Não contém segredos nem DMGs. Sem release aprovado, todas as
-requisições ao app retornam **503**, com `ready_for_beta=false`. Isso permite
+avisos originais. Não contém segredos nem DMGs. Sem release aprovado, as consultas GET ao app retornam **503**, com `ready_for_beta=false`. Isso permite
 preparar o projeto antes da conta Apple sem anunciar um beta disponível.
 
 Usar a Vercel conectada para revisar conta/plano, criar ou selecionar o projeto
@@ -215,3 +215,79 @@ scripts Lua atômicos, reinícios e corridas de resgate/ativação. Provedores H
 simulados validam contratos e falhas. Esses testes não comprovam um deploy na
 conta Vercel nem notarização Apple. O kit sem release também é importado e
 executado em subprocesso para confirmar sua resposta 503.
+
+
+## Registro de provisionamento — 15/10/2026
+
+Origem estável publicada: **https://mia-beta-distribution.vercel.app**.
+Projeto separado `mia-beta-distribution`, equipe `giulioggp`; nenhum projeto
+existente, Mac, servidor ou Vault foi modificado. Kit gerado pelos comandos
+`plan`/`kit` a partir da revisão limpa `1e30564d365a8e14e4138fd6e7a8f2506866f4f8`.
+Não foi implantado o checkout inteiro. Versão do produto permanece 0.2.0a14.
+
+| Recurso | Evidência |
+| --- | --- |
+| Conta | API autenticada informa Hobby ativo, sem trial; nenhum upgrade contratado |
+| Projeto | `prj_AJJKDMIZ5lxPsNXdohHOl9KfHOC5`, framework automático desativado, kit Python separado |
+| Deploy inicial | `dpl_3NMiTSWbPjqGFzPCBN5qT8GTCyN4`, produção, READY |
+| Deploy após restringir variáveis | `dpl_BXZhXSz3frhzvhBgLvj6DUZjdqsh`, produção, READY; mesmos fontes do kit |
+| Blob privado | `store_CIIPyIi6ZKAeEIGQ`, `mia-beta-dmgs`, iad1, disponível, 0 bytes/objetos, quota não excedida |
+| Blob público | `store_g8GPAd8STBlHm5JC`, `mia-beta-backend`, iad1, disponível, 0 bytes/objetos, quota não excedida; sem token de escrita na Function |
+| Variáveis | `BLOB_READ_WRITE_TOKEN` vinculado pelo provedor, convertido para sensitive e somente production; `BLOB_STORE_ID` definido somente em production. Valores secretos não foram exibidos ou versionados |
+| Upstash | Nenhuma configuração instalada retornada pelo plugin; criação/instalação da integração não está disponível nas ferramentas expostas |
+
+A origem consta nos aliases do deploy e nos domínios do projeto. Uma tentativa
+redundante de adicioná-la retornou 409; a inspeção posterior confirmou a associação
+e o HTTPS respondeu com o conteúdo esperado. Não se tentou transferir domínios.
+
+Verificação sem autenticação/bypass, por HTTPS: GET `/health`, `/`, `/invite`,
+`/distribution-release.json`, `/deployment-plan.json` e
+`/updates/arm64/appcast.xml` responderam 503 com `ready_for_beta=false` e
+`Cache-Control: no-store`. Metadados privados e appcast não foram expostos.
+POST `/redeem` respondeu 405: o kit preparatório não instala a rota de resgate.
+Isso comprova preparação indisponível, **não** o ciclo final de convites.
+A consulta de logs de erro/fatal do deploy inicial nos 30 minutos da verificação
+não retornou registros; não constitui monitoramento contínuo.
+
+Testes desta sessão: 49 passaram nos módulos `test_vercel_release.py` e
+`test_vercel_distribution.py`; 10 cenários Redis foram ignorados por falta do
+executável local. Não se reclassificaram esses cenários como aprovados nesta
+sessão. Usado Python 3.12 com dependências já disponíveis no ambiente de trabalho;
+não é um novo ensaio integral de instalação do lock. A evidência anterior de
+Redis real/722 testes e CI nativo permanece vinculada às revisões já registradas.
+Nenhuma mudança no código do aplicativo foi necessária nesta publicação.
+
+### Gratuidade e capacidade
+
+Documentação oficial consultada em 15/10: Hobby destina-se a uso pessoal não
+comercial. A conta ativa não decide por si só a elegibilidade de uma futura
+operação comercial. Não foi ativada monetização, trial Pro ou cobrança adicional.
+Antes de mudar o uso, revisar esse requisito com o titular.
+
+[Hobby](https://vercel.com/docs/plans/hobby) inclui, entre outros limites,
+100 GB de transferência rápida e 1 milhão de invocações; [Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing)
+inclui 1 GB-mês de armazenamento, 10 GB de transferência, 10.000 operações simples
+e 2.000 avançadas. Estourar a quota gratuita pode suspender o recurso; não aumenta
+a capacidade automaticamente. Esses são limites publicados, não uma medição do
+saldo global da equipe. Os stores novos informam zero uso e quota não excedida.
+
+**Ainda não há comprovação de capacidade para os DMGs/wheels finais e retenção.**
+Somar bytes das arquiteturas oferecidas, versões conservadas e downloads previstos
+antes do upload; não reduzir gates de assinatura/aceite para caber na quota.
+Não há promessa de custo fixo ou disponibilidade contínua a partir deste preparo.
+
+### Bloqueios concretos para liberar convidados
+
+1. Instalar/vincular Upstash Redis em plano gratuito e conferir persistência,
+   quota e variáveis REST de produção. O plugin consulta configurações existentes,
+   mas não oferece criação da integração nesta sessão; requer ação no painel ou
+   acesso ao navegador autorizado. Não solicitar tokens pelo chat.
+2. Apple Developer, Developer ID Application, perfil notarytool e Mac de assinatura;
+   gerar canais com esta origem e chaves públicas reais antes de assinar.
+3. Build/atestação Apple e aceites nos aparelhos finais por arquitetura/modalidade,
+   incluindo login/suspensão, atualização assinada, restauração e servidor oferecido.
+4. Confirmar capacidade, enviar artefatos verificados e publicar o kit final.
+5. Ensaiar no HTTPS real convite → download → ativação/Keychain → atualização →
+   revogação e independência da biblioteca. Só então emitir arquivos privados de
+   convite para destinatários escolhidos pelo proprietário. Nenhum convite foi
+   emitido ou enviado; o portal não recebeu conteúdo pessoal nem chaves de IA.
