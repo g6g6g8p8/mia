@@ -36,4 +36,7 @@ jobs:
       - name: Run existing Python suite including real Redis integration
         env:
           MIA_TEST_REDIS_SERVER: /usr/bin/redis-server
-        run: python -m pytest -ra
+        run: |
+          # Recovery fixtures create private parent directories using the process umask.
+          umask 077
+          python -m pytest -ra
