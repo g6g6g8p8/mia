@@ -1,3 +1,5 @@
+> **Atualização de escopo — 17/10/2026:** o proprietário escolheu piloto gratuito com app Mac sem notarização e acesso pelo navegador no Mac/iPhone. O contrato vigente e os aceites estão em [FREE-PILOT.md](FREE-PILOT.md). As exigências Apple descritas abaixo pertencem ao canal assinado anterior, adiado. O código do publicador ainda impõe essas exigências; este registro não o adapta nem libera os DMGs internos para convidados.
+
 # Mia Demo — aplicativo Mac por convite
 
 Direção de 13/10/2026, implementação iniciada em 14/10: aplicativo independente para Mac, por convite, com onboarding que prepara uma instalação própria no computador ou servidor. A demonstração precisa ter qualidade de produto; atualizações ampliam a entrega. A a14 amplia cliente/controladores/distribuição; a referência a13 compilou no Mac e a validação integrada a14 está pendente. Isso ainda não é liberação para convidados. [Estado e evidência](MAC-DEMO-IMPLEMENTATION.md).
