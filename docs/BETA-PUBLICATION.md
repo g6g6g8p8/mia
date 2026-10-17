@@ -1,3 +1,5 @@
+> **Atualização de escopo — 17/10/2026:** o proprietário escolheu piloto gratuito com app Mac sem notarização e acesso pelo navegador no Mac/iPhone. O contrato vigente e os aceites estão em [FREE-PILOT.md](FREE-PILOT.md). As exigências Apple descritas abaixo pertencem ao canal assinado anterior, adiado. O código do publicador ainda impõe essas exigências; este registro não o adapta nem libera os DMGs internos para convidados.
+
 # Publicação privada do beta Mac
 
 15/10/2026. Este procedimento é do responsável pela distribuição. O convidado
