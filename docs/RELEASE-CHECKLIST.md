@@ -1,16 +1,29 @@
-# Aceites de release — 13/10/2026
+# Aceites de release — 14/10/2026
 
 ## Próxima distribuição: Mia Demo para Mac
 
 O contrato de [MAC-DEMO.md](MAC-DEMO.md) e as etapas D0–D8 de [ROADMAP.md](ROADMAP.md) orientam a demonstração por convite. Exigir janela própria, DMG assinado/notarizado, instalação suportada sem comandos, destino real no onboarding, importação/Hoje útil, reabertura e atualização pelo app com recuperação. Convites controlam distribuição oficial; instalações/dados continuam próprios e código Apache permanece público. Aceites locais/servidor são separados; iPhone é preparação adicional.
 
-O launcher atual, os testes do backend e uma instalação administrativa funcional não fecham esses aceites. App, assistente remoto, distribuição por convite e atualizador do cliente ainda não estão implementados. Evidências históricas abaixo continuam válidas dentro do seu escopo.
+O app a13, assistente local/SSH/HTTPS, portal de convites, Sparkle e atualização local de backend estão implementados e revisados. Os 21 testes Swift e a compilação passaram em macOS 15 arm64 e Intel; o CI gerou e verificou a integridade dos dois DMGs internos. Fluxos Chromium passaram em destinos local/remoto/desconhecido/divergente, sem IA. Isso não fecha abertura de app assinado em Mac limpo, serviço após login/suspensão, SSH/boot reais, atualização assinada ou utilidade com fontes próprias. [Estado e limites da implementação](MAC-DEMO-IMPLEMENTATION.md).
+
+O ensaio offline do gerenciador executou a11 → a13, recuperação de falha na inicialização/interrupção do journal, rollback com dados novos e reinício após encerramento do supervisor, preservando a identidade. É evidência de processos/pacote sintético Linux, sem alegar ativação de serviço do OS, restauração externa do participante ou atualização Sparkle assinada.
+
+Antes da rodada, concluir por modalidade oferecida:
+
+- DMGs por arquitetura, identidade Developer ID, notarização/ticket e abertura em Mac limpo; sem contornar o Gatekeeper.
+- Instalação local dentro do app, criação protegida do proprietário, importar → foco → Hoje e reabrir; persistência após login/suspensão, backup externo e restauração.
+- Se servidor for oferecido: Ubuntu 24.04 amd64, SSH por chave/agente, serviço systemd de usuário e linger previamente habilitado, fingerprint, instalação isolada, túnel/reconexão e boot reais. Informar esses pré-requisitos antes do convite.
+- Portal HTTPS com artefato assinado, resgate/download/revogação reais; appcast e feed/chaves públicas revisados; atualização assinada/falha/recuperação que preservem fontes/conversas.
+- Caminho explícito para atualizar o backend remoto antes de anunciar continuidade sem assistência. A interface remota ainda não faz essa atualização; migração de runtime/bootstrap também tem escopo separado.
+- Proprietário refaz a experiência e depois 2–3 pessoas seguem [PILOT.md](PILOT.md), com preferência de instalação própria e registro de ajuda/não executado.
+
+Sem canal configurado, o app informa atualização não configurada. Nenhum convite real foi emitido, portal/canal publicado, ou operação em host pessoal comprovada nesta implementação. Evidências históricas abaixo continuam válidas dentro do seu escopo.
 
 ## Nova jornada na 0.2.0a12
 
 Implementados: preparação por fontes sem área/chave obrigatória, uploads retomáveis, revisão por grupos, indexação progressiva, exports com proveniência, foco, trechos em Hoje, conversas persistentes e serviço de usuário/migração manual. [Evidência e limites](EXPERIENCE-VALIDATION.md) distinguem testes sintéticos, processo Linux e aceites nas máquinas reais.
 
-O novo fluxo não tem o limite antigo de 300 entradas. Quotas e cobertura permanecem explícitas. Launcher/empacotador Mac são fundação técnica: assinatura/notarização, runtime/wheels Mac reais, instalação limpa, login/suspensão e boot real continuam abertos. Drive recorrente, sync offline, qualidade com fontes próprias e primeiro valor sem assistência não foram comprovados. Apache-2.0 aplicada aos arquivos próprios em 13/10; o [roadmap](ROADMAP.md) separa os aceites restantes.
+O novo fluxo não tem o limite antigo de 300 entradas. Quotas e cobertura permanecem explícitas. Na a13, runtimes/wheels reais e a janela nativa substituem o launcher como percurso principal; instalação limpa pelo app, assinatura/notarização, login/suspensão e boot real continuam aceites abertos. Drive recorrente, sync offline, qualidade com fontes próprias e primeiro valor sem assistência não foram comprovados. Apache-2.0 aplicada aos arquivos próprios em 13/10; o [roadmap](ROADMAP.md) separa os aceites restantes.
 
 ## Revisão de experiência — 13/10/2026
 
@@ -18,7 +31,7 @@ No teste do proprietário da a11, o uso do zero recebeu **2/10**. Houve rejeiç�
 
 O próximo ciclo segue [EXPERIENCE-PLAN.md](EXPERIENCE-PLAN.md). M3 precisa migração representativa/primeiro valor com fontes e Hoje útil; M4 precisa uso diário sem Terminal e aceites distintos para local e servidor; M5 exige participantes com sua preferência de instalação e fontes próprias. O proprietário escolheu servidor Linux e retomada de trabalho; isso não obriga novos participantes a hospedar em servidor. Mockups e 141 testes existentes não fecham esses aceites.
 
-O replanejamento inicial não alterou o código; a implementação posterior a12 está descrita acima. Apache-2.0 foi adotada posteriormente; alegações de economia continuam pendentes. Evidências históricas permanecem abaixo.
+O replanejamento inicial não alterou o código; as implementações posteriores a12/a13 estão descritas acima. Apache-2.0 foi adotada posteriormente; alegações de economia continuam pendentes. Evidências históricas permanecem abaixo.
 
 Estado: **alpha técnica, não release final para distribuição ampla**. Esta lista descreve evidência, não promessa.
 

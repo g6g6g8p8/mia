@@ -2,11 +2,16 @@
 import importlib.util
 import json
 from pathlib import Path
+import plistlib
 import shutil
+import struct
 import tarfile
 import zipfile
 
 import pytest
+
+from mia.operations import OperationError
+from scripts import package_macos
 
 
 spec = importlib.util.spec_from_file_location(
@@ -41,6 +46,23 @@ def test_current_lock_keeps_original_notice_inventory():
     assert "LICENSE" in expected and "NOTICE" in expected
     assert "THIRD_PARTY_LICENSES/inventory.json" in expected
     assert "THIRD_PARTY_LICENSES/rust-inventory.json" in expected
+
+
+def test_native_dependency_same_version_cannot_change_reviewed_revision(tmp_path):
+    shutil.copytree(distribution.ROOT / "THIRD_PARTY_LICENSES", tmp_path / "THIRD_PARTY_LICENSES")
+    for name in ["THIRD_PARTY_NOTICES.md", "requirements.lock", "pyproject.toml", "LICENSE", "NOTICE"]:
+        shutil.copyfile(distribution.ROOT / name, tmp_path / name)
+    native = tmp_path / "macos/Mia"
+    native.mkdir(parents=True)
+    for name in ("Package.swift", "Package.resolved"):
+        shutil.copyfile(distribution.ROOT / "macos/Mia" / name, native / name)
+    distribution.inventory_files(tmp_path)
+    path = native / "Package.resolved"
+    pins = json.loads(path.read_text())
+    pins["pins"][0]["state"]["revision"] = "0" * 40
+    path.write_text(json.dumps(pins))
+    with pytest.raises(ValueError, match="resolved dependency"):
+        distribution.inventory_files(tmp_path)
 
 
 @pytest.mark.parametrize("failure", ["runtime_version", "notice_bytes", "unknown_file"])
@@ -132,3 +154,89 @@ def test_sdist_never_follows_links(tmp_path):
         sdist.addfile(link)
     with pytest.raises(ValueError, match="Nonregular member"):
         distribution.archive_files(archive)
+
+
+@pytest.mark.parametrize("backend,short,bundle", [
+    ("0.2.0a13", "0.2.0", "0.2.0a13"),
+    ("1.2.3b1", "1.2.3", "1.2.3b1"),
+    ("1.2.3rc255", "1.2.3", "1.2.3fc255"),
+    ("1.2.3", "1.2.3", "1.2.3"),
+    ("1", "1.0.0", "1.0.0"),
+    ("1.2rc1", "1.2.0", "1.2.0fc1"),
+    ("9999.99.99a255", "9999.99.99", "9999.99.99a255"),
+])
+def test_backend_release_has_valid_apple_versions_and_retains_original(backend, short, bundle):
+    assert package_macos.bundle_version_metadata(backend) == {
+        "CFBundleShortVersionString": short,
+        "CFBundleVersion": bundle,
+        "MiaBackendVersion": backend,
+    }
+
+
+@pytest.mark.parametrize("backend", [
+    "1.2.3a0", "1.2.3b256", "1.2.3rc999", "1.2.3rc", "1.2.3fc1",
+    "1.2.3.dev1", "1.2.3.post1", "1.2.3+local", "1!1.2.3", "1.2.3preview1",
+    "1.2.3.4", "10000.1.1", "1.100.1", "1.1.100", "１.2.3", "", None,
+])
+def test_unsupported_apple_version_metadata_is_rejected(backend):
+    with pytest.raises(OperationError):
+        package_macos.bundle_version_metadata(backend)
+
+
+def test_invalid_apple_version_is_refused_before_any_artifact_is_written(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "pyproject.toml").write_text('[project]\nversion="1.2.3.post1"\n')
+    output = tmp_path / "Mia.app"
+    monkeypatch.setattr(package_macos, "verify", lambda *_args, **_kwargs: pytest.fail("invalid release must be rejected before reading packaging inputs"))
+    with pytest.raises(OperationError, match="metadados Apple"):
+        package_macos.build(output, *(tmp_path / name for name in ("runtime", "runtime.json", "wheelhouse", "wheelhouse.json")), source=source)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("backend,bundle", [("0.2.0a13", "0.2.0a13"), ("0.2.0b1", "0.2.0b1"), ("0.2.0rc1", "0.2.0fc1"), ("0.2.0", "0.2.0")])
+def test_packaged_info_plist_uses_apple_versions_without_changing_backend_version(tmp_path, backend, bundle):
+    # Synthetic bytes exercise metadata assembly, never runtime execution or
+    # installation; this test does not claim the fixture is a real Mac build.
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "pyproject.toml").write_text(f'[project]\nversion="{backend}"\n')
+    runtime = tmp_path / "runtime"
+    (runtime / "bin").mkdir(parents=True)
+    (runtime / "bin/python3").write_bytes(b"synthetic; never executed")
+    (runtime / "bin/python3").chmod(0o755)
+    wheels = tmp_path / "wheelhouse"
+    wheels.mkdir()
+    (wheels / "fixture-1.0-py3-none-any.whl").write_bytes(b"synthetic; never installed")
+    runtime_manifest, wheel_manifest = tmp_path / "runtime.json", tmp_path / "wheelhouse.json"
+    metadata = {"format": 1, "platform": "macos", "architecture": "arm64", "python_version": "3.12"}
+    runtime_manifest.write_text(json.dumps({**metadata, "source_url": "https://github.com/astral-sh/python-build-standalone/releases/download/reviewed/runtime.tar.gz", "files": package_macos.inventory(runtime)}))
+    wheel_manifest.write_text(json.dumps({**metadata, "source_url": "https://pypi.org/simple/", "files": package_macos.inventory(wheels)}))
+    output = tmp_path / "Mia.app"
+    result = package_macos.build(output, runtime, runtime_manifest, wheels, wheel_manifest, source=source)
+    info = plistlib.loads((output / "Contents/Info.plist").read_bytes())
+    assert info["CFBundleShortVersionString"] == "0.2.0"
+    assert info["CFBundleVersion"] == bundle
+    assert info["MiaBackendVersion"] == result["app_version"] == backend
+    assert info["CFBundleIconFile"] == "mia-icon.icns"
+    assert (output / "Contents/Resources/mia-icon.icns").read_bytes() == (package_macos.REPOSITORY / "assets/mia-icon.icns").read_bytes()
+
+
+def test_reviewed_mac_icon_contains_native_and_retina_png_sizes():
+    data = (package_macos.REPOSITORY / "assets/mia-icon.icns").read_bytes()
+    assert data[:4] == b"icns" and struct.unpack(">I", data[4:8])[0] == len(data)
+    sizes, offset = {}, 8
+    while offset < len(data):
+        kind, length = struct.unpack(">4sI", data[offset:offset + 8])
+        assert length > 8 and offset + length <= len(data)
+        png = data[offset + 8:offset + length]
+        assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[12:16] == b"IHDR"
+        assert png[25] == 6  # RGBA preserves the original SVG's transparent corners.
+        sizes[kind] = struct.unpack(">2I", png[16:24])
+        offset += length
+    assert offset == len(data)
+    assert sizes == {
+        b"icp4": (16, 16), b"icp5": (32, 32), b"icp6": (64, 64), b"ic07": (128, 128),
+        b"ic08": (256, 256), b"ic09": (512, 512), b"ic10": (1024, 1024),
+        b"ic11": (32, 32), b"ic12": (64, 64), b"ic13": (256, 256), b"ic14": (512, 512),
+    }

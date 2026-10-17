@@ -10,7 +10,13 @@ import {renderConversations} from './conversations.js';
 
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
-let state = { view: "today", owner: null, areas: [], today: null, onboarding: null };
+const clientParameters = new URLSearchParams(window.location.search);
+// These parameters select presentation only. The backend still authenticates
+// every operation and declares the destination before a file can be imported.
+const desktop = clientParameters.get('mia_client') === 'mac' && ['local','remote'].includes(clientParameters.get('mia_mode'))
+  ? Object.freeze({mode:clientParameters.get('mia_mode')}) : null;
+if (desktop) document.body.classList.add('desktop-client');
+let state = { view: "today", owner: null, areas: [], today: null, onboarding: null, installation: null };
 
 function esc(value) {
   return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
@@ -45,10 +51,27 @@ async function api(path, options = {}) {
     const message=Array.isArray(detail) ? detail.map(item=>item.msg).join('; ') : typeof detail==='string' ? detail : detail ? JSON.stringify(detail) : 'Não foi possível concluir';
     const error=new Error(message);error.status=response.status;throw error;
   }
+  if (path === '/api/installation' || path === '/api/location' || path === '/api/experience') {
+    state.installation = data?.location || data;
+    updateDesktopDestination();
+  }
   return data;
 }
 
-function context(){return {state,api,esc,pageHead,errorMessage,navigate,refresh,bindDocuments,aiPanel,taskCard,bindTaskActions,openTaskDialog};}
+function context(){return {state,desktop,api,esc,pageHead,errorMessage,navigate,refresh,bindDocuments,aiPanel,taskCard,bindTaskActions,openTaskDialog};}
+
+function desktopDestination() {
+  return {local:'Dados neste computador',remote:'Dados no seu servidor',unknown:'Destino a confirmar'}[state.installation?.mode] || 'Destino a confirmar';
+}
+
+function desktopHeader() {
+  return desktop ? '<header class="desktop-context" aria-label="Sua instalação"><span class="desktop-product">Mia <span class="badge">Demo</span></span><span id="desktop-destination">'+esc(desktopDestination())+'</span></header>' : '';
+}
+
+function updateDesktopDestination() {
+  const label=document.querySelector('#desktop-destination');
+  if (label) label.textContent=desktopDestination();
+}
 
 function errorMessage(error) {
   showToast(error instanceof Error ? error.message : "Não foi possível concluir");
@@ -56,6 +79,7 @@ function errorMessage(error) {
 
 async function boot() {
   try {
+    if (desktop) await api('/api/installation');
     const status = await api("/api/status");
     if (!status.configured) {
       await renderSetup();
@@ -74,9 +98,9 @@ async function boot() {
 async function renderSetup() {
   const installation=await api("/api/installation");
   app.innerHTML =
-    '<main class="auth"><section class="card auth-card">' +
+    desktopHeader()+'<main class="auth"><section class="card auth-card">' +
     '<img src="/assets/mia-icon.svg" class="auth-logo" alt="Gatinha da Mia">' +
-    '<p class="kicker">PRIMEIRO ACESSO</p><h1>Seu contexto, reunido na Mia.</h1>' +
+    '<p class="kicker">'+(desktop?'ESTA MIA É SUA':'PRIMEIRO ACESSO')+'</p><h1>Seu contexto, reunido na Mia.</h1>' +
     '<p class="lede">Retome projetos, encontre decisões e avance com fontes. Crie seu acesso nesta instalação; depois traga seu contexto. Nenhuma conta externa é necessária.</p>' +
     locationCard(installation.location || installation,esc,true) +
     '<form id="setup-form" class="form">' +
@@ -84,7 +108,7 @@ async function renderSetup() {
     '<label>E-mail opcional<input name="email" type="email" autocomplete="email"></label></div>' +
     '<label>Fuso horário<input name="timezone" value="' + esc(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") + '" required></label>' +
     '<label>Senha de acesso à Mia<input name="password" type="password" required minlength="10" autocomplete="new-password"><span class="subtle">Use pelo menos 10 caracteres.</span></label>' +
-    '<p class="subtle">O código da Mia é distribuído pelo GitHub. Seus dados ficam nesta instalação; importar não os envia à IA.</p>' +
+    '<p class="subtle">'+(desktop?'Sua biblioteca começa vazia. Você escolhe o que trazer; seus arquivos originais permanecem intactos.':'O código da Mia é distribuído pelo GitHub. Seus dados ficam nesta instalação; importar não os envia à IA.')+'</p>' +
     '<button class="btn primary" type="submit">Criar minha Mia</button></form></section></main>';
   document.querySelector("#setup-form").addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -98,7 +122,7 @@ async function renderSetup() {
 function renderLogin() {
   document.querySelectorAll("dialog").forEach(dialog=>dialog.remove());
   app.innerHTML =
-    '<main class="auth"><section class="card auth-card">' +
+    desktopHeader()+'<main class="auth"><section class="card auth-card">' +
     '<img src="/assets/mia-icon.svg" class="auth-logo" alt="Gatinha da Mia">' +
     '<p class="kicker">BEM-VINDO DE VOLTA</p><h1>Entre na sua Mia.</h1>' +
     '<p class="lede">O acesso é validado nesta instalação.</p>' +
@@ -140,7 +164,7 @@ function dialogs() {
 
 function renderShell() {
   app.innerHTML =
-    '<div class="shell"><aside class="sidebar"><div class="brand">' +
+    desktopHeader()+'<div class="shell"><aside class="sidebar"><div class="brand">' +
     '<img src="/assets/mia-icon.svg" alt=""><div><div class="brand-name">Mia</div><div class="brand-tag">seu contexto de trabalho</div></div></div>' +
     '<nav class="nav" aria-label="Principal"><button data-view="today">Hoje</button><button data-view="conversations">Conversas</button><button data-view="library">Biblioteca</button><button data-view="settings">Ajustes</button></nav><button class="btn ghost sidebar-search" id="global-search">Buscar nas fontes</button>' +
     '<div class="sidebar-foot"><span class="subtle">' + esc(state.owner.name) + '</span><button class="btn ghost" id="logout">Sair</button></div>' +
@@ -265,16 +289,19 @@ function renderSearch() {
 
 async function renderSystem() {
   const experience=await api('/api/experience');if(state.view!=='settings')return;
+  const maintenance=desktop
+    ? '<article class="card"><p class="kicker">CONTINUIDADE</p><h2>Minha instalação</h2><p class="subtle">No menu Mia, abra Minha instalação para conexão, cópia de recuperação e atualização.</p><div class="actions"><button class="btn" id="resume-guide">Retomar preparação</button><button class="btn ghost" id="system-history">Histórico de pedidos</button></div></article>'
+    : '<article class="card"><p class="kicker">CONTINUIDADE</p><h2>Preparação e manutenção</h2><p class="subtle">Reveja sua migração, o serviço que mantém a Mia disponível e as instruções de atualização.</p><div class="actions"><button class="btn" id="resume-guide">Retomar preparação</button><button class="btn" id="system-operations">Serviço e atualização</button><button class="btn ghost" id="system-history">Histórico de pedidos</button></div></article>';
   document.querySelector('#content').innerHTML=pageHead('ESCOLHAS E CONTROLE','Ajustes')+
-    locationCard(experience.location,esc)+
+    locationCard(experience.location,esc,!!desktop)+
     '<section class="grid grid-2 section"><article class="card"><p class="kicker">SEU ACESSO</p><h2>'+esc(state.owner.name)+'</h2><p class="subtle">'+esc(state.owner.email || 'Sem e-mail')+' · '+esc(state.owner.timezone)+'</p><button class="btn" id="system-access">Acesso e disponibilidade</button></article>'+
     '<article class="card"><p class="kicker">IA E CUSTOS</p><h2>Modelo opcional</h2><p class="subtle">Importe e busque sem IA. Escolha o destino, a autorização e os limites antes de fazer um pedido.</p><button class="btn" id="system-ai">Configurar IA e limites</button></article>'+
     '<article class="card"><p class="kicker">SEUS DADOS</p><h2>Backup e portabilidade</h2><p class="subtle">Exporte seu contexto ou prepare uma cópia de recuperação desta instalação.</p><div class="actions"><a class="btn" href="/api/export">Exportar dados</a><button class="btn" id="system-backups">Backups</button></div></article>'+
-    '<article class="card"><p class="kicker">CONTINUIDADE</p><h2>Preparação e manutenção</h2><p class="subtle">Reveja sua migração, o serviço que mantém a Mia disponível e as instruções de atualização.</p><div class="actions"><button class="btn" id="resume-guide">Retomar preparação</button><button class="btn" id="system-operations">Serviço e atualização</button><button class="btn ghost" id="system-history">Histórico de pedidos</button></div></article></section>'+
-    '<section class="card section"><h3>Registrar onde esta Mia está instalada</h3><p class="subtle">Esta informação descreve o destino dos arquivos. Não instala serviços, move dados ou abre acesso remoto.</p><form class="form" id="settings-location"><label>Destino<select name="mode"><option value="local" '+(experience.location?.mode==='local'?'selected':'')+'>Neste computador</option><option value="remote" '+(experience.location?.mode==='remote'?'selected':'')+'>No meu servidor</option></select></label><button class="btn" type="submit">Confirmar destino</button></form></section>';
+    maintenance+'</section>'+
+    (!desktop || experience.location?.mode==='unknown'?'<section class="card section"><h3>Registrar onde esta Mia está instalada</h3><p class="subtle">Esta informação descreve o destino dos arquivos. Não instala serviços, move dados ou abre acesso remoto.</p><form class="form" id="settings-location"><label>Destino<select name="mode"><option value="local" '+(experience.location?.mode==='local'?'selected':'')+'>Neste computador</option><option value="remote" '+(experience.location?.mode==='remote'?'selected':'')+'>No meu servidor</option></select></label><button class="btn" type="submit">Confirmar destino</button></form></section>':'');
   const links={'#system-access':'access','#system-ai':'ai-settings','#system-backups':'backups','#resume-guide':'onboarding','#system-operations':'operations','#system-history':'request-history'};
-  Object.entries(links).forEach(([selector,view])=>document.querySelector(selector).onclick=()=>navigate(view));
-  document.querySelector('#settings-location').onsubmit=async event=>{event.preventDefault();try{await api('/api/location',{method:'PUT',body:JSON.stringify({mode:event.currentTarget.elements.mode.value})});await renderSystem();}catch(error){errorMessage(error);}};
+  Object.entries(links).forEach(([selector,view])=>document.querySelector(selector)?.addEventListener('click',()=>navigate(view)));
+  document.querySelector('#settings-location')?.addEventListener('submit',async event=>{event.preventDefault();try{await api('/api/location',{method:'PUT',body:JSON.stringify({mode:event.currentTarget.elements.mode.value})});await renderSystem();}catch(error){errorMessage(error);}});
 }
 
 async function renderIntelligence() {

@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import plistlib
 import re
+import secrets
 import shutil
 import signal
 import socket
@@ -229,7 +230,17 @@ class Manager:
             locked = (code / "requirements.lock").read_text().splitlines()
             if not locked or any(line.strip() and not line.startswith("#") and not re.fullmatch(r"[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[A-Za-z0-9_.+!-]+", line.strip()) for line in locked):
                 raise OperationError("requirements.lock deve fixar todas as versões, sem URLs ou opções")
-            subprocess.run([sys.executable, "-m", "venv", str(release / "venv")], check=True)
+            # Native bundles are verified, immutable inputs. ensurepip's nested
+            # isolated Python processes can ignore PYTHONDONTWRITEBYTECODE and
+            # populate caches in the shared standalone runtime. Offline builds
+            # bootstrap directly from the reviewed pinned pip wheel instead.
+            pip_wheel = wheelhouse / "pip-25.0.1-py3-none-any.whl" if offline and wheelhouse else None
+            if pip_wheel and (pip_wheel.is_symlink() or not pip_wheel.is_file()):
+                raise OperationError("Instalação offline exige o wheel fixado de pip")
+            venv_command = [sys.executable, "-I", "-B", "-m", "venv"]
+            if pip_wheel:
+                venv_command.append("--without-pip")
+            subprocess.run([*venv_command, str(release / "venv")], check=True)
             python = release / "venv/bin/python"
             arguments = []
             if wheelhouse:
@@ -240,10 +251,16 @@ class Manager:
                 arguments += ["--no-index"]
             env = {key: value for key, value in os.environ.items() if key not in {"PYTHONPATH", "PYTHONHOME"}}
             env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
-            subprocess.run([str(python), "-m", "pip", "install", *arguments, *BOOTSTRAP], env=env, check=True)
-            subprocess.run([str(python), "-m", "pip", "install", *arguments, "-r", str(code / "requirements.lock")], env=env, check=True)
-            subprocess.run([str(python), "-m", "pip", "install", "--no-deps", "--no-build-isolation", str(code)], env=env, check=True)
-            result = subprocess.check_output([str(python), "-I", "-c", "import mia; print(mia.__version__)"], cwd=self.root, text=True).strip()
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
+            env["PIP_NO_COMPILE"] = "1"
+            pip_command = [str(python), "-I", "-B", "-m", "pip"]
+            if pip_wheel:
+                bootstrap = "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('pip',run_name='__main__')"
+                pip_command = [str(python), "-I", "-B", "-c", bootstrap, str(pip_wheel.resolve())]
+            subprocess.run([*pip_command, "install", *arguments, *BOOTSTRAP], env=env, check=True)
+            subprocess.run([str(python), "-I", "-B", "-m", "pip", "install", *arguments, "-r", str(code / "requirements.lock")], env=env, check=True)
+            subprocess.run([str(python), "-I", "-B", "-m", "pip", "install", "--no-deps", "--no-build-isolation", str(code)], env=env, check=True)
+            result = subprocess.check_output([str(python), "-I", "-B", "-c", "import mia; print(mia.__version__)"], cwd=self.root, text=True).strip()
             if result != version:
                 raise OperationError("Versão do pacote instalado não corresponde ao manifesto")
             manifest = _manifest(code)
@@ -254,12 +271,16 @@ class Manager:
             shutil.rmtree(release)
             raise
 
-    def install(self, source: Path, *, port: int = 8123, host: str = "127.0.0.1", env_file: Path | None = None, wheelhouse: Path | None = None, offline: bool = False) -> dict:
+    def install(self, source: Path, *, port: int = 8123, host: str = "127.0.0.1", env_file: Path | None = None, wheelhouse: Path | None = None, offline: bool = False, installation_id: str | None = None, private_bootstrap: bool = False) -> dict:
         if sys.version_info < (3, 12):
             raise OperationError("Python 3.12+ é necessário")
         ipaddress.ip_address(host)
         if not 1 <= port <= 65535:
             raise OperationError("Porta inválida")
+        try:
+            identity = str(uuid.UUID(installation_id)) if installation_id else str(uuid.uuid4())
+        except (ValueError, AttributeError, TypeError) as error:
+            raise OperationError("Identidade de instalação inválida") from error
         if self.root.exists():
             raise OperationError("Instalação exige um diretório novo; não sobrescreve arquivos existentes")
         if self.root.is_relative_to(source.resolve()):
@@ -273,9 +294,17 @@ class Manager:
         machine = self.root / "machine.env"
         machine.write_text(env_file.read_text() if env_file else "# Configuração privada desta instalação.\nMIA_AI_ENABLED=false\nMIA_COOKIE_SECURE=false\n")
         machine.chmod(0o600)
+        if private_bootstrap:
+            content = machine.read_text()
+            machine.write_text(content + ("" if content.endswith("\n") else "\n") + "MIA_SETUP_REQUIRE_TOKEN=true\n")
+            descriptor = os.open(self.root / "bootstrap-token", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            with os.fdopen(descriptor, "w") as token_file:
+                token_file.write(secrets.token_urlsafe(32) + "\n")
+                token_file.flush()
+                os.fsync(token_file.fileno())
         shutil.copyfile(Path(__file__).resolve(), self.root / "manager.py")
         (self.root / "manager.py").chmod(0o600)
-        _write(self.root / "installation.json", {"format": 1, "host": host, "port": port, "python": sys._base_executable,
+        _write(self.root / "installation.json", {"format": 1, "host": host, "port": port, "python": sys._base_executable, "installation_id": identity, "private_bootstrap": private_bootstrap,
                "manager_protocol": 2, "manager_sha256": hashlib.sha256((self.root / "manager.py").read_bytes()).hexdigest()})
         with _lock(self.root / "operation.lock"):
             release = self._release(source, wheelhouse, offline)
@@ -345,7 +374,7 @@ class Manager:
         self._check()
         self._background_capability()
         config = _read(self.root / "installation.json")
-        arguments = [config["python"], str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
+        arguments = [config["python"], "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "service-run"]
         if kind == "launchd":
             return plistlib.dumps({"Label": "local.mia." + hashlib.sha256(str(self.root).encode()).hexdigest()[:12], "ProgramArguments": arguments,
                                    "RunAtLoad": True, "KeepAlive": False, "ProcessType": "Background",
@@ -378,7 +407,7 @@ class Manager:
         if not running:
             with (self.root / "service.log").open("ab") as log:
                 os.chmod(self.root / "service.log", 0o600)
-                command = [_read(self.root / "installation.json")["python"], str(self.root / "manager.py"), "--root", str(self.root), "serve"]
+                command = [_read(self.root / "installation.json")["python"], "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "serve"]
                 if recovering:
                     command += ["--recovery-id", _read(self.root / "journal.json")["id"]]
                 if operation_fd is not None:
@@ -638,7 +667,7 @@ class Manager:
                     env = {key: value for key, value in os.environ.items() if not key.startswith("MIA_") and key not in {"PYTHONPATH", "PYTHONHOME"}}
                     env.update(MIA_DATA_DIR=str(self._path(active["data"])), MIA_OPERATIONS_ROOT=str(self.root), MIA_BIND=config["host"])
                     read_fd, write_fd = os.pipe()
-                    child = subprocess.Popen([str(self._python(active)), "-I", str(self.root / "manager.py"), "--root", str(self.root), "child", "--ready-fd", str(read_fd), "--socket-fd", str(listener.fileno()), "--service-lock-fd", str(service_lock.fileno())], env=env, cwd=self.root, pass_fds=(read_fd, listener.fileno(), service_lock.fileno()))
+                    child = subprocess.Popen([str(self._python(active)), "-I", "-B", str(self.root / "manager.py"), "--root", str(self.root), "child", "--ready-fd", str(read_fd), "--socket-fd", str(listener.fileno()), "--service-lock-fd", str(service_lock.fileno())], env=env, cwd=self.root, pass_fds=(read_fd, listener.fileno(), service_lock.fileno()))
                     os.close(read_fd)
                     read_fd = None
                     record.update(ready=True, child_pid=child.pid, child_birth=_birth(child.pid))
@@ -680,7 +709,7 @@ class Manager:
             return
         os.set_inheritable(socket_fd, True)
         os.set_inheritable(service_lock_fd, True)
-        os.execv(sys.executable, [sys.executable, "-I", "-m", "uvicorn", "mia.app:app", "--env-file", str(self.root / "machine.env"), "--fd", str(socket_fd), "--workers", "1"])
+        os.execv(sys.executable, [sys.executable, "-I", "-B", "-m", "uvicorn", "mia.app:app", "--env-file", str(self.root / "machine.env"), "--fd", str(socket_fd), "--workers", "1"])
 
     def _snapshot(self, active: dict, identity: str) -> str:
         relative = "snapshots/" + identity
@@ -885,6 +914,8 @@ def main() -> None:
             operation.add_argument("--port", type=int, default=8123)
             operation.add_argument("--host", default="127.0.0.1")
             operation.add_argument("--env-file", type=Path)
+            operation.add_argument("--installation-id")
+            operation.add_argument("--private-bootstrap", action="store_true")
     for command in ("start", "stop", "status", "recover", "service-run", "migrate-cancel"):
         commands.add_parser(command)
     migration = commands.add_parser("migrate-data")

@@ -21,6 +21,14 @@ inclui build/desenvolvimento e plataformas opcionais; não afirma que todos os
 crates estejam compilados em cada wheel. Os mesmos
 textos acompanham wheel/sdist e são copiados na construção da imagem.
 
+O cliente Mac adiciona Sparkle 2.10.0, fixado no Swift Package Manager. Seu
+LICENSE original completo, incluindo avisos de componentes BSD/MIT e Ed25519,
+está preservado em `native-sparkle-2.10.0--LICENSE`; `native-inventory.json`
+registra versão, origem e hashes do aviso/artefato upstream. Esses avisos não
+alteram as licenças próprias dos componentes nem concedem uma licença da Mia.
+O runtime Python standalone tem fechamento de avisos próprio, extraído da
+distribuição oficial completa e incluído pelo pipeline no artefato Mac.
+
 | Componente | Versão revisada | Licença declarada ou confirmada no texto |
 | --- | --- | --- |
 | annotated-types | 0.8.0 | MIT |
@@ -44,6 +52,7 @@ textos acompanham wheel/sdist e são copiados na construção da imagem.
 | uvloop | 0.23.0 | MIT OR Apache-2.0; libuv: MIT/BSD-2-Clause/ISC |
 | watchfiles | 1.3.0 | MIT |
 | websockets | 17.2 | BSD-3-Clause |
+| Sparkle (cliente Mac) | 2.10.0 | MIT e avisos dos componentes incluídos |
 
 As licenças MIT, BSD, Apache, PSF e MPL têm obrigações próprias de preservação
 ou distribuição; leia os textos originais. O libuv oferece avisos adicionais

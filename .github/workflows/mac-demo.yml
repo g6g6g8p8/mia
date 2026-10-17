@@ -1,0 +1,168 @@
+name: Mia native Mac development artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/invite-only-mac-demo]
+    paths:
+      - 'macos/**'
+      - 'mia/**'
+      - 'scripts/**'
+      - 'requirements.lock'
+      - 'pyproject.toml'
+      - 'THIRD_PARTY_LICENSES/**'
+      - '.github/workflows/mac-demo.yml'
+  pull_request:
+    paths:
+      - 'macos/**'
+      - 'scripts/package_macos.py'
+      - 'scripts/prepare_macos_artifacts.py'
+      - 'scripts/build_macos_app.sh'
+      - '.github/workflows/mac-demo.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-demo-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-compile:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Compile actual native application and run Swift boundary tests
+        run: |
+          set +e
+          swift test --package-path macos/Mia --force-resolved-versions > "$RUNNER_TEMP/native-swift.log" 2>&1
+          mia_swift_status=$?
+          cat "$RUNNER_TEMP/native-swift.log"
+          if [ "$mia_swift_status" -ne 0 ]; then
+            python3 - "$RUNNER_TEMP/native-swift.log" <<'PY'
+          from pathlib import Path
+          import sys
+          lines = Path(sys.argv[1]).read_text(errors='replace').splitlines()
+          failures = list(dict.fromkeys(line for line in lines if 'error:' in line or 'AssertionError' in line or 'RuntimeError' in line))
+          message = '\n'.join(failures)[:2800] + '\n' + '\n'.join(lines[-12:])[-1000:]
+          print('::error title=Native Swift build failed::' + message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY
+          fi
+          exit "$mia_swift_status"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-swift-log-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/native-swift.log
+          retention-days: 7
+
+  linux-companion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Prepare pinned Ubuntu amd64 offline companion
+        run: |
+          python3 scripts/check_distribution.py
+          python3 scripts/prepare_macos_artifacts.py --output "$RUNNER_TEMP/mia-linux" --cache "$RUNNER_TEMP/mia-downloads" --platform linux --architecture x86_64
+      - name: Test actual companion runtime and dependencies
+        run: |
+          "$RUNNER_TEMP/mia-linux/runtime/bin/python3" -I -B -m venv --without-pip "$RUNNER_TEMP/mia-linux-test"
+          "$RUNNER_TEMP/mia-linux/runtime/bin/python3" -I -B -m pip --python "$RUNNER_TEMP/mia-linux-test/bin/python" install --no-index --find-links "$RUNNER_TEMP/mia-linux/wheelhouse" -r requirements.lock
+          "$RUNNER_TEMP/mia-linux-test/bin/python" -I -B -c 'import fastapi,httpx,uvicorn,sqlite3; assert sqlite3.connect(":memory:").execute("select sqlite_version()").fetchone()'
+      - name: Preserve runtime links and executable permissions
+        run: tar -C "$RUNNER_TEMP/mia-linux/remote-runtime" -czf "$RUNNER_TEMP/ubuntu24-amd64-offline-companion.tar.gz" .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ubuntu24-amd64-offline-companion
+          path: ${{ runner.temp }}/ubuntu24-amd64-offline-companion.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  mac-app:
+    needs: linux-companion
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ubuntu24-amd64-offline-companion
+          path: ${{ runner.temp }}/mia-companion-download
+      - name: Restore companion links and executable permissions
+        run: |
+          mkdir "$RUNNER_TEMP/mia-remote-runtime"
+          tar -C "$RUNNER_TEMP/mia-remote-runtime" -xzf "$RUNNER_TEMP/mia-companion-download/ubuntu24-amd64-offline-companion.tar.gz"
+      - name: Verify runner architecture
+        env:
+          EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+        run: test "$(uname -m)" = "$EXPECTED_ARCHITECTURE"
+      - name: Native compile, Swift tests and offline backend lifecycle
+        run: |
+          set +e
+          {
+            scripts/build_macos_app.sh --preflight && scripts/build_macos_app.sh --output "$RUNNER_TEMP/mia-mac" --cache "$RUNNER_TEMP/mia-downloads" --remote-artifact "$RUNNER_TEMP/mia-remote-runtime" --unsigned
+          } > "$RUNNER_TEMP/native-package.log" 2>&1
+          mia_package_status=$?
+          cat "$RUNNER_TEMP/native-package.log"
+          if [ "$mia_package_status" -ne 0 ]; then
+            python3 - "$RUNNER_TEMP/native-package.log" <<'PY'
+          from pathlib import Path
+          import sys
+          lines = Path(sys.argv[1]).read_text(errors='replace').splitlines()
+          failures = list(dict.fromkeys(line for line in lines if 'error:' in line or 'AssertionError' in line or 'RuntimeError' in line))
+          message = '\n'.join(failures)[:2800] + '\n' + '\n'.join(lines[-12:])[-1000:]
+          print('::error title=Native Mac packaging failed::' + message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY
+          fi
+          exit "$mia_package_status"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-package-log-${{ matrix.architecture }}
+          path: |
+            ${{ runner.temp }}/native-package.log
+            ${{ runner.temp }}/mia-mac/native-webkit-acceptance.json
+            ${{ runner.temp }}/mia-mac/native-webkit-acceptance.json.log
+            ${{ runner.temp }}/mia-mac/native-service-acceptance.json
+            ${{ runner.temp }}/mia-mac/native-service-acceptance.json.log
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Mia-UNSIGNED-INTERNAL-${{ matrix.architecture }}
+          path: |
+            ${{ runner.temp }}/mia-mac/Mia-Development-*.dmg
+            ${{ runner.temp }}/mia-mac/Mia-Development-*.dmg.sha256
+            ${{ runner.temp }}/mia-mac/Mia-Development-*.dmg.verification.json
+            ${{ runner.temp }}/mia-mac/Mia.app/Contents/Resources/build-report.json
+          retention-days: 7
+          if-no-files-found: error
