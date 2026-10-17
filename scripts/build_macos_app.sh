@@ -198,7 +198,13 @@ PY
 )
 if [ "$task_unsigned" = true ]; then
   task_name="Mia-Development-$task_version-$task_arch"
-  echo "Unsigned internal artifact: signing, notarization and clean-Mac UI acceptance remain required."
+  task_stage='sealing the development app with a local ad-hoc signature'
+  # The linker signs only the executable. Once enclosed in an app bundle, that
+  # signature has no resource seal and Gatekeeper reports the app as damaged.
+  # Seal the completed bundle without a Developer ID or Apple trust claim.
+  codesign --force --sign - "$task_output/Mia.app"
+  codesign --verify --deep --strict "$task_output/Mia.app"
+  echo "Ad-hoc sealed internal artifact: no Developer ID or notarization; human acceptance remains required."
 else
   task_name="Mia-$task_version-$task_arch"
   task_stage='signing native app bundle'
@@ -248,6 +254,6 @@ task_stage='verifying final disk-image integrity'
 hdiutil verify "$task_output/$task_name.dmg"
 task_stage='writing artifact digest and verification receipt'
 task_receipt=(--app "$task_output/Mia.app" --staged-app "$task_output/dmg-root/Mia.app" --artifact "$task_output/$task_name.dmg" --webkit-evidence "$task_output/native-webkit-acceptance.json" --service-evidence "$task_output/native-service-acceptance.json")
-if [ "$task_unsigned" = false ]; then task_receipt+=(--signed --notarization "$task_output/notarization-result.json"); fi
+if [ "$task_unsigned" = false ]; then task_receipt+=(--signed --notarization "$task_output/notarization-result.json"); else task_receipt+=(--ad-hoc-sealed); fi
 PYTHONPATH="$task_repo" python3 "$task_repo/scripts/mac_build_receipt.py" "${task_receipt[@]}"
 echo "Built: $task_output/$task_name.dmg"

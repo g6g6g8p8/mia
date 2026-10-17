@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import plistlib
 import re
+import subprocess
 
 from scripts.package_macos import inventory
 
@@ -26,7 +27,14 @@ def _read(path: Path, *, maximum=16 * 1024 * 1024) -> dict:
 
 def make_receipt(app: Path, staged_app: Path, artifact: Path, *, signed: bool,
                  webkit_evidence: Path, service_evidence: Path,
-                 notarization: Path | None = None) -> dict:
+                 notarization: Path | None = None, ad_hoc_sealed: bool = False) -> dict:
+    if ad_hoc_sealed:
+        if signed:
+            raise ValueError("Ad-hoc seal cannot claim Developer ID signing")
+        subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True, capture_output=True)
+        details = subprocess.run(["codesign", "-d", "--verbose=4", str(app)], check=True, capture_output=True, text=True)
+        if "Signature=adhoc" not in details.stderr or not (app / "Contents/_CodeSignature/CodeResources").is_file():
+            raise ValueError("Development app needs a complete ad-hoc resource seal")
     resources = app / "Contents/Resources"
     report = _read(resources / "build-report.json")
     if artifact.is_symlink() or not artifact.is_file() or artifact.suffix != ".dmg":
@@ -79,6 +87,7 @@ def make_receipt(app: Path, staged_app: Path, artifact: Path, *, signed: bool,
             "source_provenance": source, "runtime_provenance": report["runtime_provenance"],
             "wheelhouse_provenance": report["wheelhouse_provenance"], "release_channel": channel,
             "disk_image_integrity_verified": True, "signed": signed, "notarized": signed,
+            "ad_hoc_seal_verified": ad_hoc_sealed,
             "codesign_verified": signed, "notarization_accepted": signed,
             "dmg_ticket_validated": signed, "gatekeeper_assessed": signed,
             "notarization_id": accepted.get("id"), "native_backend_smoke_passed": True,
@@ -93,6 +102,7 @@ def main() -> None:
     for name in ("app", "staged-app", "artifact", "webkit-evidence", "service-evidence"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--signed", action="store_true")
+    parser.add_argument("--ad-hoc-sealed", action="store_true")
     parser.add_argument("--notarization", type=Path)
     args = parser.parse_args()
     values = vars(args)

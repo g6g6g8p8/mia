@@ -89,3 +89,24 @@ pelo navegador/Gatekeeper**. Recibo registra `apple_notarized=false` e
 `human_acceptance_verified=false`. Permanecem abertura humana, instalação,
 login/suspensão, atualização/restauração, servidor e Safari iPhone. O arquivo é
 para ensaio do proprietário, não uma liberação para convidados.
+
+### Falha de primeira abertura e correção — 17/10/2026
+
+O proprietário baixou pelo navegador e copiou para Aplicativos. O macOS exibiu
+“Mia is damaged”. Diagnóstico real: `codesign --verify --deep --strict` retornou
+`code has no resources but signature indicates they must be present`. O executável
+mantinha assinatura `adhoc,linker-signed`, Info.plist não vinculado e nenhum selo
+de recursos do bundle. A verificação anterior de hashes não detectava esse defeito.
+O DMG `da982166...b3ee69` fica **reprovado para primeira abertura**.
+
+Em cópia separada no Mac, selar o bundle completo com `codesign --force --sign -`
+fez a verificação profunda/estrita passar. A quarentena foi preservada; Gatekeeper
+continuou retornando `rejected`. Isso comprova correção estrutural da assinatura,
+**não** aprovação Apple nem sucesso de primeira abertura pela interface.
+
+O pipeline agora sela o app de desenvolvimento antes dos ensaios, confere o selo
+novamente ao emitir recibo e registra `ad_hoc_seal_verified`, sem marcar Developer
+ID/notarização como presentes. O preparador do piloto rejeita recibos sem esse
+campo e repete a verificação codesign do app montado. 92 testes afetados passaram;
+novo build nativo e novo ensaio de download/abertura ainda são necessários.
+Nenhum app instalado foi substituído e nenhuma proteção global foi desativada.

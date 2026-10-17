@@ -139,3 +139,25 @@ def test_build_evidence_and_artifact_cannot_be_symlink_substitutes(build, tmp_pa
     build.artifact.symlink_to(artifact)
     with pytest.raises(ValueError, match="regular DMG"):
         receipt(build)
+
+
+def test_ad_hoc_receipt_requires_real_resource_seal(build, monkeypatch):
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(stderr="Signature=adhoc\n")
+    monkeypatch.setattr("scripts.mac_build_receipt.subprocess.run", run)
+    with pytest.raises(ValueError, match="resource seal"):
+        receipt(build, ad_hoc_sealed=True)
+    assert calls[0][1:4] == ["--verify", "--deep", "--strict"]
+
+
+def test_ad_hoc_receipt_does_not_claim_apple_signing(build, monkeypatch):
+    monkeypatch.setattr("scripts.mac_build_receipt.subprocess.run", lambda *a, **kw: SimpleNamespace(stderr="Signature=adhoc\n"))
+    for app in (build.app, build.staged):
+        seal = app / "Contents/_CodeSignature/CodeResources"
+        seal.parent.mkdir()
+        seal.write_bytes(b"synthetic resource seal")
+    actual = receipt(build, ad_hoc_sealed=True)
+    assert actual["ad_hoc_seal_verified"] is True
+    assert actual["signed"] is False and actual["notarized"] is False

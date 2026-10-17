@@ -36,6 +36,8 @@ CHECKS = {
 def validate_receipt(receipt: dict, artifact: Path) -> dict:
     """Validate original build evidence without claiming Apple certification."""
     _receipt_metadata(receipt, artifact, require_apple=False, require_channel=False)
+    if receipt.get("ad_hoc_seal_verified") is not True:
+        raise PublicationError("Piloto exige selo ad-hoc completo verificado no build")
     if artifact.suffix != ".dmg":
         raise PublicationError("Piloto exige DMG")
     for gate in APPLE_GATES:
@@ -74,6 +76,9 @@ def verify_mac_artifact(receipt: dict, artifact: Path) -> dict:
         app = mount / "Mia.app"
         if app.is_symlink() or not app.is_dir():
             raise PublicationError("DMG não contém Mia.app regular")
+        _run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], timeout=120)
+        if not (app / "Contents/_CodeSignature/CodeResources").is_file():
+            raise PublicationError("App montado sem selo de recursos")
         resources = app / "Contents/Resources"
         info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
         if (inventory(app) != receipt["app_files"]

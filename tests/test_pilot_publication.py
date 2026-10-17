@@ -17,7 +17,7 @@ def pilot(release):
     for gate in APPLE_GATES:
         receipt[gate] = gate in ("disk_image_integrity_verified", "native_backend_smoke_passed")
     receipt.pop("apple_attestation")
-    receipt.update(release_channel={}, consumer_distribution_ready=False)
+    receipt.update(release_channel={}, consumer_distribution_ready=False, ad_hoc_seal_verified=True)
     receipt["app_files"] = {"Contents/MacOS/Mia": {"sha256": "a" * 64, "executable": True}}
     receipt["app_inventory_sha256"] = hashlib.sha256(canonical(receipt["app_files"])).hexdigest()
     for key, passed, engine, cleaned in (
@@ -170,3 +170,10 @@ def test_stage_never_overwrites_existing_directory(pilot, staged, monkeypatch):
         module.stage_pilot(directory, receipt, artifact, ledger,
             approve_sha256=pilot_plan(*pilot)["stage_approve_sha256"], signer=signer, public_key=signer.public_key)
     assert (directory / "pilot-manifest.json").read_bytes() == before
+
+
+def test_linker_only_or_missing_seal_receipt_is_rejected(pilot):
+    receipt, artifact, *_ = pilot
+    receipt.pop("ad_hoc_seal_verified")
+    with pytest.raises(PublicationError, match="ad-hoc"):
+        validate_receipt(receipt, artifact)
