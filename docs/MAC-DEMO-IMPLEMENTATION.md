@@ -1,3 +1,5 @@
+> **Atualização de escopo — 17/10/2026:** o proprietário escolheu piloto gratuito com app Mac sem notarização e acesso pelo navegador no Mac/iPhone. O contrato vigente e os aceites estão em [FREE-PILOT.md](FREE-PILOT.md). As exigências Apple descritas abaixo pertencem ao canal assinado anterior, adiado. O código do publicador ainda impõe essas exigências; este registro não o adapta nem libera os DMGs internos para convidados.
+
 # Mia Demo a14 — implementação e validação
 
 15/10/2026. Implementação de [MAC-DEMO.md](MAC-DEMO.md), na branch `feat/invite-only-mac-demo`. A a14 amplia o cliente nativo, a operação do servidor e a distribuição privada do beta. O CI da revisão `e1afa53` passou os cinco jobs. Assinatura Apple, publicação e aceites reais permanecem requisitos para liberar convidados.
