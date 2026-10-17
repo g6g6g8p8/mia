@@ -1,3 +1,5 @@
+> **Direção vigente — 17/10/2026:** app Mac distribuído diretamente sem notarização e acesso pelo navegador no Mac/iPhone, sem contratação paga. A sequência ativa é G0–G6 em [FREE-PILOT.md](FREE-PILOT.md). Apple Developer não é requisito desse piloto. As etapas D0–D8 abaixo preservam o histórico do canal Apple; a implementação e os aceites do novo canal ainda estão pendentes.
+
 # Roadmap — Mia Demo para Mac, por convite
 
 15/10/2026. A a14 implementa o aplicativo independente para Mac, com convite para a distribuição oficial e instalação própria local ou em servidor no onboarding. A liberação aos convidados depende dos aceites abaixo. O piloto por instalação administrativa/navegador deixa de ser o caminho principal. Contrato em [MAC-DEMO.md](MAC-DEMO.md); implementação e evidência em [MAC-DEMO-IMPLEMENTATION.md](MAC-DEMO-IMPLEMENTATION.md).
