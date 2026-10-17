@@ -152,4 +152,84 @@ def pilot_plan(receipt: dict, artifact: Path, acceptance: dict | None = None,
               "ready_for_beta": False, "automatic_app_updates": False,
               "browser_iphone_verified": False,
               "evidence_trust": "operator-supplied; publication must authenticate evidence and artifact"}
-    return {**result, "approve_sha256": hashlib.sha256(canonical(result)).hexdigest()}
+    approval = {key: result[key] for key in ("policy", "artifact_sha256", "receipt_sha256", "acceptance_sha256")}
+    return {**result, "approve_sha256": hashlib.sha256(canonical(result)).hexdigest(),
+            "stage_approve_sha256": hashlib.sha256(canonical(approval)).hexdigest()}
+
+
+def stage_pilot(destination: Path, receipt: dict, artifact: Path, acceptance: dict,
+                *, approve_sha256: str, signer, public_key: str) -> dict:
+    """Stage a project-signed private package after a fresh native verification.
+
+    The signature identifies the project's approved bytes, not Apple approval.
+    The destination is exclusive; interruption leaves an incomplete directory
+    which readers refuse. No published pointer is switched by this operation.
+    """
+    import shutil
+    from mia.demo_distribution import _private_directory
+    from mia.release_publication import _write_new, verify_ed25519
+    from mia.updates import _decode
+    _decode(public_key, 32)
+    if signer.public_key != public_key:
+        raise PublicationError("Chave do publicador difere da chave pública revisada")
+    verification = verify_mac_artifact(receipt, artifact)
+    plan = pilot_plan(receipt, artifact, acceptance, verification)
+    # Verification time changes on each run. Approval binds the exact build,
+    # acceptance and policy, not a previously generated verification timestamp.
+    approval = {key: plan[key] for key in ("policy", "artifact_sha256", "receipt_sha256", "acceptance_sha256")}
+    expected = hashlib.sha256(canonical(approval)).hexdigest()
+    if approve_sha256 != expected or not plan["ready_for_operator_review"]:
+        raise PublicationError("Plano do piloto não aprovado ou aceites incompletos")
+    destination = Path(destination).absolute()
+    _private_directory(destination.parent)
+    destination.mkdir(mode=0o700, exist_ok=False)
+    files = {}
+    with (destination / "Mia.dmg").open("xb") as output, _regular(artifact).open("rb") as source:
+        import os
+        os.chmod(destination / "Mia.dmg", 0o600)
+        shutil.copyfileobj(source, output)
+    with (destination / "Mia.dmg").open("rb") as copied:
+        if hashlib.file_digest(copied, "sha256").hexdigest() != receipt["sha256"]:
+            raise PublicationError("DMG mudou durante a preparação")
+    for name, value in (("receipt.json", receipt), ("acceptance.json", acceptance), ("mac-verification.json", verification)):
+        _write_new(destination / name, canonical(value) + b"\n")
+    from mia.release_publication import digest
+    for name in ("Mia.dmg", "receipt.json", "acceptance.json", "mac-verification.json"):
+        path = destination / name
+        files[name] = {"sha256": digest(path), "size": path.stat().st_size}
+    manifest = {"protocol": 1, "policy": POLICY, "notice": NOTICE,
+                "version": receipt["app_version"], "architecture": receipt["architecture"],
+                "files": files, "automatic_app_updates": False, "apple_notarized": False,
+                "browser_iphone_verified": False, "acceptance_kind": "operator-declared-for-exact-artifact"}
+    payload = destination / "pilot-manifest.json"
+    _write_new(payload, canonical(manifest) + b"\n")
+    signature = signer.sign(payload)
+    verify_ed25519(public_key, signature, payload)
+    # Signature is written last, so incomplete packages never validate.
+    _write_new(destination / "pilot-signature.json", canonical({"protocol": 1, "signature": signature}) + b"\n")
+    verify_pilot_package(destination, public_key=public_key)
+    return {"directory": str(destination), "ready_for_upload_review": True, "ready_for_beta": False,
+            "artifact_sha256": receipt["sha256"], "policy": POLICY}
+
+
+def verify_pilot_package(directory: Path, *, public_key: str) -> dict:
+    """Verify with a separately trusted key, never a key taken from the package."""
+    from mia.release_publication import digest, read_json, verify_ed25519
+    directory = Path(directory).absolute()
+    signature = read_json(directory / "pilot-signature.json")
+    if set(signature) != {"protocol", "signature"} or signature["protocol"] != 1:
+        raise PublicationError("Assinatura de pacote inválida")
+    verify_ed25519(public_key, signature["signature"], directory / "pilot-manifest.json")
+    manifest = read_json(directory / "pilot-manifest.json")
+    if (manifest.get("protocol") != 1 or manifest.get("policy") != POLICY
+            or manifest.get("apple_notarized") is not False
+            or manifest.get("automatic_app_updates") is not False
+            or manifest.get("browser_iphone_verified") is not False
+            or manifest.get("notice") != NOTICE
+            or set(manifest.get("files", {})) != {"Mia.dmg", "receipt.json", "acceptance.json", "mac-verification.json"}):
+        raise PublicationError("Política de pacote inválida")
+    for name, entry in manifest["files"].items():
+        path = _regular(directory / name)
+        if entry != {"sha256": digest(path), "size": path.stat().st_size}:
+            raise PublicationError("Conteúdo do pacote mudou")
+    return manifest

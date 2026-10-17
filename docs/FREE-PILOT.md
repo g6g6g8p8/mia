@@ -58,3 +58,34 @@ comportamento padrão e rejeita esses recibos.
 Validação local: 79 testes passaram entre política do piloto, publicador existente
 e recibos Mac, com dependências do lock. Fixtures são sintéticas; nenhum aceite
 em Mac/iPhone foi inferido. G1 está parcialmente implementado; G2–G6 pendentes.
+
+O comando `stage` foi acrescentado para preparar pacote privado imutável com
+assinatura Ed25519 do projeto (sem Apple Developer). Exige `--acceptance`,
+`--approve-sha256` igual ao `stage_approve_sha256` do plano, `--public-key`,
+`--sparkle-archive` oficial fixado e conta Keychain existente em
+`--sparkle-account` (padrão `mia-free-pilot`). Não gera chaves automaticamente.
+A ferramenta Sparkle é reutilizada apenas para assinar bytes; isso não habilita
+atualização automática do aplicativo. O estágio repete a verificação nativa,
+recusa aceites incompletos, chave divergente e destino existente. O manifesto
+assinado vincula DMG e evidências; o leitor exige chave pública confiável fornecida
+separadamente e recusa qualquer arquivo alterado. Não publica no portal.
+
+Validação ampliada: **89 testes passaram**, incluindo adulteração de cada arquivo
+do pacote, chave incorreta, aprovação antiga e preservação de destino existente.
+A assinatura nos testes é real Ed25519; artefatos e aceites são sintéticos.
+
+### DMG real verificado no Mac — 17/10/2026
+
+O preparador da revisão `0521bce` executou `verify-mac` com sucesso no Mac arm64
+do proprietário, sobre o artefato interno arm64 do workflow `38908021850`
+(artefato GitHub `12049271753`, fonte do aplicativo `3499e2c` via merge do CI).
+SHA256 do DMG: `da982166c578411912bf452d32205aaf210601e552c08a819dfbb0a865b3ee69`.
+Verificados hdiutil, montagem somente leitura, arquitetura, metadados e inventários
+reais; o volume temporário foi desmontado pelo verificador. Não executou o app,
+não criou instalação/contexto e não alterou serviços existentes.
+
+O download foi pelo gh, portanto **não comprova quarentena ou primeira abertura
+pelo navegador/Gatekeeper**. Recibo registra `apple_notarized=false` e
+`human_acceptance_verified=false`. Permanecem abertura humana, instalação,
+login/suspensão, atualização/restauração, servidor e Safari iPhone. O arquivo é
+para ensaio do proprietário, não uma liberação para convidados.

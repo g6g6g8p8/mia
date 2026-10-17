@@ -6,24 +6,40 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from mia.pilot_publication import acceptance_template, pilot_plan, validate_receipt, verify_mac_artifact
-from mia.release_publication import PublicationError, _write_new, canonical, read_json
+from mia.pilot_publication import acceptance_template, pilot_plan, validate_receipt, verify_mac_artifact, stage_pilot
+from mia.release_publication import PublicationError, SparkleSigner, _write_new, canonical, read_json
 from scripts.publish_demo_release import _outside_checkout
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("acceptance-template", "verify-mac", "plan"))
+    parser.add_argument("action", choices=("acceptance-template", "verify-mac", "plan", "stage"))
     parser.add_argument("--dmg", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--acceptance", type=Path)
     parser.add_argument("--mac-verification", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--approve-sha256")
+    parser.add_argument("--public-key")
+    parser.add_argument("--sparkle-archive", type=Path)
+    parser.add_argument("--sparkle-account", default="mia-free-pilot")
     args = parser.parse_args()
     try:
         output = _outside_checkout(args.output)
         artifact = _outside_checkout(args.dmg)
         receipt = validate_receipt(read_json(_outside_checkout(args.receipt)), artifact)
+        if args.action == "stage":
+            if not all((args.acceptance, args.public_key, args.approve_sha256, args.sparkle_archive)):
+                raise PublicationError("Stage exige aceite, aprovação e chave revisada")
+            signer = SparkleSigner(_outside_checkout(args.sparkle_archive), args.public_key, account=args.sparkle_account)
+            try:
+                stage_pilot(output, receipt, artifact,
+                    read_json(_outside_checkout(args.acceptance)), approve_sha256=args.approve_sha256,
+                    signer=signer, public_key=args.public_key)
+            finally:
+                signer.close()
+            print("Pacote privado preparado. Nenhuma publicação ou convite realizado.")
+            return
         if args.action == "acceptance-template":
             result = acceptance_template(receipt)
         elif args.action == "verify-mac":

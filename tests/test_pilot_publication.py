@@ -109,3 +109,64 @@ def test_mac_verification_cannot_be_claimed_from_linux(pilot, monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
     with pytest.raises(PublicationError, match="macOS"):
         verify_mac_artifact(*pilot[:2])
+
+
+@pytest.fixture
+def staged(pilot, release, tmp_path, monkeypatch):
+    from mia import pilot_publication as module
+    receipt, artifact, ledger, verification = pilot
+    monkeypatch.setattr(module, "verify_mac_artifact", lambda *_: verification)
+    plan = pilot_plan(*pilot)
+    destination = tmp_path / "private-pilot"
+    result = module.stage_pilot(destination, receipt, artifact, ledger,
+        approve_sha256=plan["stage_approve_sha256"], signer=release["build"], public_key=release["build"].public_key)
+    return destination, release["build"], result
+
+
+def test_staged_package_is_authenticated_and_does_not_claim_apple(staged):
+    from mia.pilot_publication import verify_pilot_package
+    directory, signer, result = staged
+    manifest = verify_pilot_package(directory, public_key=signer.public_key)
+    assert manifest["apple_notarized"] is False
+    assert result["ready_for_beta"] is False
+    assert (directory / "Mia.dmg").stat().st_mode & 0o077 == 0
+
+
+@pytest.mark.parametrize("name", ["Mia.dmg", "receipt.json", "acceptance.json", "mac-verification.json", "pilot-manifest.json", "pilot-signature.json"])
+def test_staged_tampering_is_rejected(staged, name):
+    from mia.pilot_publication import verify_pilot_package
+    directory, signer, _ = staged
+    (directory / name).write_bytes(b"modified")
+    with pytest.raises(PublicationError):
+        verify_pilot_package(directory, public_key=signer.public_key)
+
+
+def test_package_cannot_supply_its_own_trust_key(staged, release):
+    from mia.pilot_publication import verify_pilot_package
+    directory, _, _ = staged
+    with pytest.raises(PublicationError):
+        verify_pilot_package(directory, public_key=release["backend"].public_key)
+
+
+def test_stage_rejects_stale_approval_before_creating_destination(pilot, release, tmp_path, monkeypatch):
+    from mia import pilot_publication as module
+    receipt, artifact, ledger, verification = pilot
+    plan = pilot_plan(*pilot)
+    ledger["modes"]["local"]["checks"]["explicit_first_open"]["evidence"] += " changed"
+    monkeypatch.setattr(module, "verify_mac_artifact", lambda *_: verification)
+    destination = tmp_path / "stale"
+    with pytest.raises(PublicationError):
+        module.stage_pilot(destination, receipt, artifact, ledger, approve_sha256=plan["stage_approve_sha256"], signer=release["build"], public_key=release["build"].public_key)
+    assert not destination.exists()
+
+
+def test_stage_never_overwrites_existing_directory(pilot, staged, monkeypatch):
+    from mia import pilot_publication as module
+    receipt, artifact, ledger, verification = pilot
+    directory, signer, _ = staged
+    monkeypatch.setattr(module, "verify_mac_artifact", lambda *_: verification)
+    before = (directory / "pilot-manifest.json").read_bytes()
+    with pytest.raises(FileExistsError):
+        module.stage_pilot(directory, receipt, artifact, ledger,
+            approve_sha256=pilot_plan(*pilot)["stage_approve_sha256"], signer=signer, public_key=signer.public_key)
+    assert (directory / "pilot-manifest.json").read_bytes() == before
