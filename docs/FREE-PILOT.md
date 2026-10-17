@@ -38,3 +38,23 @@ Oferecer apenas arquiteturas/modalidades aprovadas e informar limitações antes
 - [Apple: abertura de apps no Mac](https://support.apple.com/en-us/102445)
 - [Apple: conta gratuita](https://developer.apple.com/help/account/basics/about-your-developer-account)
 - [Apple: app web no iPhone](https://support.apple.com/en-lamr/guide/iphone/iphea86e5236/ios)
+
+## Preparação implementada — 17/10/2026
+
+`python3 scripts/prepare_free_pilot.py --help` oferece `acceptance-template`,
+`verify-mac` e `plan`, sempre com `--dmg`, `--receipt` e `--output` fora do checkout.
+`plan` aceita `--acceptance` e `--mac-verification`. Arquivos de saída são novos,
+privados e nunca sobrescritos. Não há publicação nem emissão de convite.
+
+O preparador exige recibo original de build sem canal automático e sem afirmações
+Apple, vincula bytes/versões/fonte limpa/ensaios nativos e gera aceites inicialmente
+`not_run`. `verify-mac` monta somente para leitura, verifica o DMG, arquitetura e
+inventários de app/fonte/runtime/wheels, sem executar o app montado. É evidência
+técnica do operador, não uma atestação Apple nem aceite humano. O plano permanece
+`ready_for_beta=false`, mesmo quando pronto para revisão: autenticação do pacote,
+integração com portal e ensaio HTTPS ainda faltam. O publicador Apple mantém seu
+comportamento padrão e rejeita esses recibos.
+
+Validação local: 79 testes passaram entre política do piloto, publicador existente
+e recibos Mac, com dependências do lock. Fixtures são sintéticas; nenhum aceite
+em Mac/iPhone foi inferido. G1 está parcialmente implementado; G2–G6 pendentes.

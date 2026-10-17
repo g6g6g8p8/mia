@@ -260,7 +260,7 @@ def channel_for(origin: str, channel: str, architecture: str, backend_public_key
     return result
 
 
-def _receipt_metadata(receipt: dict, artifact: Path, *, require_apple: bool = True) -> dict:
+def _receipt_metadata(receipt: dict, artifact: Path, *, require_apple: bool = True, require_channel: bool = True) -> dict:
     artifact = _regular(artifact)
     if receipt.get("format") != 2 or receipt.get("artifact") != artifact.name or receipt.get("sha256") != digest(artifact) or receipt.get("size") != artifact.stat().st_size:
         raise PublicationError("Recibo não corresponde aos bytes/nome/tamanho do DMG final")
@@ -283,13 +283,14 @@ def _receipt_metadata(receipt: dict, artifact: Path, *, require_apple: bool = Tr
     wheels = receipt.get("wheelhouse_provenance", {}).get("files")
     if not isinstance(wheels, dict) or not wheels:
         raise PublicationError("Recibo não vincula os wheels Mac autenticados")
-    try:
-        validate_channel(receipt.get("release_channel"))
-    except (ValueError, UpdateError):
-        raise PublicationError("Recibo não vincula o canal público embarcado") from None
-    channel = receipt["release_channel"]
-    if not channel.get("appcast_url") or not channel.get("backend_feed_url"):
-        raise PublicationError("A demonstração publicada exige canais de app e backend configurados no bundle")
+    if require_channel:
+        try:
+            validate_channel(receipt.get("release_channel"))
+        except (ValueError, UpdateError):
+            raise PublicationError("Recibo não vincula o canal público embarcado") from None
+        channel = receipt["release_channel"]
+        if not channel.get("appcast_url") or not channel.get("backend_feed_url"):
+            raise PublicationError("A demonstração publicada exige canais de app e backend configurados no bundle")
     if receipt.get("minimum_macos") != "13.0" or receipt.get("bundle_identifier") != "org.mia.demo":
         raise PublicationError("Recibo identifica requisitos/plataforma diferentes da demonstração revisada")
     return receipt
